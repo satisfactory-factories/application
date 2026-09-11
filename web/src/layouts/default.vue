@@ -7,9 +7,10 @@
     </navigation>
 
     <tab-navigation v-if="showTabNavigation" />
+    <splash-v7 />
+    <!-- The releases behind it. Mounted for the whole session but only ever opened by hand,
+         each from the last slide of the one above. -->
     <splash-v6 />
-    <!-- The previous release's deck. Mounted for the whole session but only ever opened by
-         hand, from the last slide of the one above. -->
     <splash />
     <v-main>
       <router-view />

@@ -22,37 +22,72 @@
         </v-btn>
       </v-btn-group>
     </div>
+    <!-- The tray still opens when the server is down, because "the button does nothing" is worse
+         than being told why. Nothing here can succeed though, so the fields go inert with it. -->
+    <v-alert
+      v-if="health.unhealthy"
+      class="mb-4 text-left"
+      data-testid="auth-backend-outage"
+      density="compact"
+      type="error"
+      variant="tonal"
+    >
+      <div class="text-body-2">
+        <b>Our backend servers are not responding.</b> Signing in and registering are unavailable
+        until they are back.
+      </div>
+      <div class="text-caption mt-1">
+        Please report it on <a :href="DISCORD_INVITE" rel="noopener" target="_blank">Discord</a> and
+        try again later. Your plans are safe: everything in your tabs is kept in this browser.
+      </div>
+    </v-alert>
     <p class="text-body-2 text-left mb-4">{{ intro }}</p>
     <v-divider />
     <v-form v-if="showLogin" @submit.prevent="handleLoginForm">
       <v-text-field
         v-model="username"
+        :disabled="health.unhealthy"
         label="Username"
         required
       />
       <v-text-field
         v-model="password"
+        :disabled="health.unhealthy"
         label="Password"
         required
         type="password"
       />
-      <v-btn color="primary" :loading="busy" type="submit" variant="flat">Log in</v-btn>
+      <v-btn
+        color="primary"
+        :disabled="health.unhealthy"
+        :loading="busy"
+        type="submit"
+        variant="flat"
+      >Log in</v-btn>
     </v-form>
     <v-form v-if="showRegister" @submit.prevent="handleRegisterForm">
       <p class="text-body-2 text-left mb-4 mt-2 text-amber">Please do not use an email address as a username. we do not wish to store any PII (Personally Identifiable Information) - since this is a hobby project data security is not a paramount priority.</p>
       <v-text-field
         v-model="username"
+        :disabled="health.unhealthy"
         label="Username"
         required
       />
       <v-text-field
         v-model="password"
+        :disabled="health.unhealthy"
         label="Password"
         required
         type="password"
       />
       <p class="text-left mb-2"><b>NOTE:</b> There is currently no password reset system implemented. If you lose your login details, you'll have to create a new account!</p>
-      <v-btn color="green" :loading="busy" type="submit" variant="flat">Register</v-btn>
+      <v-btn
+        color="green"
+        :disabled="health.unhealthy"
+        :loading="busy"
+        type="submit"
+        variant="flat"
+      >Register</v-btn>
     </v-form>
     <div v-if="message" class="mt-2">
       <p class="text-red font-weight-bold" data-testid="auth-error">{{ message }}</p>
@@ -66,6 +101,10 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue'
   import { useAuthStore } from '@/stores/auth-store'
+  import { useBackendHealthStore } from '@/stores/backend-health-store'
+
+  /** The same invite the health banner and the introduction hand out. */
+  const DISCORD_INVITE = 'https://discord.gg/vcFsjcWAFv'
 
   const props = withDefaults(defineProps<{
     /** The line above the fields, so each host can say why it is asking. */
@@ -80,6 +119,7 @@
   const emit = defineEmits<{ (event: 'authenticated'): void }>()
 
   const authStore = useAuthStore()
+  const health = useBackendHealthStore()
 
   const username = ref('')
   const password = ref('')

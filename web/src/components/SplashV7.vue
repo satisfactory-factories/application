@@ -1,0 +1,956 @@
+<template>
+  <v-dialog
+    v-model="showSplash"
+    :max-width="currentSlide === 0 ? 1200 : 1000"
+    scrollable
+  >
+    <v-card>
+      <v-card-title class="deck-title d-flex align-center justify-center py-4">
+        <span class="header-accent">What's new in Beta v0.7</span>
+        <v-btn
+          class="deck-close"
+          density="comfortable"
+          icon="fas fa-times"
+          title="Close what's new"
+          variant="text"
+          @click="closeSplash"
+        />
+      </v-card-title>
+      <v-card-text ref="slideBody">
+        <!-- Slide 1: The headline. Four features carry this release, and the name is a pun on
+             the two of them that sound alike: you sync a plan and you sink a surplus. -->
+        <div v-if="currentSlide === 0">
+          <h2 class="text-h4 text-center mb-2">
+            The <span class="pun">SINK</span>ronisation Update
+          </h2>
+          <p class="text-center text-medium-emphasis mb-4">
+            Sync your plans. Sink your surplus.
+          </p>
+          <!-- The four, up front and equally weighted, each showing the thing it names. They are
+               the cover: there is no launch video, and a placeholder standing in for one is worse
+               than the space it occupies. Everything else in the deck hangs off one of them. -->
+          <v-row class="mb-2" no-gutters>
+            <v-col
+              v-for="feature in headlines"
+              :key="feature.title"
+              class="pa-2"
+              cols="12"
+              sm="6"
+            >
+              <div class="headline-card h-100 pa-4 rounded">
+                <h3 class="headline-title d-flex align-center ga-3 mb-2" :class="feature.tone">
+                  <!-- The game's own art where the feature is a building, so the card and the
+                       control it names are recognisably the same thing. -->
+                  <game-asset
+                    v-if="feature.asset"
+                    height="28"
+                    :subject="feature.asset"
+                    type="item_id"
+                    width="28"
+                  />
+                  <i v-else :class="feature.icon" />
+                  <span>{{ feature.title }}</span>
+                </h3>
+                <p class="mb-3">{{ feature.blurb }}</p>
+                <!-- All four cropped to the same 4:1 strip so the grid reads as one thing rather
+                     than four screenshots that happen to be adjacent. The ratio here has to match
+                     the crops: `cover` in a differently shaped box eats the sides of each one. -->
+                <v-img
+                  v-if="feature.shot"
+                  :alt="feature.alt"
+                  aspect-ratio="4"
+                  class="headline-shot rounded"
+                  :src="feature.shot"
+                />
+              </div>
+            </v-col>
+          </v-row>
+
+          <p class="mb-2">Jump to what interests you, or take the full tour!</p>
+          <ul class="contents-list ml-6">
+            <li v-for="(slide, index) in slides.slice(1)" :key="slide.nav">
+              <a class="d-inline-flex align-center ga-2" href="#" @click.prevent="goToSlide(index + 1)">
+                <i :class="slide.icon" />
+                <span>{{ slide.title }}</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Slide 2: The three kinds of tab. Critical knowledge before anything else about sync
+             makes sense, so it comes first and stays plain. -->
+        <div v-if="currentSlide === 1">
+          <h2 class="text-h5 text-center mb-2">
+            <i class="fas fa-folder-open" /><span class="ml-2">Every tab is local, synced or shared</span>
+          </h2>
+          <!-- Said before anything else on the slide, and said plainly: everything below this
+               describes accounts, and the first thing anyone should know is that they are
+               optional. -->
+          <v-alert
+            class="mb-4"
+            density="comfortable"
+            prominent
+            type="success"
+            variant="tonal"
+          >
+            <h3 class="text-h6 mb-1 font-weight-bold">At no point is a cloud account mandatory</h3>
+            <p class="mb-0">
+              The planner works <b>100% without an account</b>, just as it always has done.
+            </p>
+          </v-alert>
+          <p class="mb-4">There are three kinds of tab, and you pick which you want.</p>
+
+          <div v-for="kind in tabKinds" :key="kind.key" class="mb-4">
+            <h3 class="section-heading d-flex align-center ga-3 mb-2">
+              <!-- The glyph the tab bar itself wears, so the heading and the tab on screen are
+                   recognisably the same thing. -->
+              <i class="tab-glyph" :class="kind.icon" />
+              <span>{{ kind.label }}</span>
+            </h3>
+            <p class="mb-0">{{ kind.blurb }}</p>
+          </div>
+
+          <v-divider class="my-4" />
+
+          <h3 class="section-heading mb-2">Adding a tab</h3>
+          <p class="mb-3">
+            Press the <b>+</b> button at the end of the tab bar and pick which kind you want.
+          </p>
+          <v-img
+            v-if="hasPlusButtonShot"
+            alt="The + button at the end of the tab bar, highlighted"
+            class="mb-3 mx-auto rounded"
+            max-width="640"
+            :src="shots.plusButton"
+          />
+          <p class="mb-0">
+            The pencil on a tab opens <b>tab settings</b>, where you rename it, send it to the
+            cloud, download it back to local, remove it from the cloud, hide it, share it and
+            delete it. Tabs drag into whatever order you like, and your synced ones keep that
+            order on your account.
+          </p>
+        </div>
+
+        <!-- Slide 3: Collaboration. One picture of the dialog everything is reached from, then
+             the two kinds of link side by side, because they are what people confuse. -->
+        <div v-if="currentSlide === 2">
+          <h2 class="text-h5 text-center mb-2">
+            <i class="fas fa-share-alt" /><span class="ml-2">Tab sharing</span>
+          </h2>
+          <v-img
+            v-if="hasShareTrayShot"
+            alt="The tab sharing tray, offering a snapshot link and an invite link"
+            class="mb-4 mx-auto rounded"
+            max-width="820"
+            :src="shots.shareTray"
+          />
+
+          <!-- The counterpart to slide 2's promise that an account is optional. It is, right up
+               until this one feature, and being straight about that is the point. -->
+          <v-alert
+            class="mb-4"
+            density="comfortable"
+            type="info"
+            variant="tonal"
+          >
+            <b>Unlike local tabs, real-time collaboration does need a cloud account.</b> It is what
+            lets the planner tell who may edit a plan and keep everyone's copy of it in step.
+            Snapshot links need no account at all.
+          </v-alert>
+
+          <!-- Left to right in the order the tray itself puts them. -->
+          <v-row no-gutters>
+            <v-col class="pr-md-4" cols="12" md="6">
+              <h3 class="section-heading mb-2">
+                <i class="fas fa-camera" /><span class="ml-2">Snapshot link</span>
+              </h3>
+              <v-img
+                v-if="hasSnapshotShot"
+                alt="The snapshot link half of the sharing tray"
+                class="mb-3 rounded"
+                :src="shots.snapshot"
+              />
+              <ul class="ml-6 mb-0">
+                <li>This is the <b>old share link system</b>, and it is still here.</li>
+                <li>You make a one-time link, and it loads into someone's browser as their own local copy.</li>
+                <li>That's it. No account needed.</li>
+              </ul>
+            </v-col>
+            <v-col class="pl-md-4" cols="12" md="6">
+              <h3 class="section-heading mb-2">
+                <i class="fas fa-user-plus" /><span class="ml-2">Invite a pioneer</span>
+              </h3>
+              <v-img
+                v-if="hasShareShot"
+                alt="The invite link half of the sharing tray"
+                class="mb-3 rounded"
+                :src="shots.share"
+              />
+              <ul class="ml-6 mb-0">
+                <li>Invite a pioneer into your plan with a link, and you both edit it live.</li>
+                <li>The link can be <b>password protected</b>.</li>
+                <li>You stay in control: <b>unshare at any time</b>, and everyone keeps their own copy of the plan. Nobody loses data.</li>
+              </ul>
+            </v-col>
+          </v-row>
+        </div>
+
+        <!-- Slide 4: The account panel, and offline mode, which lives on it. -->
+        <div v-if="currentSlide === 3">
+          <h2 class="text-h5 text-center mb-2">
+            <i class="fas fa-user" /><span class="ml-2">Manage your plans in the new account panel</span>
+          </h2>
+          <!-- The panel is a narrow tray, and the capture is 2x, so left at the slide's own width
+               it rendered at twice life size and swamped the slide. 392 is its true CSS width. -->
+          <v-img
+            v-if="hasAccountPanelShot"
+            alt="The account panel alternating between its Local and Cloud tabs"
+            class="mb-4 mx-auto rounded framed"
+            max-width="392"
+            :src="shots.accountPanel"
+          />
+          <ul class="ml-6 mb-4">
+            <li><b>Local</b> lists the plans held in this browser, each with a button to send it to your account.</li>
+            <li><b>Cloud</b> splits into <b>My Plans</b>, the ones you own, and <b>Joined Plans</b>, the ones shared with you.</li>
+            <li>Every plan has a <b>Show</b> or <b>Hide</b> button: show opens it as a tab here, hide closes that tab and nothing more.</li>
+            <li>Change your password from here too, which signs out every device, including this one.</li>
+          </ul>
+
+          <v-divider class="my-4" />
+
+          <h3 class="section-heading mb-2">
+            <i class="fas fa-sliders-h" /><span class="ml-2">Your settings follow your account</span>
+          </h3>
+          <p class="mb-4">
+            Your personal settings, as defined in <b>Options</b>, now carry across. Sign in on any
+            machine and they are applied for you.
+          </p>
+
+          <v-divider class="my-4" />
+
+          <h3 class="section-heading mb-2">
+            <i class="fas fa-plane" /><span class="ml-2">Offline mode</span>
+          </h3>
+          <v-img
+            v-if="hasOfflineShot"
+            alt="The offline mode switch on the account panel"
+            class="mb-3 mx-auto rounded"
+            max-width="620"
+            :src="shots.offline"
+          />
+          <ul class="ml-6 mb-0">
+            <li><b>Switch it on</b> to keep your tabs deliberately unsynced, on a flight or anywhere you would rather the planner left the network alone.</li>
+            <li><b>It kicks in by itself</b> if the connection drops, so a dead network is not a broken planner.</li>
+            <li><b>Everything catches up when you come back.</b> Once you are back online it syncs automatically.</li>
+          </ul>
+        </div>
+
+        <!-- Slide 5: The other half of the pun. Shown as before and after, because "a sink
+             disposes of surplus" means nothing until you have seen the row change. -->
+        <div v-if="currentSlide === 4">
+          <h2 class="text-h5 text-center d-flex align-center justify-center ga-3 mb-2 tone-sink">
+            <game-asset height="32" subject="awesome-sink" type="item_id" width="32" />
+            <span>AWESOME Sink support</span>
+          </h2>
+          <p class="mb-4">
+            <b>You can now dispose of any surplus</b>, so that it doesn't generate a backlog
+            (which is a bad thing). Surplus that isn't shipped to another factory can be sunk,
+            and should be sunk.
+          </p>
+
+          <h3 class="section-heading mb-2">Before: a surplus with nowhere to go</h3>
+          <p class="mb-3">
+            A product nothing consumes, nothing exports and no sink takes will fill the belt and
+            stall the buildings making it. In earlier versions there was no way to tell that a
+            product line would clog, so the plan's throughput read higher than the factory would
+            ever actually manage. The planner now says so outright:
+          </p>
+          <v-img
+            v-if="hasSinkBeforeShot"
+            alt="A Plastic row with a surplus, warning that it will cause a backlog"
+            class="mb-4 mx-auto rounded"
+            max-width="1000"
+            :src="shots.sinkBefore"
+          />
+
+          <h3 class="section-heading mb-2">After: put a sink on it</h3>
+          <p class="mb-3">
+            Set a sink in the <b>Storage</b> column and the surplus reads zero, with a gold
+            <b>sunk</b> chip saying how much it is taking and the pre-sink figure underneath.
+            Nothing is hidden from you.
+          </p>
+          <v-img
+            v-if="hasSinkAfterShot"
+            alt="The same row with a sink set, reading 0/min surplus and a gold sunk chip"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.sinkAfter"
+          />
+          <p class="mb-0">
+            A sink takes what is spare and nothing more. Internal use and exports are served
+            first, so adding an export later shrinks the sunk amount by itself. Each one draws
+            30 MW, counted into the factory's power.
+          </p>
+
+          <v-divider class="my-4" />
+
+          <h2 class="text-h5 text-center d-flex align-center justify-center ga-3 mb-3 tone-depot">
+            <game-asset height="32" subject="dimensional-depot" type="item_id" width="32" />
+            <span>Dimensional Depot support</span>
+          </h2>
+          <p class="mb-3">
+            The other half of the Storage column. Set Uploaders on an item and the plan tracks
+            what you are uploading and what it costs:
+          </p>
+          <v-img
+            v-if="hasDepotAssignShot"
+            alt="A Copper Ingot row with two Dimensional Depot Uploaders set in the Storage column"
+            class="mb-4 mx-auto rounded"
+            max-width="1000"
+            :src="shots.depotAssign"
+          />
+          <v-img
+            v-if="hasDepotShot"
+            alt="The Dimensional Depot summary table"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.depot"
+          />
+          <p class="mb-3">
+            A summary of everything your plan uploads: what it has spare, how many Uploaders are
+            on it, and which factories they stand in. Mercer Spheres and the MAM research are
+            counted with it, and both the upload and expansion tiers are saved on the plan.
+          </p>
+          <p class="mb-3">
+            <b>An Uploader deliberately changes no number.</b> The Depot is finite storage, so
+            the plan assumes it fills up and the excess goes back down your factory lines, exactly
+            as it would without one. Marking an item for it records what you are building and what
+            it costs, and leaves the surplus where it is.
+          </p>
+          <v-alert density="comfortable" type="info" variant="tonal">
+            <b>Where to set both:</b> under <b>Satisfaction</b> on any factory, in the new
+            <b>Storage</b> column. Sinks on the left, Depot Uploaders on the right.
+          </v-alert>
+        </div>
+
+        <!-- Slide 6: Search, on its own, because it is one of the four. -->
+        <div v-if="currentSlide === 5">
+          <h2 class="text-h5 text-center mb-2">
+            <i class="fas fa-search" /><span class="ml-2">Search the plan</span>
+          </h2>
+          <p class="mb-4">
+            A search box sits next to Options in the tab bar, and <b>Ctrl/Cmd&nbsp;+&nbsp;K</b>
+            opens it from anywhere. Type a factory name to jump straight to it, or a part to see
+            every factory that touches it.
+          </p>
+          <v-img
+            v-if="hasSearchShot"
+            alt="The search box, with results grouped by what each factory does with the part"
+            class="mb-4 mx-auto rounded"
+            max-width="1000"
+            :src="shots.search"
+          />
+          <p class="mb-2">Results come back in two sections:</p>
+          <ul class="ml-6 mb-0">
+            <li><b>By factory</b>, listing the factories whose name matches.</li>
+            <li><b>By part</b>, listing every factory that touches it, grouped by what each one does with the part: production first, then imports and other usage, with the rate beside each.</li>
+            <li><b>Clicking a result lands on the row it names</b>, not just the top of the factory card.</li>
+          </ul>
+        </div>
+
+        <!-- Slide 7: The rest of the planner work. -->
+        <div v-if="currentSlide === 6">
+          <h2 class="text-h5 text-center mb-2">
+            <i class="fas fa-sparkles" /><span class="ml-2">Also new in the planner</span>
+          </h2>
+          <!-- The longest slide in the deck by some way, so it says what is on it before it
+               starts, the same way slide 1 does for the deck as a whole. -->
+          <ul class="contents-list ml-6 mb-4">
+            <li v-for="section in alsoNewSections" :key="section.anchor">
+              <a class="d-inline-flex align-center ga-2" href="#" @click.prevent="goToSection(section.anchor)">
+                <i :class="section.icon" />
+                <span>{{ section.title }}</span>
+              </a>
+            </li>
+          </ul>
+
+          <h3 :id="'also-custom-buildings'" class="section-heading mb-2">Custom buildings</h3>
+          <v-img
+            v-if="hasCustomBuildingsShot"
+            alt="Custom buildings added to a factory, counting towards its power draw"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.customBuildings"
+          />
+          <p class="mb-4">
+            You can now add the buildings that make nothing to a factory: portals, train stations,
+            freight platforms, truck stations, drone ports, radar towers, the AWESOME Sink,
+            hypertube entrances, jump pads, pipeline pumps and lights. Twenty of them, so anything
+            that draws power can go in and <b>your factory's power demand reads true</b>. The Main
+            Portal's <b>Singularity Cells are a real demand</b> too.
+          </p>
+
+          <v-divider class="my-4" />
+
+          <h3 :id="'also-material-costs'" class="section-heading mb-2">Material costs</h3>
+          <v-img
+            v-if="hasMaterialCostsShot"
+            alt="The Material Costs panel open under Power & Buildings"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.materialCosts"
+          />
+          <p class="mb-4">
+            Power &amp; Buildings has a <b>Material Costs</b> panel: what it would cost, in parts, to
+            build everything the factory needs. <b>A guide only</b>. Nothing is assumed about belts,
+            foundations or anything structural.
+          </p>
+
+          <v-divider class="my-4" />
+
+          <h3 :id="'also-checklist'" class="section-heading mb-2">Checklist rework</h3>
+          <p class="mb-3">
+            The checklist tracks exactly which parts of a factory you still have left to build,
+            ticking off products, power, imports and exports as you put them down in game.
+          </p>
+          <v-img
+            v-if="hasChecklistShot"
+            alt="The Checklist panel as three tables, a desynced row carrying both numbers"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.checklist"
+          />
+          <ul class="ml-6 mb-4">
+            <li><b>Three tables side by side</b>: Products (with Power beneath), Imports and Exports, instead of one list stacked four groups deep.</li>
+            <li><b>Reconfirm all</b>, for when you have already built the lot.</li>
+          </ul>
+          <p class="mb-3">
+            Tick a row off as built, then change the number it was ticked at, and the row goes out
+            of sync. It says so rather than quietly unticking itself:
+          </p>
+          <v-img
+            v-if="hasDesyncShot"
+            alt="A checklist row carrying an amber desync chip with the old and new numbers"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.desync"
+          />
+          <ul class="ml-6 mb-4">
+            <li><b>Click the chip to confirm the new number</b>, or re-tick the row's checkbox, which does the same thing. The other way out is to change the plan back to match what you have already built.</li>
+          </ul>
+
+          <v-divider class="my-4" />
+
+          <h3 :id="'also-generators'" class="section-heading mb-2">Power generators: match the fuel to the supply</h3>
+          <v-img
+            v-if="hasGeneratorFuelShot"
+            alt="A factory making 400 Fuel a minute, with the generator below it offering to trim from 640 to 400"
+            class="mb-3 mx-auto rounded"
+            max-width="1000"
+            :src="shots.generatorFuel"
+          />
+          <p class="mb-4">
+            A generator burning fuel its own factory makes now offers <b>Expand to supply</b> and
+            <b>Trim to supply</b>, with the figure named on the button. It accounts for everything
+            else that wants the fuel: other recipes, other generators, exports. That is exactly
+            the sum this saves you doing by hand.
+          </p>
+
+          <v-divider class="my-4" />
+
+          <h3 :id="'also-plan-files'" class="section-heading mb-2">Plans can be exported and imported as files or the clipboard</h3>
+          <v-row class="mb-3" no-gutters>
+            <v-col class="pr-md-3" cols="12" md="7">
+              <v-img
+                v-if="hasExportShot"
+                alt="The Export plan dialog, offering a file or the clipboard"
+                class="rounded framed"
+                :src="shots.exportPlan"
+              />
+            </v-col>
+            <!-- Where the buttons are, because right now the sidebar is the only place they live. -->
+            <v-col class="pl-md-3 d-flex flex-column justify-center" cols="12" md="5">
+              <p class="mb-2"><b>Both sit at the foot of the sidebar:</b></p>
+              <v-img
+                v-if="hasPlanButtonsShot"
+                alt="The Export plan and Import plan buttons at the foot of the sidebar, highlighted"
+                class="rounded"
+                :src="shots.planButtons"
+              />
+            </v-col>
+          </v-row>
+          <p class="mb-4">
+            <b>Copy plan is now Export plan</b>, and asks where the plan should go: save it as a
+            JSON file, or copy it to the clipboard. <b>Paste plan is now Import plan</b>, and asks
+            where it is coming from. Either way it is the whole plan.
+          </p>
+
+        </div>
+
+        <!-- Slide 8: Fixes, and the way back to the previous deck. -->
+        <div v-if="currentSlide === 7">
+          <h2 class="text-h5 text-center mb-2">
+            <i class="fas fa-wrench" /><span class="ml-2">Fixes</span>
+          </h2>
+          <ul class="ml-6 mb-4">
+            <li><b>When creating a task, pressing Enter creates it</b> rather than adding a new line. Shift+Enter still types a second line if you want one.</li>
+            <li><b>Fix Product no longer ignores what the factory imports.</b> Local production only has to cover what the imports don't. Press it on a factory needing 5,000/min of Iron Ingots that already imports 2,100/min, and it now makes the remaining 2,900 rather than the full 5,000.</li>
+            <li><b>A factory that consumes its own output no longer reports a phantom surplus.</b> A mine extracting 480 ore a minute and smelting every bit of it still offered 240 of it to somebody else.</li>
+            <li><b>A mine that exports more than it produces can now import more ore.</b> Mines had their Add Import button switched off because extraction needs no ingredients, so it created no demand, and from that the planner silently assumed a mine could never need an import at all. You can now bring in more ore on top of the ore you dig up.</li>
+          </ul>
+
+          <v-divider class="my-4" />
+
+          <h3 class="section-heading mb-2">Other quality of life</h3>
+          <ul class="ml-6 mb-4">
+            <li><b>The sidebar has an Arrange dialog</b>: reorder groups and factories with buttons, because on a phone dragging a row was the same gesture as scrolling it.</li>
+            <li><b>The sidebar follows the active factory indicator</b>, the orange marker, keeping the factory you are looking at in view as you scroll.</li>
+            <li><b>"Last updated" sits beside the search box</b>, saying when this plan last changed. Your edits and a collaborator's alike.</li>
+          </ul>
+
+          <p class="text-center text-medium-emphasis">
+            Missed the one before?
+            <v-btn class="mx-1" variant="tonal" @click="showV6Splash">
+              <i class="fas fa-backward" /><span class="ml-2">What's new in Beta v0.6</span>
+            </v-btn>
+          </p>
+        </div>
+      </v-card-text>
+      <v-card-actions class="px-4 pb-4">
+        <v-btn v-if="currentSlide > 0" variant="tonal" @click="prevSlide">
+          <i class="fas fa-arrow-left" /><span class="ml-2">{{ slides[currentSlide - 1].nav }}</span>
+        </v-btn>
+        <v-spacer />
+        <span class="text-medium-emphasis slide-counter">{{ currentSlide + 1 }} / {{ slides.length }}</span>
+        <v-spacer />
+        <!-- The deck is the summary; the changelog is the detail. Reachable from every slide
+             rather than only from the last one, which is the slide fewest people reach. -->
+        <v-btn
+          class="mr-2"
+          color="green"
+          href="/changelog"
+          prepend-icon="fas fa-list"
+          variant="outlined"
+        >
+          Full details on the Change Log
+        </v-btn>
+        <v-btn color="primary" variant="elevated" @click="nextSlide">
+          <template v-if="currentSlide === slides.length - 1">
+            <i class="fas fa-check" /><span class="ml-2">Got it!</span>
+          </template>
+          <template v-else>
+            <!-- FontAwesome's JS replaces an <i> with an <svg> the first time it sees one, which
+                 takes that node out of Vue's hands: patching the class afterwards does nothing, so
+                 every slide's forward button wore whichever icon rendered first. Keying the <i>
+                 alone is worse, because Vue then removes a node that is already detached and the
+                 abandoned <svg>s pile up. The key belongs on a wrapper Vue still owns, so the
+                 whole thing goes and a fresh <i> arrives for FontAwesome to convert. -->
+            <span :key="slides[currentSlide + 1].icon" class="mr-2">
+              <i :class="slides[currentSlide + 1].icon" />
+            </span>
+            <span class="mr-2">{{ slides[currentSlide + 1].nav }}</span><i class="fas fa-arrow-right" />
+          </template>
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
+
+<script setup lang="ts">
+  import eventBus from '@/utils/eventBus'
+
+  // Bound rather than literal paths: these live in public/, and a static src makes vite try to
+  // resolve them at transform time, which fails the whole module while a capture is missing.
+  const shots = {
+    tabLocal: '/assets/changelog/beta7/tab-local.png',
+    tabSynced: '/assets/changelog/beta7/tab-synced.png',
+    tabShared: '/assets/changelog/beta7/tab-shared.png',
+    plusButton: '/assets/changelog/beta7/plus-button.png',
+    shareTray: '/assets/changelog/beta7/share-tray.png',
+    share: '/assets/changelog/beta7/share-invite.png',
+    snapshot: '/assets/changelog/beta7/share-snapshot.png',
+    accountPanel: '/assets/changelog/beta7/account-panel.gif',
+    offline: '/assets/changelog/beta7/offline-switch.png',
+    sinkBefore: '/assets/changelog/beta7/sink-before.png',
+    sinkAfter: '/assets/changelog/beta7/sink-after.png',
+    depot: '/assets/changelog/beta7/depot-summary.png',
+    depotAssign: '/assets/changelog/beta7/depot-assign.png',
+    search: '/assets/changelog/beta7/search.png',
+    exportPlan: '/assets/changelog/beta7/export-plan.png',
+    planButtons: '/assets/changelog/beta7/sidebar-plan-buttons.png',
+    customBuildings: '/assets/changelog/beta7/custom-buildings.png',
+    materialCosts: '/assets/changelog/beta7/material-costs.png',
+    checklist: '/assets/changelog/beta7/checklist.png',
+    desync: '/assets/changelog/beta7/checklist-desync.png',
+    generatorFuel: '/assets/changelog/beta7/generator-fuel.png',
+  }
+
+  // A v-img pointed at a file that isn't there renders as a broken image, so each capture sits
+  // behind its own flag and a slide whose picture has not been taken yet ships as text. Flip one
+  // on as its file lands in web/public/assets/changelog/beta7/.
+  const hasPlusButtonShot = true
+  const hasShareTrayShot = true
+  const hasShareShot = false
+  const hasSnapshotShot = false
+  const hasAccountPanelShot = true
+  const hasOfflineShot = false
+  const hasSinkBeforeShot = true
+  const hasSinkAfterShot = true
+  const hasDepotShot = true
+  const hasDepotAssignShot = true
+  const hasSearchShot = true
+  const hasExportShot = true
+  const hasPlanButtonsShot = true
+  const hasCustomBuildingsShot = true
+  const hasMaterialCostsShot = true
+  const hasChecklistShot = true
+  const hasDesyncShot = true
+  const hasGeneratorFuelShot = true
+
+  const key = 'seenV7Splash'
+
+  const showSplash = ref<boolean>(false)
+  const currentSlide = ref(0)
+
+  // Every slide shares one scroll container, so without this a slide read to the bottom leaves
+  // the next one opening half way down.
+  const slideBody = ref<{ $el: HTMLElement } | null>(null)
+  watch(currentSlide, async () => {
+    await nextTick()
+    // scrollTop rather than scrollTo: jsdom implements the property but not the method.
+    const body = slideBody.value?.$el
+    if (body) body.scrollTop = 0
+  })
+
+  // Whether the introduction was already out of the way when this page loaded, read once rather
+  // than per call. A brand new visitor dismisses the intro seconds before their first plan
+  // finishes loading, and reacting to that would land this deck on top of their first ever look
+  // at the planner. They get it on their next visit instead, and nothing is marked seen meanwhile.
+  const introWasDismissed = localStorage.getItem('dismissed-introduction') === 'true'
+  const seen = () => localStorage.getItem(key) === 'true'
+
+  // Present the splash only once the planner has finished loading. Showing it during the load
+  // means the page resizing underneath can shift the dialog mid-interaction and cause misclicks.
+  // Some flows (e.g. demo plan setup) load more than once back to back, so the show is debounced:
+  // it fires shortly after the last loadingCompleted and is cancelled whenever a new load begins.
+  let loadSettled = false
+  let showTimer: ReturnType<typeof setTimeout> | undefined
+
+  // No forced-answer gate this time. v0.6 was unskippable because raw resources broke every
+  // existing plan and needed an answer; v0.7 breaks nothing the user has to act on, since the
+  // old cloud save is brought over on its own, so this closes from the corner throughout.
+  const tryShow = () => {
+    if (!loadSettled || seen()) {
+      return
+    }
+    teardownLoadListeners()
+    showSplash.value = true
+  }
+
+  const onLoadStarted = () => {
+    clearTimeout(showTimer)
+  }
+
+  const onLoadingCompleted = () => {
+    clearTimeout(showTimer)
+    showTimer = setTimeout(() => {
+      loadSettled = true
+      tryShow()
+    }, 750)
+  }
+
+  const teardownLoadListeners = () => {
+    clearTimeout(showTimer)
+    eventBus.off('loadingCompleted', onLoadingCompleted)
+    eventBus.off('prepareForLoad', onLoadStarted)
+    eventBus.off('loaderInit', onLoadStarted)
+  }
+
+  onMounted(() => {
+    // Deliberately not listening for the introduction being dismissed: someone dismissing it
+    // now is someone seeing the planner for the first time, and this deck is not their welcome.
+    if (!seen() && introWasDismissed) {
+      eventBus.on('loadingCompleted', onLoadingCompleted)
+      eventBus.on('prepareForLoad', onLoadStarted)
+      eventBus.on('loaderInit', onLoadStarted)
+    }
+    // Manual re-show via the header's "Show changes" button, which works even after dismissal
+    eventBus.on('splashShow', show)
+  })
+
+  onUnmounted(() => {
+    teardownLoadListeners()
+    eventBus.off('splashShow', show)
+  })
+
+  // The icon appears in the contents list on slide 1 and on the Next button.
+  const slides = [
+    { title: 'The SINKronisation Update', nav: 'Intro', icon: 'fas fa-flag' },
+    { title: 'Every tab is local, synced or shared', nav: 'Kinds of tab', icon: 'fas fa-folder-open' },
+    { title: 'Tab sharing', nav: 'Tab sharing', icon: 'fas fa-share-alt' },
+    { title: 'Manage your plans in the new account panel', nav: 'Your account', icon: 'fas fa-user' },
+    { title: 'AWESOME Sinks and the Dimensional Depot', nav: 'Sinks & the Depot', icon: 'fas fa-recycle' },
+    { title: 'Search the plan', nav: 'Search', icon: 'fas fa-search' },
+    { title: 'Also new in the planner', nav: 'Also new', icon: 'fas fa-sparkles' },
+    { title: 'Fixes', nav: 'Fixes', icon: 'fas fa-wrench' },
+  ]
+
+  // The four this release is actually about. Slide 1 leads on them; every later slide is one of
+  // them in detail.
+  // Order matters: the two sync features on the top row, the two storage ones underneath, so the
+  // pair each half of the release name refers to reads together.
+  const alsoNewSections = [
+    { title: 'Custom buildings', anchor: 'also-custom-buildings', icon: 'fas fa-building' },
+    { title: 'Material costs', anchor: 'also-material-costs', icon: 'fas fa-coins' },
+    { title: 'Checklist rework', anchor: 'also-checklist', icon: 'fas fa-tasks' },
+    { title: 'Power generators: match the fuel to the supply', anchor: 'also-generators', icon: 'fas fa-bolt' },
+    { title: 'Plans can be exported and imported as files or the clipboard', anchor: 'also-plan-files', icon: 'fas fa-file-export' },
+  ]
+
+  // Scrolls the deck's own body rather than the window: every slide shares one scroll
+  // container, and `scrollIntoView` on a modal's content moves the page behind it instead.
+  const goToSection = async (anchor: string) => {
+    await nextTick()
+    const body = slideBody.value?.$el
+    const target = body?.querySelector(`#${anchor}`)
+    if (!body || !target) return
+    body.scrollTop += target.getBoundingClientRect().top - body.getBoundingClientRect().top - 8
+  }
+
+  const headlines = [
+    {
+      title: 'Realtime sync',
+      icon: 'fas fa-sync',
+      asset: '',
+      tone: '',
+      shot: '/assets/changelog/beta7/hero-sync.png',
+      alt: 'A tab bar carrying a local tab, a synced tab and a shared tab',
+      // "(optional)" said here as well as on slide 2: the cover is where most readers stop, and
+      // an account is the one thing about this release people assume is being forced on them.
+      blurb: 'Every tab is a plan on your (optional) account, on every device you sign in on, ' +
+        'and one you can hand to a friend and build together, live.',
+    },
+    {
+      title: 'Search',
+      icon: 'fas fa-search',
+      asset: '',
+      tone: '',
+      shot: '/assets/changelog/beta7/hero-search.png',
+      alt: 'The search box open on "copper", with matching factories beneath it',
+      blurb: 'Ctrl/Cmd + K, then any factory or part, and you land on the exact row that ' +
+        'makes it or imports it.',
+    },
+    {
+      title: 'AWESOME Sinks',
+      icon: '',
+      asset: 'awesome-sink',
+      tone: 'tone-sink',
+      shot: '/assets/changelog/beta7/hero-sink.png',
+      alt: 'Two sinks on an item, its surplus reading zero with 40 a minute sunk',
+      blurb: 'Dispose of a surplus so it never backs the factory up, and see at a glance ' +
+        'which of your product lines are about to clog.',
+    },
+    {
+      title: 'Dimensional Depot',
+      icon: '',
+      asset: 'dimensional-depot',
+      tone: 'tone-depot',
+      shot: '/assets/changelog/beta7/hero-depot.png',
+      alt: 'The Dimensional Depot summary, listing items against their upload speed',
+      blurb: 'Track what you upload, what it costs in Mercer Spheres, and whether your Uploaders ' +
+        'can keep up with what you make.',
+    },
+  ] as const
+
+  // The glyphs are the ones the tab bar itself wears, so the heading and the tab on screen are
+  // recognisably the same thing whether or not the capture beside it has been taken yet.
+  const tabKinds = [
+    {
+      key: 'local',
+      label: 'Local',
+      icon: 'fas fa-desktop',
+      image: shots.tabLocal,
+      alt: 'A local tab in the tab bar, wearing a monitor',
+      width: 180,
+      blurb: 'Lives in this browser and needs no account, exactly as every tab did before. Still ' +
+        'the default.',
+    },
+    {
+      key: 'synced',
+      label: 'Synced',
+      icon: 'fas fa-cloud',
+      image: shots.tabSynced,
+      alt: 'A synced tab in the tab bar, wearing a cloud',
+      width: 180,
+      blurb: 'Lives on your account and can be opened on any device you sign in on. Needs an ' +
+        'account, and nothing else.',
+    },
+    {
+      key: 'shared',
+      label: 'Shared',
+      icon: 'fas fa-users',
+      image: shots.tabShared,
+      alt: 'A shared tab in the tab bar, wearing a group of people and a count of who is in it',
+      width: 220,
+      blurb: 'A synced tab you have invited other people into: everyone edits the same plan live. ' +
+        'It also shows how many people are in it right now.',
+    },
+  ] as const
+
+  // In case the user closes the dialog without clicking on the button
+  watch(() => showSplash.value, value => {
+    if (!value) {
+      closeSplash()
+    }
+  })
+
+  const closeSplash = () => {
+    showSplash.value = false
+    localStorage.setItem(key, 'true')
+  }
+
+  const nextSlide = () => {
+    if (currentSlide.value < slides.length - 1) {
+      currentSlide.value++
+    } else {
+      closeSplash()
+    }
+  }
+
+  const prevSlide = () => {
+    if (currentSlide.value > 0) {
+      currentSlide.value--
+    }
+  }
+
+  const goToSlide = (index: number) => {
+    currentSlide.value = index
+  }
+
+  // Close first: every deck is mounted for the whole session, so emitting without this leaves
+  // two dialogs stacked on top of each other.
+  const showV6Splash = () => {
+    closeSplash()
+    eventBus.emit('splashShowV6')
+  }
+
+  // Opened by hand from the header, long after the news landed.
+  const show = () => {
+    currentSlide.value = 0
+    showSplash.value = true
+  }
+  defineExpose({ show })
+</script>
+
+<style lang="scss" scoped>
+// The deliberate misspelling in the release name. Coloured so it reads as the joke it is rather
+// than as a typo nobody caught.
+.pun {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 700;
+}
+
+// A capture that is a floating panel rather than a slab of the page needs an edge, or it reads
+// as part of the slide instead of as a picture of the app.
+.framed {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+// The two storage features wear the colours the satisfaction table already gives them, so a
+// heading here and the control it names are the same colour on screen.
+.tone-sink {
+  color: var(--sf-awesome-sink);
+}
+
+.tone-depot {
+  color: var(--sf-dimensional-depot);
+}
+
+// Section headings on the later slides, which carry several unrelated changes each. text-h6 was
+// not pulling far enough clear of the body text for them to read as divisions.
+.section-heading {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+// The four features on slide 1. A tray each, so they read as four things of equal weight rather
+// than as a bullet list with the last one looking like an afterthought.
+.headline-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.headline-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.3;
+
+  i {
+    color: rgb(var(--v-theme-primary));
+  }
+
+  &.tone-sink,
+  &.tone-depot {
+    i {
+      color: inherit;
+    }
+  }
+}
+
+.header-accent {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.contents-list li {
+  margin-bottom: 0.25rem;
+
+  a {
+    color: rgb(var(--v-theme-primary));
+  }
+}
+
+// The picture of the tab sits inside the heading, so it must not stretch to the row's width the
+// way a block v-img would, and it must not push the heading's line height around.
+.tab-shot {
+  flex: 0 0 auto;
+}
+
+// The fallback for a tab capture that has not been taken yet: the tab bar's own glyph, sized to
+// sit level with the heading beside it rather than as body text next to a heading.
+.tab-glyph {
+  color: rgb(var(--v-theme-primary));
+  font-size: 1.2rem;
+  width: 1.6rem;
+}
+
+.slide-counter {
+  white-space: nowrap;
+}
+
+// Centred on the dialog, not on the space the close button leaves behind: the button comes out of
+// the flow so the header lines up with the slide under it.
+.deck-title {
+  position: relative;
+}
+
+.deck-close {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+// Vuetify's default card text (0.875rem) reads small in a dialog this size
+.v-card-text {
+  font-size: 1rem;
+}
+
+ul li {
+  margin-bottom: 0.5rem;
+}
+</style>

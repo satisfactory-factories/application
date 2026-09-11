@@ -23,8 +23,8 @@
           </ul>
         </nav>
         <v-divider />
-        <h1>Beta v0.7 <span class="release-date">In development</span></h1>
-        <p>Buildings that produce nothing — portals, stations, lights — can now be planned like everything else.</p>
+        <h1>Beta v0.7 - Realtime sync, rooms and offline mode <span class="release-date">09/Sep/2026</span></h1>
+        <p>The old cloud save has been gutted and a new one built in its place. Every tab is a plan in its own right on your account, a plan can be handed to a friend as a link you both edit at the same time, and offline is a mode you choose rather than a failure state you fall into.</p>
         <nav v-if="sectionsOf('Beta v0.7').length" class="toc">
           <p class="mb-1"><b>In this update:</b></p>
           <ul class="toc-list">
@@ -34,10 +34,111 @@
           </ul>
         </nav>
 
+        <h2>🆕 <i class="fas fa-folder-open ml-1" /><span class="ml-2">Every tab is local, synced or shared</span></h2>
+        <p>The old model saved one tab as a blob every ten seconds and the last writer won, so two devices could quietly overwrite each other and the only fix was a manual force download. That is replaced by three kinds of tab, and you pick.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Local</b> lives in this browser and needs no account, exactly like every tab did before. <b>Synced</b> lives on your account and can be opened on any device you sign in on. <b>Shared</b> is a synced tab you have invited other people into, and everyone edits the same plan live.</li>
+          <li><b>The + button now opens a chooser</b> rather than silently making a local tab, with a one-time dot pointing it out. Local stays the default, so nothing changes for anyone who never signs in. Pick synced without an account and you can sign in or register on the same dialog.</li>
+          <li><b>The + button also lists the cloud plans you have closed in this browser</b>, each with the same Show button the account panel uses. Signed out, or with every plan already open, the list is simply not there.</li>
+          <li><b>Each tab wears its kind in the tab bar</b>: a monitor for local, a cloud for synced, a group of people for shared. A shared tab also shows how many people are in it right now.</li>
+          <li><b>The pencil on the current tab opens a tab settings dialog</b> instead of renaming in place. It renames the tab, sends a local plan to the cloud, converts a cloud plan back to a local tab, and holds the Share Settings button. Renaming a cloud plan stays owner-only, and the dialog says so.</li>
+          <li><b>Tab settings can hide a cloud plan</b>, sat above Convert to local because it is the gentler answer to the same question: hiding closes the tab in this browser and nothing else, where converting takes the plan off your account.</li>
+          <li><b>The tab bar's three action icons have moved into tab settings.</b> The share icon duplicated the dialog's own Share Settings button; the copy icon is now <i>Copy to a local tab</i>, in words; and the bin, which sat one mis-click from the plan beside it, is a Delete button in a walled-off red section at the bottom.</li>
+          <li><b>Tabs can be dragged into whatever order you like</b>, and the order of your synced tabs follows your account. Local tabs belong to this browser and hold the position you put them in.</li>
+          <li><b>A local tab keeps its identity when you sync it.</b> Its ID becomes the plan's ID on the server, so nothing about it is recreated or renamed.</li>
+          <li>Synced tabs still write their full contents to this browser exactly as before. That copy is what draws the screen, and it is what you would be left holding if the server were unreachable.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-link ml-1" /><span class="ml-2">Sharing: two links that are never mixed up</span></h2>
+        <ul class="ml-6 mt-2">
+          <li><b>Copy snapshot link</b> is what <code>/share</code> has always been: a frozen copy of the plan as it is right now, which whoever opens it keeps as their own. It works on any tab and needs no account.</li>
+          <li><b>A snapshot link is made once per version of the plan.</b> Reopening the dialog on a plan you have not touched shows the link you already made rather than minting a second one to identical bytes. It is copied to your clipboard the moment it is made, and the button says <i>Copied!</i> so you can see that it was.</li>
+          <li><b>Invite collaborators</b> is new. A synced tab gets a link of the form <code>satisfactory-factories.app/room/three-word-slug</code>, and anyone who opens it is editing <i>your</i> plan with you. You can set your own words for the link, and the dialog tells you live whether they are free.</li>
+          <li><b>An invite can carry a password.</b> Set one and anyone new is asked for it once. Change it and anyone who joined anonymously is dropped while people signed in keep their access. Remove it and the link is open again.</li>
+          <li><b>Stop sharing puts the plan back to private.</b> Everyone else is removed and keeps their own copy of the last state they saw, and the tab in their bar quietly becomes a local one with a note saying why. Sharing again restores the same link.</li>
+          <li>Deleting a shared plan does the same thing to everyone in it. <b>Nobody ever loses data because of something the owner did.</b></li>
+          <li><b>Duplicate as a local tab</b> is available on any synced or shared tab, at any time, for an independent copy that answers to nobody.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-users ml-1" /><span class="ml-2">Editing together</span></h2>
+        <p>Changes flow both ways over a single connection and land on the other side in about as long as the network takes. You can both work in the same plan at once.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Edits to different factories both survive.</b> Edits to the same factory settle on one of them rather than merging into something neither of you asked for.</li>
+          <li>What you see is always your last acknowledged state from the server, plus everything you have changed since, fully recalculated. A change of yours is never dropped in favour of an incoming one, and nothing is ever half-applied.</li>
+          <li>The owner can rename, share, unshare, set the link, set a password and delete. Everyone else can edit the plan and leave. Renames reach every device.</li>
+          <li><b>One person at a time in a text field.</b> Click into a factory's notes and that box is held for you: everyone else sees it greyed out with "Another builder is editing this" until you click away. Keep typing and it stays yours; leave it alone for ten seconds and it is released. It is per field, so the factory next to yours is still open to everybody.</li>
+          <li><b>Emptying a shared plan is something you have to mean.</b> Clearing it, pasting over it or loading a template into it says so as it sends. Anything else that asks to delete most of the plan in one go is refused and handed the server's copy back, so a browser in a bad state cannot take everyone's plan down with it. The server also keeps the plan as it stood immediately before a bulk deletion.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-plane ml-1" /><span class="ml-2">Offline mode</span></h2>
+        <p>A switch <b>in the account panel</b>, on the cloud account tile rather than under Options, puts the planner into offline mode, which means exactly no contact with the server: no connection, no requests, no retries. Keep planning; everything is kept on this device.</p>
+        <ul class="ml-6 mt-2">
+          <li>Switching it on says so once and then gets out of the way. That you are still in offline mode is shown by the chip in the tab bar and by the account panel, which is also where you switch it back off.</li>
+          <li>If the connection drops on its own, a small bar asks whether you want to go offline rather than deciding for you. Say no and it keeps quietly retrying.</li>
+          <li><b>Coming back online is manual, like a phone.</b> When you switch it off, the planner reconnects, takes the server's current state, re-applies everything you changed while you were away, recalculates and sends it. Edits made offline survive closing the browser.</li>
+          <li><b>If somebody else changed the same factories while you were away, the planner asks before deciding for you.</b> Coming back raises one prompt listing every factory both sides edited, with the live plan's figures beside yours product by product, and you pick which version wins for each. Everything that does not clash syncs safely either way, and a tick box keeps this device's version as a separate local tab whatever you choose.</li>
+          <li><b>That prompt survives a refresh.</b> Reloading the page with the question still on screen used to quietly pick your version and send it, overwriting whatever the other person had done.</li>
+          <li><b>Two browser tabs open on the same planner no longer overwrite each other's unsent work.</b> Each keeps its own record of what it still owes the server.</li>
+          <li><b>If your browser runs out of storage the planner says so and keeps going.</b> Your edits stay on screen and are saved as soon as there is room again.</li>
+          <li>Nothing else about this interrupts you. There are no popups to dismiss while you plan, and that prompt is the only question offline work will ever raise.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-user ml-1" /><span class="ml-2">The account panel</span></h2>
+        <p>The account tile has been rebuilt: your username, a live connection indicator, the offline switch, your plans under two tabs, and Change password.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>The Local tab</b> lists the plans that live in this browser only, each with a cloud button that syncs it to your account on the spot. <b>The Cloud tab</b> splits your synced plans into My Plans (the ones you own) and Joined Plans (the ones shared with you), each showing how many factories it holds and when it last changed.</li>
+          <li><b>Cloud plans open where you choose.</b> Every plan on your account is listed with a Show or Hide button. Show opens the plan as a tab in this browser; Hide closes that tab and nothing more. The plan stays on your account and on every other device it is open on.</li>
+          <li><b>Every list of your plans now reads at a glance</b>: the plan's size is the factory icon and a number, exactly as the sidebar's Global Factories Summary shows it, and the time beside it is spelled out as "Last updated 38 minutes ago". That goes for the account panel, the sign-in chooser and the + button's list alike.</li>
+          <li>Signing in or refreshing no longer opens a tab for every plan on your account. The tabs you had open stay open, and the rest wait in the panel.</li>
+          <li><b>Signing in asks which of your plans to open.</b> The dialog lists every account plan this browser does not have open, all ticked, each with its size and when it last changed, with Select all and Select none. Untick what you want left in the panel, or choose "Not now" to open none. A page refresh never asks, and neither does an account with no plans.</li>
+          <li><b>Changing your password now signs out every device</b>, including the one that changed it. Sign-ins made on the old password stop working the moment the change lands, so a password you had to change because somebody else knew it takes their access with it.</li>
+          <li>The panel's per-plan share buttons are gone; sharing lives on the planner toolbar's share button. The out-of-sync dialog and the force download button are gone too; neither has anything to do now.</li>
+          <li><b>A plan you saved to your account before v0.7 is brought over on its own.</b> Sign in, or open the planner while you are already signed in, and the old save becomes a cloud plan without you having to ask, with a short message saying where it came from. It arrives as a tab of its own, so everything already open and every plan already on your account is left exactly as it was. It happens once per account, and the plan comes over whole: its name, its power target, its factory groups and its Depot research.</li>
+          <li>Signing in offers to sync any local plans the server does not know about, one at a time, and never forces it. Names that would collide get a "(local)" suffix rather than being merged. <b>The offer is remembered per account, not per browser</b>, so saying "No thanks" on one account no longer silences the question for the next.</li>
+          <li><b>A plan pasted in while you are signed in is offered to the cloud on the spot</b>, rather than having nothing pointing at the cloud until you found tab settings yourself. Saying no leaves it local and is not treated as an answer about anything else.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-file-export ml-1" /><span class="ml-2">Plans go in and out as files</span></h2>
+        <ul class="ml-6 mt-2">
+          <li><b>Copy plan has become Export plan</b>, and it asks where the plan should go: <i>Save as a file</i> downloads it as JSON named after the plan, and <i>Copy to clipboard</i> is what it always did. <b>Paste plan has become Import plan</b>, which asks where the plan is coming from: a file or the clipboard. Everything either way is the whole plan: every factory, its groups, the power target and the Depot research.</li>
+          <li><b>The clipboard half says what your browser is about to do.</b> Reading the clipboard is a permission, and some browsers ask for it themselves: Firefox puts a Paste button by the pointer, and nothing arrives until you press it. If the read is refused, the dialog says so instead of doing nothing at all.</li>
+          <li><b>An import that fails now says why, in the dialog it failed in</b>, rather than through a browser alert you have to dismiss before you can try the other way in.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-sliders-h ml-1" /><span class="ml-2">Your settings follow your account</span></h2>
+        <p>Preferences that are about <i>you</i> rather than about this computer now travel with your account: satisfaction breakdowns, the group colours you have used, the tutorial and introduction you have already dismissed, the statistics panels you keep hidden and the summary you keep collapsed. Sign in on a new machine and the planner is set up the way you left it.</p>
+        <ul class="ml-6 mt-2">
+          <li>Settings this browser has that your account has never seen are kept and uploaded rather than overwritten, so signing in for the first time on a machine never wipes what was already there.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-spinner ml-1" /><span class="ml-2">Loading</span></h2>
+        <ul class="ml-6 mt-2">
+          <li>Switching to a tab the server has already confirmed is current no longer recalculates it. A small plan opens instantly.</li>
+          <li>A big plan still gets the loading dialog while it draws, and the dialog now appears the moment you click the tab. Drawing a hundred factory cards takes a moment whether or not there was anything to calculate, and the wait used to happen with nothing on screen to say so.</li>
+          <li>Plan data arriving from the server goes through the same loading and validation path as a plan opened from this browser, instead of being written in behind it.</li>
+          <li><b>A plan that is still drawing is left alone.</b> Someone else opening a shared plan could previously make everyone's copy lose the factories their screen had not reached yet, which showed up as red factories and a data-corruption warning for everybody else. The plan catches up with the server the moment it has finished drawing.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-clock ml-1" /><span class="ml-2">Knowing what just happened</span></h2>
+        <ul class="ml-6 mt-2">
+          <li><b>"Last updated" sits beside the search box</b> and says when the plan in the tab you are looking at last changed, flashing as it moves. Your own edits and a collaborator's both count. Renaming a factory or dragging one somewhere else does not, so the line stays worth reading. It works on a local tab too, and it remembers across a refresh.</li>
+          <li><b>A notice you need to act on now waits for you.</b> A plan deleted by its owner leaves a notice you close yourself, so it cannot slide past while you are looking elsewhere. A notice that is only keeping you informed counts itself down and then goes.</li>
+          <li><b>The planner says so when the backend is having problems.</b> A red bar along the bottom names the Discord to report it on, and says which features are away until it is back. Nothing in your tabs is lost while it is: everything is kept in this browser and syncs when the server answers again. Closes #108.</li>
+        </ul>
+        <v-divider class="subsection" />
+
         <h2>🆕 <i class="fas fa-search ml-1" /><span class="ml-2">Search the plan</span></h2>
         <p>A search box now sits next to Options in the tab bar. Type a factory name to jump straight to it, or type a part to see every factory that touches it, with the results appearing under the box as you type.</p>
         <ul class="ml-6 mt-2">
-          <li><b>Part results are grouped by what the factory does with the part</b>: Production first, then Byproduct, then Other usage — imports, exports and plain ingredient demand — each row saying which it is and how much per minute.</li>
+          <li><b>Part results are grouped by what the factory does with the part</b>: Production first, then Byproduct, then Other usage (imports, exports and plain ingredient demand), each row saying which it is and how much per minute.</li>
           <li><b>Clicking a result lands on the row it names</b>, not just the factory card: the product row for production and byproducts, the import row it came from for an import, and the part's satisfaction row for everything else.</li>
           <li><b>Every result wears the factory chip</b> used everywhere else in the planner, and a factory filed under a group carries that group's colour on the chip's left edge.</li>
           <li><b>Ctrl/Cmd+K</b> opens it from anywhere. The arrow keys walk the results and Enter opens one.</li>
@@ -62,7 +163,49 @@
         <p>Power &amp; Buildings now has a Material Costs panel: what it would cost, in parts, to build every production building, power generator and custom building in the factory. Closed by default; toggle it open to see the breakdown.</p>
         <ul class="ml-6 mt-2">
           <li>Each part lists its total quantity, and a chip per building that needs it, showing that building's image and how many of them.</li>
-          <li><b>Use this as a guide only.</b> No assumptions are made about belts, foundations, or any other structural or cosmetic building — only production buildings, power generators and custom buildings directly involved in making your products are counted.</li>
+          <li><b>Use this as a guide only.</b> No assumptions are made about belts, foundations, or any other structural or cosmetic building. Only production buildings, power generators and custom buildings directly involved in making your products are counted.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-recycle ml-1" /><span class="ml-2">AWESOME Sinks and the Dimensional Depot</span></h2>
+        <p>Closes #498 and the surplus half of #7. Every item under a factory's Satisfaction now has a <b>Storage</b> column, left of Satisfaction, holding two counts: how many AWESOME Sinks and how many Dimensional Depot Uploaders you have put on that item's surplus.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>An AWESOME Sink disposes of the surplus, so the planner treats it as gone.</b> Set one or more on an item and its surplus reads <code>0/min surplus</code>, with a gold <b>n/min sunk</b> chip beside it and the pre-sink figure in brackets underneath, so the number sinking removed is never hidden. The sink is a priority splitter, not a consumer with an appetite of its own: internal use and exports are served first and always win, so adding an export request later shrinks the sunk amount by itself. A fully sunk item also stops being nagged with Trim.</li>
+          <li><b>Sinks draw power</b>, 30 MW each, counted into the factory's consumption and so into the plan's, matching <code>Build_ResourceSink_C</code> in the game's own data. The Depot Uploader draws nothing.</li>
+          <li><b>The sink refuses what the game refuses.</b> No control is offered for fluids (the sink has a conveyor input only) or radioactive items, and a count left on one from an earlier edit stays inert. The Uploader takes a conveyor and nothing else too, so fluids are excluded from it, but it has no objection to radioactive items, since uploading one is how you stop it irradiating you.</li>
+          <li><b>Both controls are offered on every item</b>, whether the factory makes it, imports it, or is short of it. They first shipped gated on a surplus, which hid them from the build the Depot is most useful for: a logistics factory that imports a part precisely so it can upload it has imports that balance exactly, so it had no surplus, so it was offered no Uploader.</li>
+          <li><b>A Dimensional Depot Uploader deliberately changes no number.</b> The Depot is finite storage: it fills, and then it backs up like any other container. Marking an item for the Depot records what you are building and what it costs, and leaves the surplus exactly as it is.</li>
+          <li><b>New "Will cause backlog" warning.</b> Any item left with a surplus nothing consumes, nothing exports and no sink takes will fill the belt and stall the buildings making it, including the case nothing could previously see, where a factory makes 200 Iron Plates, ships 100, and the other 100 quietly back up. It is an amber warning and marks the factory amber, because there is now a control in the same row that fixes it; it can be switched off entirely under <b>Options → Satisfaction</b> for a plan mid-build.</li>
+          <li><b>New Dimensional Depot section</b>, its own card under the Statistics summary and only on plans that use it. One row per item: what the plan has spare to upload, how many Uploaders are on it, and a pill per factory carrying that factory's own count. It flags an item arriving faster than its Uploaders can take it (240/min each, fully researched), so the remainder still backs up. Clicking a factory pill lands on that item's own row under the factory's Satisfaction, unhiding the card and opening its group on the way.</li>
+          <li><b>The Depot's MAM upload research is part of the plan.</b> An Uploader moves 15/min unresearched and doubles with each of the four upgrades to 240/min, and the rate is per Uploader. The section reports each item's rate against what its own Uploaders can take (<code>40 / 480/min</code>). <b>The expansion research sits beside it</b>: how many stacks of each item the Depot holds, 1 to 5. It changes no calculation, because the planner tracks rates rather than how full a container is, but it is what "the Depot is finite" actually means. Both are saved on the plan, so a shared plan carries the world it was written against.</li>
+          <li><b>Mercer Spheres join Power Shards and Somersloops</b> in the statistics, at one per Uploader, read off the game's build recipe, with the MAM research the Depot costs listed under them with a tick-box each: upload research, depot expansion, and the optional Manual Uploader. All three are off the total by default, since they are paid once per save rather than once per plan. Ticked together at full research they come to the 97 the wiki quotes for the whole chain, which a test now pins. The Mercer Sphere icon is new, since it is a collectable rather than a craftable part.</li>
+          <li><b>The Dimensional Depot has a sidebar entry</b>, beneath the Global Factories Summary, carrying icon-only counts of items tracked, Uploaders and Mercer Spheres, plus an over-capacity warning when it applies.</li>
+          <li><b>The first sink and the first Uploader each get a one-off explainer.</b> The sink one states the two assumptions behind a sunk item: Programmable Splitters sending the excess to your sinks, and a belt of adequate speed feeding them. The Uploader one points at the plan-wide summary and is clear that nothing is assumed about how much an Uploader takes off the belt, only that it eventually backs up.</li>
+          <li><b>The Demo plan uses the Depot</b>, so the section is visible on the first plan anyone opens: two Uploaders on Copper Ingot, and one each on Circuit Board, Copper Sheet and Plastic.</li>
+          <li>Three tooltips that promised sinking was "coming in a future update" now point at the control that does it, and the <b>End product</b> chip no longer claims the planner assumes you sink it; you say so.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-list-check ml-1" /><span class="ml-2">Checklist: a desynced item now says what changed</span></h2>
+        <p>A ticked checklist item whose number the plan has since moved was flagged only as "desynced", which said something had changed but not what, so the only way to find out was to remember what the number used to be.</p>
+        <ul class="ml-6 mt-2">
+          <li><b>Every desynced row now carries an amber chip with both numbers</b>: <code>560/min → 720/min</code> for a product, import or export, <code>4 buildings → 6 buildings</code> for a power generator. Hovering it spells out the two ways forward: build the difference and confirm it, or change the plan back to match what you have already built. <b>Clicking that chip confirms the new number</b>, exactly as re-ticking the row's checkbox does.</li>
+          <li><b>The Checklist panel opens with an amber summary</b> when anything has drifted, saying how many items are affected, with a <b>Reconfirm all</b> button for when you have already rebuilt the lot. Reconfirming only touches rows that actually moved.</li>
+          <li><b>The factory's Checklist chip counts them</b>, reading <code>Checklist: 12/14 · 2 to reconfirm</code> instead of saying <code>(desynced)</code>, so a collapsed factory card tells you whether it is one stale row or nine.</li>
+          <li><b>A desynced checklist is now a factory status of its own</b>, so it wears an amber <b>Checklist desync</b> chip everywhere the other statuses appear: the card header, the sidebar entry, the Factories Summary, and the plan- and group-level tallies. It carries the icons of the items that moved. Previously the only clue in the sidebar was a counter quietly changing colour, which said a factory was amber without saying why.</li>
+          <li><b>The Checklist panel is three tables side by side</b>: Products (with Power beneath it), Imports and Exports, in place of one list stacked four groups deep. Imports and Exports are listed by item, with a tick per source or destination factory hanging off it, so a factory buying three parts from the same neighbour names that neighbour once per part rather than repeating the item name for every factory it deals with.</li>
+          <li>The checkboxes on the Products, Imports, Power and Satisfaction rows carry the same two numbers in their hover text, where there is no room for a chip.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🆕 <i class="fas fa-bolt ml-1" /><span class="ml-2">Power generators: match the fuel to what the factory can supply</span></h2>
+        <ul class="ml-6 mt-2">
+          <li><b>A generator burning fuel its own factory makes now offers to match its draw to the supply</b>, with the same green <b>Expand to supply</b> and yellow <b>Trim to supply</b> pair the product rows carry, and the figure it would land on named on the button. A Fuel-Powered Generator set to 1,280 Liquid Fuel a minute in a factory that only has 1,120 spare offers <b>Trim to supply (1120)</b>.</li>
+          <li><b>The figure accounts for everything else that wants the fuel</b>, not just the generators. An oil plant that sends 120 Liquid Fuel a minute to Recycled Rubber and 40 to a Packager has 160 less to burn than it makes, which is exactly the sum this saves you doing by hand. Exports to other factories count too, and so does another generator burning the same fuel.</li>
+          <li><b>A surplus the AWESOME Sink is currently mopping up still counts as spare</b>, because burning fuel beats sinking it. Take it, and the sinks drop out of the plan by themselves.</li>
+          <li>The buttons appear only where there is something to match against: a generator whose fuel is entirely imported is left alone, as are Geothermal Generators, which have no fuel, and Alien Power Augmenters, whose matrix demand is decided by their building groups.</li>
+          <li><b>The generator's row now wraps</b> rather than running off the edge of the card. It is the widest row in the planner, and on a 1440px screen with the sidebar open the new button had nowhere left to go.</li>
+          <li>A debug template, <b>"#656: Generator fuel draw"</b>, shows it working: two self-contained factories, one offering the Trim and the other the Expand, both landing on the same 400.</li>
         </ul>
         <v-divider class="subsection" />
 
@@ -71,6 +214,42 @@
         <ul class="ml-6 mt-2">
           <li><b>Arrange</b> opens a dialog for reordering the plan with buttons: groups against each other, factories within their group, and factories from one group into another.</li>
           <li>Groups can still be dragged in that dialog, and in the sidebar, wherever there is a pointer to drag with.</li>
+          <li><b>Add Factory moved to the top of the sidebar.</b> It used to sit below every group, so a plan with a lot of groups meant scrolling all the way down to add one more ungrouped factory, which then appeared back at the top. (#597)</li>
+          <li><b>The sidebar now follows the orange scroll-spy indicator.</b> Scroll the plan and the sidebar smoothly scrolls itself to keep the highlighted factory in view, instead of leaving it to drift off-screen. Closes #598.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-window-maximize ml-1" /><span class="ml-2">Interface</span></h2>
+        <ul class="ml-6 mt-2">
+          <li><b>Every dialog in the planner now has the same header and spacing.</b> Vuetify's stock card title sat the heading flush in the top-left corner with no breathing room, and each dialog had drifted its own way from there: some closed from a button at the bottom of the actions row, some had no way out but the scrim, and body text came in three different sizes. They now share one shell: a padded title row with the icon beside the heading, the close button in the top-right corner where a dialog's way out belongs, and body text at a single size. Dialogs that ask for a decision before they will go away still have no corner close, deliberately.</li>
+          <li><b>The "Show Info" toggle is gone</b>, along with the explanatory paragraphs it hid throughout the planner. Nobody was clicking it, and the copy behind it hadn't kept pace with the app for several updates. The always-visible ⓘ tooltips elsewhere are unaffected.</li>
+          <li><b>Statistics and the Global Factories Summary now start collapsed.</b> A fresh visitor, or anyone opening a demo plan, used to land on a page-length wall of stats above the factory cards themselves. Item production, power shards, raw resources and building summaries within Statistics start collapsed too. Each section remembers your choice once you toggle it.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>🔧 <i class="fas fa-wrench ml-1" /><span class="ml-2">Fixes</span></h2>
+        <ul class="ml-6 mt-2">
+          <li><b>Enter accepts a task you are editing</b> instead of dropping a newline into it. Task titles are edited in an auto-growing textarea, so pressing enter grew the row and left the edit sitting there uncommitted, while the new-task field right above it has always taken enter as "add this". Shift+enter still types a second line.</li>
+          <li><b>Checklist mode: ticks on the Products, Imports and export-chip checkboxes are reliable again</b> (#592, #593). The export tick sat inside the chip's own clickable area, so the chip's click handler and ripple layer could win the click before it ever reached the checkbox; it is now a sibling of the chip instead. Separately, all three checkboxes could lose a race against the browser's own "revert to pre-click state" step when a click was cancelled: the state change landed, but the box itself could stay visually unticked.</li>
+          <li><b>Fix Product no longer ignores what the factory imports</b> (#595). The shortfall it wrote counted only what the factory produced itself, so a part with 1425/min imported against 2740/min needed was fixed to 2740 rather than 1315, and the figure named on the Satisfy and Trim buttons was wrong in the same way. Where a part is imported as well as made on site, local production only has to cover what the imports don't. That button is labelled <b>Trim to import shortfall</b> rather than just Trim, since it deliberately stops short of the full requirement, and Trim can no longer name a negative quantity.</li>
+          <li><b>A factory that consumes its own output no longer reports a phantom surplus to export</b> (#540). Export supply was read gross, so a mine extracting 480 ore a minute and smelting every bit of it on site still offered 240 of it to another factory and called the request satisfied. The figure is now what the factory actually has spare once production, power, buildings and sinking have taken their share.</li>
+          <li><b>An over-committed mine can be given imports again</b> (#541). A mine shipping out more than it extracts matched the "nothing here could ever import anything" shortcut, because extraction takes no ingredients, so its Add Import button was disabled even with another mine in the plan able to cover the difference. Together with #540 the two halves are coherent: the mine goes red and the fix for it is available in the same place.</li>
+          <li><b>The Share button now shares the plan you are actually looking at</b> (#535). It took its copy of the open tab once, when the page loaded, and the button never remounts, so after switching tabs it went on sharing the plan that had been open at load, under that tab's name.</li>
+          <li><b>Two power generators in one factory can no longer be issued the same ID</b> (#546). Generator IDs were drawn at random with nothing checking whether the factory already held that number, and those IDs key the Game Sync snapshots, so a collision (roughly one factory in 200 with ten generators) made the factory drop out of sync the moment it was marked as built, permanently and with nothing on screen explaining why.</li>
+          <li><b>The Raw Resources Wizard's backup no longer zeroes an older power target</b> (#536). If you set a power target before targets became per-plan, the backup recorded it as 0, and since the backup is the only undo for a migration that can't be reversed, restoring stamped that 0 in for good.</li>
+        </ul>
+        <v-divider class="subsection" />
+
+        <h2>👍 <i class="fas fa-server ml-1" /><span class="ml-2">Under the hood</span></h2>
+        <ul class="ml-6 mt-2">
+          <li><b>The backend is a new application.</b> It has been rewritten in NestJS with a real module structure, typed configuration, graceful shutdown, and a test suite covering the routes, the live connection, concurrent edits, passwords, revocation, deletion and the hourly cleanup.</li>
+          <li>A new shared package holds the message formats, the plan schema and the protocol version that the planner and the server both build against, so the two can no longer drift apart.</li>
+          <li>Every plan that reaches the server is validated against one schema with explicit limits: 150 factories per plan, 10 plans of your own, 25 plans in your tab bar, and the same name and note truncation the planner has always applied.</li>
+          <li>Multi-step changes are built as steps that can each be repeated safely, so a request that fails halfway leaves nothing stranded and simply resumes. Deleting a plan marks it dead first, which makes it inert instantly, and clears up afterwards.</li>
+          <li>Who changed what, and when, is recorded per plan. There is no history view yet; the record is being kept from day one so that there can be.</li>
+          <li>Every request now carries the app version and is refused if it is out of date, and an out-of-date tab shows a persistent "refresh to continue" bar instead of failing silently. <code>/save</code> and <code>/load</code> are retired, and <code>/hello</code> is gone since <code>/health</code> had already replaced it.</li>
+          <li><b>Developer tool: the offline conflict prompt can be staged from the Templates menu.</b> It builds a local tab of its own, fabricates a clash against a pretend live plan and opens the real dialog over it, so the prompt can be seen without two devices. Nothing is sent to the server. The entry shows on a development build, or anywhere once <code>sfDevTools</code> is set to <code>true</code> in local storage.</li>
+          <li><b>The planner now sends an anonymous usage heartbeat</b>, because a plan that is never synced and a user who never signs in are both invisible to the server, and between them that is most of the planner's use. It reports six numbers and one flag: how many tabs are open, how many of those are synced, how many factories they hold in total, whether somebody is signed in, and which build is running. No names, no plan contents, no account details. The identifier attached to it is random, minted by your browser, and cannot be tied to an account. Offline mode stops it along with everything else, and so does any tracker blocker.</li>
         </ul>
 
         <v-divider />

@@ -75,7 +75,7 @@
         />
       </div>
 
-      <div class="results-scroll">
+      <div class="results-scroll" @mouseleave="pointerOut = true">
         <p v-if="!trimmedQuery" class="pa-4 mb-0 text-body-2 text-medium-emphasis">
           Type a factory name, or a part to see every factory that makes, produces as a
           byproduct, or otherwise uses it.
@@ -89,25 +89,27 @@
             <div class="group-heading">
               <i class="fas fa-industry mr-2" />Factories
             </div>
-            <button
-              v-for="match in results.factories"
-              :key="`factory-${match.factory.id}`"
-              class="result-row"
-              :class="{ active: activeIndex === indexOf(`factory-${match.factory.id}`) }"
-              :title="match.factory.group ? `Group: ${match.factory.group.name}` : undefined"
-              type="button"
-              @click="goToFactory(match.factory.id)"
-              @mousemove="activeIndex = indexOf(`factory-${match.factory.id}`)"
-            >
-              <v-chip
-                class="sf-chip sf-chip-clickable small factory no-margin row-chip"
-                :class="{ grouped: !!match.factory.group }"
-                :style="groupStripe(match.factory)"
+            <div class="factory-inline">
+              <button
+                v-for="match in results.factories"
+                :key="`factory-${match.factory.id}`"
+                class="result-inline"
+                :class="{ active: !pointerOut && activeIndex === indexOf(`factory-${match.factory.id}`) }"
+                :title="match.factory.group ? `Group: ${match.factory.group.name}` : undefined"
+                type="button"
+                @click="goToFactory(match.factory.id)"
+                @mousemove="pointerOut = false; activeIndex = indexOf(`factory-${match.factory.id}`)"
               >
-                <factory-icon-display :icon="match.factory.icon" size="20" />
-                <b class="ml-2 row-name">{{ match.factory.name }}</b>
-              </v-chip>
-            </button>
+                <v-chip
+                  class="sf-chip sf-chip-clickable small factory no-margin row-chip"
+                  :class="{ grouped: !!match.factory.group }"
+                  :style="groupStripe(match.factory)"
+                >
+                  <factory-icon-display :icon="match.factory.icon" size="20" />
+                  <b class="ml-2 row-name">{{ match.factory.name }}</b>
+                </v-chip>
+              </button>
+            </div>
             <p v-if="results.hiddenFactories" class="more">
               +{{ results.hiddenFactories }} more factory name{{ results.hiddenFactories === 1 ? '' : 's' }}
             </p>
@@ -121,16 +123,18 @@
               <span class="count">{{ part.factoryCount }} {{ part.factoryCount === 1 ? 'factory' : 'factories' }}</span>
             </div>
             <template v-for="group in part.groups" :key="`${part.partId}-${group.role}`">
-              <div class="role-heading">{{ ROLE_LABEL[group.role] }}</div>
+              <div class="role-heading">
+                <i class="mr-2" :class="ROLE_ICON[group.role]" />{{ ROLE_LABEL[group.role] }}
+              </div>
               <button
                 v-for="usage in group.usages"
                 :key="`${part.partId}-${usage.factory.id}`"
                 class="result-row"
-                :class="{ active: activeIndex === indexOf(`${part.partId}-${usage.factory.id}`) }"
+                :class="{ active: !pointerOut && activeIndex === indexOf(`${part.partId}-${usage.factory.id}`) }"
                 :title="usage.factory.group ? `Group: ${usage.factory.group.name}` : undefined"
                 type="button"
                 @click="goToUsage(part.partId, usage)"
-                @mousemove="activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
+                @mousemove="pointerOut = false; activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
               >
                 <v-chip
                   class="sf-chip sf-chip-clickable small factory no-margin row-chip"
@@ -149,7 +153,7 @@
           </template>
 
           <p v-if="results.hiddenParts" class="more">
-            +{{ results.hiddenParts }} more part{{ results.hiddenParts === 1 ? '' : 's' }} — keep typing to narrow it down
+            +{{ results.hiddenParts }} more part{{ results.hiddenParts === 1 ? '' : 's' }}. Keep typing to narrow it down
           </p>
         </template>
       </div>
@@ -166,6 +170,7 @@
     buildPlanSearchIndex,
     FactorySummary,
     hasResults,
+    PartSearchRole,
     PartUsageEntry,
     PlanSearchIndex,
     ROLE_LABEL,
@@ -254,6 +259,11 @@
   })
 
   const activeIndex = ref(0)
+  // One index drives both the keyboard cursor and what the mouse is pointing at, so a row the
+  // pointer has left stays marked until the pointer reaches another one: leave the list sideways
+  // and the highlight is stranded on whatever you touched last. The pointer leaving the list is
+  // its own fact, and while it is out the mark belongs to the keyboard alone.
+  const pointerOut = ref(true)
   // Every row asks where it sits on every render, so this is a lookup rather than a scan.
   const rowIndex = computed(() => new Map(rows.value.map((row, position) => [row.key, position])))
   const indexOf = (key: string) => rowIndex.value.get(key) ?? -1
@@ -284,8 +294,10 @@
     event.stopPropagation()
 
     if (event.key === 'ArrowDown') {
+      pointerOut.value = false
       activeIndex.value = (activeIndex.value + 1) % rows.value.length
     } else if (event.key === 'ArrowUp') {
+      pointerOut.value = false
       activeIndex.value = (activeIndex.value - 1 + rows.value.length) % rows.value.length
     } else {
       rows.value[activeIndex.value]?.activate()
@@ -304,6 +316,14 @@
     }
 
     eventBus.emit('jumpToFactory', { factoryId, targets, fallback })
+  }
+
+  // One glyph per role: what the factory makes, what falls out of making it, and everything
+  // else it does with the part.
+  const ROLE_ICON: Record<string, string> = {
+    [PartSearchRole.Production]: 'fas fa-box',
+    [PartSearchRole.Byproduct]: 'fas fa-recycle',
+    [PartSearchRole.Other]: 'fas fa-truck',
   }
 
   // The group's colour, handed to the chip's own left edge as a custom property. A property rather
@@ -385,6 +405,48 @@ $focus-ring: 1px solid var(--sf-grey-border);
 .results-scroll {
   max-height: min(60vh, 520px);
   overflow-y: auto;
+  // The last row of the last group sat flush against the panel's bottom edge, which read as the
+  // list having been cut off rather than having ended.
+  padding-bottom: 8px;
+}
+
+// Factories listed inline rather than stacked: they carry no figure, so a full-width row each
+// was a lot of height for a list of names.
+.factory-inline {
+  display: flex;
+  flex-wrap: wrap;
+  // The chips carry their own border, so they need real air between them, or two side by side
+  // read as one control with a line down the middle. The padding matches: sat tight under the
+  // "Factories" heading, the first row looked stuck to it.
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+// The button is only a hit area; the chip inside it is the thing you see, so keyboard focus and
+// the pointer light the chip rather than painting a second shape behind it.
+.result-inline {
+  display: inline-flex;
+  max-width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+
+  // The chip is the thing you see, so the pointer lights the chip rather than painting a second
+  // shape behind it. A fill change alone was too quiet against a dark tray full of dark chips;
+  // the border moving is what actually reads as "this one".
+  &.active .row-chip,
+  &:hover .row-chip {
+    background-color: #3a3a3a;
+    border-color: #ffffff !important;
+  }
+
+  // `border-color` is the shorthand, so it takes the left edge with it and a grouped factory
+  // loses its colour exactly while you are pointing at it. Put it back, after the rule above.
+  &.active .row-chip.grouped,
+  &:hover .row-chip.grouped {
+    border-left-color: var(--group-color) !important;
+  }
 }
 
 // One style for every section heading. "Factories" and "Copper Ore" name the same tier of thing —
@@ -418,6 +480,42 @@ $focus-ring: 1px solid var(--sf-grey-border);
   color: var(--sf-power-consumption);
 }
 
+// The factory chip is the same one the summary rows, import links and export requests wear, so a
+// result reads as a factory before it is read at all. It gives up width before the rate on its
+// right does: a long name truncating is a smaller loss than the number it is being listed for.
+.row-chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+
+  // The tonal fill is a child sitting inside the chip's border, but it takes the chip's own
+  // corner radius rather than the smaller one the border's inner edge actually has. Its corners
+  // therefore curve away from the border and leave a wedge of the panel showing through, which
+  // the group colour's wider left edge only makes plainer. Squared off, it meets the border.
+  :deep(.v-chip__underlay) {
+    border-radius: 0;
+  }
+
+  // The group's colour on the chip's own left edge rather than out at the row's, where it read
+  // as a bar floating beside the result instead of as something the factory carries. Both
+  // declarations need !important to get past `.sf-chip.factory`, which sets the border with it.
+  &.grouped {
+    border-left-color: var(--group-color) !important;
+    border-left-width: 5px !important;
+  }
+
+  :deep(.v-chip__content) {
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+
+.row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .result-row {
   display: flex;
   align-items: center;
@@ -438,40 +536,17 @@ $focus-ring: 1px solid var(--sf-grey-border);
     background-color: rgba(255, 255, 255, 0.10);
   }
 
-  // The factory chip is the same one the summary rows, import links and export requests wear, so a
-  // result reads as a factory before it is read at all. It gives up width before the rate on its
-  // right does: a long name truncating is a smaller loss than the number it is being listed for.
-  .row-chip {
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: 100%;
-
-    // The tonal fill is a child sitting inside the chip's border, but it takes the chip's own
-    // corner radius rather than the smaller one the border's inner edge actually has. Its corners
-    // therefore curve away from the border and leave a wedge of the panel showing through, which
-    // the group colour's wider left edge only makes plainer. Squared off, it meets the border.
-    :deep(.v-chip__underlay) {
-      border-radius: 0;
-    }
-
-    // The group's colour on the chip's own left edge rather than out at the row's, where it read
-    // as a bar floating beside the result instead of as something the factory carries. Both
-    // declarations need !important to get past `.sf-chip.factory`, which sets the border with it.
-    &.grouped {
-      border-left-color: var(--group-color) !important;
-      border-left-width: 5px !important;
-    }
-
-    :deep(.v-chip__content) {
-      min-width: 0;
-      overflow: hidden;
-    }
+  // Same signal as the inline results, so a row and a chip answer the pointer the same way.
+  &:hover .row-chip,
+  &.active .row-chip {
+    background-color: #3a3a3a;
+    border-color: #ffffff !important;
   }
 
-  .row-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  // As above: the shorthand would take the group's left edge with it.
+  &:hover .row-chip.grouped,
+  &.active .row-chip.grouped {
+    border-left-color: var(--group-color) !important;
   }
 
   .row-usage {
