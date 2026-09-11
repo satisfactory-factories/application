@@ -26,21 +26,9 @@
           <p class="text-center text-medium-emphasis mb-4">
             Sync your plans. Sink your surplus.
           </p>
-          <youtube-embed
-            v-if="launchVideoId"
-            class="mb-4"
-            :video-id="launchVideoId"
-          />
-          <v-img
-            v-else
-            alt="The launch video lands here"
-            class="mb-4 mx-auto rounded"
-            max-width="1200"
-            :src="shots.videoPlaceholder"
-          />
-
-          <!-- The four, up front and equally weighted. Everything else in the deck hangs off
-               one of them. -->
+          <!-- The four, up front and equally weighted, each showing the thing it names. They are
+               the cover: there is no launch video, and a placeholder standing in for one is worse
+               than the space it occupies. Everything else in the deck hangs off one of them. -->
           <v-row class="mb-2" no-gutters>
             <v-col
               v-for="feature in headlines"
@@ -63,7 +51,17 @@
                   <i v-else :class="feature.icon" />
                   <span>{{ feature.title }}</span>
                 </h3>
-                <p class="mb-0">{{ feature.blurb }}</p>
+                <p class="mb-3">{{ feature.blurb }}</p>
+                <!-- All four cropped to the same 4:1 strip so the grid reads as one thing rather
+                     than four screenshots that happen to be adjacent. The ratio here has to match
+                     the crops: `cover` in a differently shaped box eats the sides of each one. -->
+                <v-img
+                  v-if="feature.shot"
+                  :alt="feature.alt"
+                  aspect-ratio="4"
+                  class="headline-shot rounded"
+                  :src="feature.shot"
+                />
               </div>
             </v-col>
           </v-row>
@@ -362,8 +360,18 @@
           <h2 class="text-h5 text-center mb-2">
             <i class="fas fa-sparkles" /><span class="ml-2">Also new in the planner</span>
           </h2>
+          <!-- The longest slide in the deck by some way, so it says what is on it before it
+               starts, the same way slide 1 does for the deck as a whole. -->
+          <ul class="contents-list ml-6 mb-4">
+            <li v-for="section in alsoNewSections" :key="section.anchor">
+              <a class="d-inline-flex align-center ga-2" href="#" @click.prevent="goToSection(section.anchor)">
+                <i :class="section.icon" />
+                <span>{{ section.title }}</span>
+              </a>
+            </li>
+          </ul>
 
-          <h3 class="section-heading mb-2">Custom buildings</h3>
+          <h3 :id="'also-custom-buildings'" class="section-heading mb-2">Custom buildings</h3>
           <v-img
             v-if="hasCustomBuildingsShot"
             alt="Custom buildings added to a factory, counting towards its power draw"
@@ -381,7 +389,7 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Material costs</h3>
+          <h3 :id="'also-material-costs'" class="section-heading mb-2">Material costs</h3>
           <v-img
             v-if="hasMaterialCostsShot"
             alt="The Material Costs panel open under Power & Buildings"
@@ -397,7 +405,7 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Checklist rework</h3>
+          <h3 :id="'also-checklist'" class="section-heading mb-2">Checklist rework</h3>
           <v-img
             v-if="hasChecklistShot"
             alt="The Checklist panel as three tables, a desynced row carrying both numbers"
@@ -427,7 +435,7 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Power generators: match the fuel to the supply</h3>
+          <h3 :id="'also-generators'" class="section-heading mb-2">Power generators: match the fuel to the supply</h3>
           <v-img
             v-if="hasGeneratorFuelShot"
             alt="A factory making 400 Fuel a minute, with the generator below it offering to trim from 640 to 400"
@@ -444,7 +452,7 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Plans can be exported and imported as files or the clipboard</h3>
+          <h3 :id="'also-plan-files'" class="section-heading mb-2">Plans can be exported and imported as files or the clipboard</h3>
           <v-row class="mb-3" no-gutters>
             <v-col class="pr-md-3" cols="12" md="7">
               <v-img
@@ -473,7 +481,7 @@
 
           <v-divider class="my-4" />
 
-          <h3 class="section-heading mb-2">Other quality of life</h3>
+          <h3 :id="'also-qol'" class="section-heading mb-2">Other quality of life</h3>
           <ul class="ml-6 mb-0">
             <li><b>The sidebar has an Arrange dialog</b>: reorder groups and factories with buttons, because on a phone dragging a row was the same gesture as scrolling it.</li>
             <li><b>The sidebar follows the active factory indicator</b>, the orange marker, keeping the factory you are looking at in view as you scroll.</li>
@@ -544,15 +552,9 @@
 <script setup lang="ts">
   import eventBus from '@/utils/eventBus'
 
-  // Set this to the v0.7 launch video id and the slot appears on slide 1; empty, the placeholder
-  // card stands in its place. Deliberately not seeded with the previous release's id: that ships
-  // last release's video as this one's, which is worse than no video at all.
-  const launchVideoId = ''
-
   // Bound rather than literal paths: these live in public/, and a static src makes vite try to
   // resolve them at transform time, which fails the whole module while a capture is missing.
   const shots = {
-    videoPlaceholder: '/assets/changelog/beta7/video-placeholder.png',
     tabLocal: '/assets/changelog/beta7/tab-local.png',
     tabSynced: '/assets/changelog/beta7/tab-synced.png',
     tabShared: '/assets/changelog/beta7/tab-shared.png',
@@ -690,12 +692,33 @@
   // them in detail.
   // Order matters: the two sync features on the top row, the two storage ones underneath, so the
   // pair each half of the release name refers to reads together.
+  const alsoNewSections = [
+    { title: 'Custom buildings', anchor: 'also-custom-buildings', icon: 'fas fa-building' },
+    { title: 'Material costs', anchor: 'also-material-costs', icon: 'fas fa-coins' },
+    { title: 'Checklist rework', anchor: 'also-checklist', icon: 'fas fa-tasks' },
+    { title: 'Power generators: match the fuel to the supply', anchor: 'also-generators', icon: 'fas fa-bolt' },
+    { title: 'Plans can be exported and imported as files or the clipboard', anchor: 'also-plan-files', icon: 'fas fa-file-export' },
+    { title: 'Other quality of life', anchor: 'also-qol', icon: 'fas fa-magic' },
+  ]
+
+  // Scrolls the deck's own body rather than the window: every slide shares one scroll
+  // container, and `scrollIntoView` on a modal's content moves the page behind it instead.
+  const goToSection = async (anchor: string) => {
+    await nextTick()
+    const body = slideBody.value?.$el
+    const target = body?.querySelector(`#${anchor}`)
+    if (!body || !target) return
+    body.scrollTop += target.getBoundingClientRect().top - body.getBoundingClientRect().top - 8
+  }
+
   const headlines = [
     {
       title: 'Realtime sync',
       icon: 'fas fa-sync',
       asset: '',
       tone: '',
+      shot: '/assets/changelog/beta7/hero-sync.png',
+      alt: 'A tab bar carrying a local tab, a synced tab and a shared tab',
       blurb: 'Every tab is a plan on your account, on every device you sign in on, and one you ' +
         'can hand to a friend and build together, live.',
     },
@@ -704,6 +727,8 @@
       icon: 'fas fa-search',
       asset: '',
       tone: '',
+      shot: '/assets/changelog/beta7/hero-search.png',
+      alt: 'The search box open on "copper", with matching factories beneath it',
       blurb: 'Ctrl/Cmd + K, then a factory or a part, landing on the exact row that names it, ' +
         'anywhere in the plan.',
     },
@@ -712,6 +737,8 @@
       icon: '',
       asset: 'awesome-sink',
       tone: 'tone-sink',
+      shot: '/assets/changelog/beta7/hero-sink.png',
+      alt: 'Two sinks on an item, its surplus reading zero with 40 a minute sunk',
       blurb: 'Dispose of a surplus so it never backs the belt up, and see at a glance which of ' +
         'your factories are about to clog.',
     },
@@ -720,6 +747,8 @@
       icon: '',
       asset: 'dimensional-depot',
       tone: 'tone-depot',
+      shot: '/assets/changelog/beta7/hero-depot.png',
+      alt: 'The Dimensional Depot summary, listing items against their upload speed',
       blurb: 'Plan what you upload, what it costs in Mercer Spheres, and whether your Uploaders ' +
         'can keep up with what you make.',
     },
