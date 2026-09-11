@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Beta v0.7.1
+
+The Beta v0.7 "What's new" deck, and three fixes found while building it.
+
+- **The release deck is in.** Eight slides covering realtime sync, tab sharing, the account panel, AWESOME Sinks and the Dimensional Depot, search, and everything else new in the planner. It opens once per person and can be reopened from **Show changes** in the header.
+- **Search results no longer strand their hover highlight.** One index served both the keyboard cursor and the pointer with nothing clearing it, so leaving the list sideways left the mark on whatever was touched last. Hovering also reads more clearly: the chip's border brightens rather than only its fill.
+- **Signing in says why it cannot, when the backend is down.** The tray still opens, names the outage, points at Discord and goes inert, instead of failing silently on submit.
+- **Factory chips are one shape everywhere.** The statistics table and the search results disagreed about what a clickable factory chip looks like; both now use the planner's 4px corner.
+
 ## Beta v0.7: Realtime sync, rooms and offline mode
 
 The old cloud save has been gutted and a new one built in its place. It is still cloud saving; it is a different cloud saving. A tab you choose to sync lives on the server, follows your account to every device, and can be handed to a friend as a link you both edit at the same time. Offline is a proper mode rather than a failure state, your settings follow your account, and the backend has been rewritten from the ground up.
