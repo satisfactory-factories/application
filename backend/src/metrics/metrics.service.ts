@@ -39,7 +39,7 @@ interface CheapCounts {
 }
 
 interface OwnedTotal { name: string, value: number }
-interface RoomTotal { roomId: string, owner: string, factories: number }
+interface RoomTotal { roomId: string, name: string, owner: string, factories: number }
 interface ShareTotal { shareId: string, opens: number }
 
 /** The slow numbers: five window counts and three top-N aggregations. */
@@ -50,6 +50,7 @@ interface SlowStats {
   topRooms: RoomTotal[]
   topEditors: OwnedTotal[]
   topOwners: OwnedTotal[]
+  topRoomOwners: OwnedTotal[]
   newShares: Array<readonly [string, number]>
   topShares: ShareTotal[]
   newRooms: Array<readonly [string, number]>
@@ -90,9 +91,10 @@ export class MetricsService {
   private readonly newAccounts: Gauge<'window'>
   private readonly signedInAccounts: Gauge<'window'>
   private readonly signInsTotal: Gauge<string>
-  private readonly roomFactories: Gauge<'room_id' | 'owner'>
+  private readonly roomFactories: Gauge<'room_id' | 'name' | 'owner'>
   private readonly userEdits: Gauge<'username'>
   private readonly userFactories: Gauge<'username'>
+  private readonly userRooms: Gauge<'username'>
 
   private readonly sharesTotal: Gauge<string>
   private readonly shareOpensTotal: Gauge<string>
@@ -213,7 +215,7 @@ export class MetricsService {
     this.roomFactories = new Gauge({
       name: 'sf_room_factories',
       help: `The ${METRICS_TOP_N} largest synced tabs by factory count.`,
-      labelNames: ['room_id', 'owner'],
+      labelNames: ['room_id', 'name', 'owner'],
       registers,
     })
     this.userEdits = new Gauge({
@@ -225,6 +227,12 @@ export class MetricsService {
     this.userFactories = new Gauge({
       name: 'sf_user_factories',
       help: `The ${METRICS_TOP_N} accounts owning the most factories, summed over the synced tabs they created.`,
+      labelNames: ['username'],
+      registers,
+    })
+    this.userRooms = new Gauge({
+      name: 'sf_user_rooms',
+      help: `The ${METRICS_TOP_N} accounts that created the most synced tabs.`,
       labelNames: ['username'],
       registers,
     })
@@ -380,7 +388,7 @@ export class MetricsService {
 
     this.roomFactories.reset()
     for (const room of stats.topRooms) {
-      this.roomFactories.set({ room_id: room.roomId, owner: room.owner }, room.factories)
+      this.roomFactories.set({ room_id: room.roomId, name: room.name, owner: room.owner }, room.factories)
     }
 
     this.userEdits.reset()
@@ -391,6 +399,11 @@ export class MetricsService {
     this.userFactories.reset()
     for (const owner of stats.topOwners) {
       this.userFactories.set({ username: owner.name }, owner.value)
+    }
+
+    this.userRooms.reset()
+    for (const owner of stats.topRoomOwners) {
+      this.userRooms.set({ username: owner.name }, owner.value)
     }
 
     for (const [window, shares] of stats.newShares) {
@@ -434,8 +447,8 @@ export class MetricsService {
   private async loadSlow (): Promise<SlowStats> {
     const now = this.clock.now()
     const [
-      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, newShares, topShares,
-      newRooms, newMemberships,
+      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, topRoomOwners, newShares,
+      topShares, newRooms, newMemberships,
     ] =
       await Promise.all([
         this.countByWindow(now, since => this.users.countDocuments({ lastActiveAt: { $gt: since } })),
@@ -444,6 +457,7 @@ export class MetricsService {
         this.findLargestRooms(),
         this.findBusiestEditors(),
         this.findLargestOwners(),
+        this.findMostProlificOwners(),
         this.countByWindow(now, since => this.shares.countDocuments({ created: { $gt: since } })),
         this.findMostOpenedShares(),
         this.countByWindow(now, since => this.rooms.countDocuments({ createdAt: { $gt: since } })),
@@ -454,8 +468,8 @@ export class MetricsService {
       ])
 
     return {
-      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, newShares, topShares,
-      newRooms, newMemberships,
+      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, topRoomOwners, newShares,
+      topShares, newRooms, newMemberships,
     }
   }
 
@@ -522,11 +536,12 @@ export class MetricsService {
 
   /** Sorted by size then by id, so equal-sized rooms do not swap places between scrapes. */
   private async findLargestRooms (): Promise<RoomTotal[]> {
-    const rows = await this.rooms.aggregate<{ roomId: string, createdBy: string, factories: number }>([
+    const rows = await this.rooms.aggregate<{ roomId: string, name: string, createdBy: string, factories: number }>([
       { $match: { deletedAt: null } },
       {
         $project: {
           roomId: 1,
+          name: 1,
           createdBy: 1,
           factories: { $size: { $ifNull: ['$factories', []] } },
         },
@@ -538,6 +553,7 @@ export class MetricsService {
     const owners = await this.resolveUsernames(rows.map(row => row.createdBy))
     return rows.map(row => ({
       roomId: row.roomId,
+      name: row.name,
       owner: owners.get(row.createdBy) ?? DELETED_OWNER,
       factories: row.factories,
     }))
@@ -563,6 +579,18 @@ export class MetricsService {
 
     const owners = await this.resolveUsernames(rows.map(row => row._id))
     return rows.map(row => ({ name: owners.get(row._id) ?? DELETED_OWNER, value: row.factories }))
+  }
+
+  private async findMostProlificOwners (): Promise<OwnedTotal[]> {
+    const rows = await this.rooms.aggregate<{ _id: string, rooms: number }>([
+      { $match: { deletedAt: null } },
+      { $group: { _id: '$createdBy', rooms: { $sum: 1 } } },
+      { $sort: { rooms: -1, _id: 1 } },
+      { $limit: METRICS_TOP_N },
+    ])
+
+    const owners = await this.resolveUsernames(rows.map(row => row._id))
+    return rows.map(row => ({ name: owners.get(row._id) ?? DELETED_OWNER, value: row.rooms }))
   }
 
   /**

@@ -204,6 +204,19 @@ describe('the database-backed usage metrics', () => {
       expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(2)
       expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(1)
     })
+
+    // A resumed session edits without ever hitting /login. Left out of the signed-in
+    // window, the "of those who signed in, how many edited" ratio climbed past 100%.
+    it('counts an editor as signed in even without a password login', async () => {
+      const user = await seedUser('resumed')
+      await context.app.get(UserActivityService).recordEdit(String(user._id), clock.now())
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_signins_total')).toBe(0)
+    })
   })
 
   describe('sf_room_factories, the largest plans', () => {
@@ -214,7 +227,15 @@ describe('the database-backed usage metrics', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_room_factories', `room_id="${big.roomId}",owner="mael"`)).toBe(40)
+      expect(sample(body, 'sf_room_factories', `room_id="${big.roomId}",name="Iron Line",owner="mael"`)).toBe(40)
+    })
+
+    it('carries the plan name so the panel can show more than an id', async () => {
+      const room = await seedRoom(12, { name: 'Nuclear "Mk2"' })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",name="Nuclear \\"Mk2\\"",owner="${DELETED_OWNER}"`)).toBe(12)
     })
 
     it('labels an owner who no longer exists rather than dropping the room', async () => {
@@ -222,7 +243,7 @@ describe('the database-backed usage metrics', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",owner="${DELETED_OWNER}"`)).toBe(9)
+      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(9)
     })
 
     // A cast error on one bad row must not take the whole scrape down.
@@ -231,7 +252,7 @@ describe('the database-backed usage metrics', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",owner="${DELETED_OWNER}"`)).toBe(4)
+      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(4)
     })
 
     it(`exports at most ${METRICS_TOP_N} rooms however many exist`, async () => {
@@ -244,12 +265,12 @@ describe('the database-backed usage metrics', () => {
 
     it('drops a room that has fallen out of the top N', async () => {
       const small = await seedRoom(1)
-      expect(sample(await scrape(), 'sf_room_factories', `room_id="${small.roomId}",owner="${DELETED_OWNER}"`)).toBe(1)
+      expect(sample(await scrape(), 'sf_room_factories', `room_id="${small.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(1)
 
       for (let index = 0; index < METRICS_TOP_N; index++) await seedRoom(50 + index)
 
       const body = await scrape()
-      expect(sample(body, 'sf_room_factories', `room_id="${small.roomId}",owner="${DELETED_OWNER}"`)).toBeUndefined()
+      expect(sample(body, 'sf_room_factories', `room_id="${small.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBeUndefined()
     })
 
     it('breaks ties on room id, so equal rooms keep their order between scrapes', async () => {
@@ -541,6 +562,38 @@ describe('the database-backed usage metrics', () => {
     })
   })
 
+  describe('sf_user_rooms, the accounts with the most plans', () => {
+    it('counts the live rooms each account created', async () => {
+      const prolific = await seedUser('prolific')
+      const once = await seedUser('once')
+      await seedRoom(1, { createdBy: String(prolific._id) })
+      await seedRoom(1, { createdBy: String(prolific._id) })
+      await seedRoom(30, { createdBy: String(prolific._id), deletedAt: new Date() })
+      await seedRoom(50, { createdBy: String(once._id) })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_user_rooms', 'username="prolific"')).toBe(2)
+      expect(sample(body, 'sf_user_rooms', 'username="once"')).toBe(1)
+    })
+
+    it(`caps at ${METRICS_TOP_N} and drops an owner who has fallen out`, async () => {
+      const early = await seedUser('early')
+      await seedRoom(1, { createdBy: String(early._id) })
+      expect(sample(await scrape(), 'sf_user_rooms', 'username="early"')).toBe(1)
+
+      for (let index = 0; index < METRICS_TOP_N; index++) {
+        const owner = await seedUser(`owner-${index}`)
+        await seedRoom(1, { createdBy: String(owner._id) })
+        await seedRoom(1, { createdBy: String(owner._id) })
+      }
+
+      const body = await scrape()
+      expect(labelValues(body, 'sf_user_rooms', 'username').length).toBe(METRICS_TOP_N)
+      expect(sample(body, 'sf_user_rooms', 'username="early"')).toBeUndefined()
+    })
+  })
+
   describe('sf_user_edits and sf_user_factories', () => {
     it('ranks the busiest editors', async () => {
       await seedUser('busy', { editCount: 120 })
@@ -623,6 +676,7 @@ describe('UserActivityService', () => {
 
       const stored = await reload(user._id)
       expect(stored?.lastActiveAt?.toISOString()).toBe(at.toISOString())
+      expect(stored?.lastSignInAt?.toISOString()).toBe(at.toISOString())
       expect(stored?.editCount).toBe(1)
     })
 
@@ -646,6 +700,19 @@ describe('UserActivityService', () => {
 
     it('ignores anonymous visitors, who have no account to stamp', async () => {
       await expect(service().recordEdit(ANONYMOUS_ACTOR, new Date())).resolves.toBeUndefined()
+    })
+  })
+
+  describe('recordSessionResumed', () => {
+    it('moves the sign-in window forward without counting a sign-in', async () => {
+      const user = await seedUser('resumed', { lastSignInAt: new Date('2026-09-01T00:00:00Z'), signInCount: 4 })
+      const at = new Date('2026-09-02T10:00:00Z')
+
+      await service().recordSessionResumed(String(user._id), at)
+
+      const stored = await reload(user._id)
+      expect(stored?.lastSignInAt?.toISOString()).toBe(at.toISOString())
+      expect(stored?.signInCount).toBe(4)
     })
   })
 
