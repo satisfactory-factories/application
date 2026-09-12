@@ -1025,11 +1025,19 @@ h1,h2,h3,h4,h5,h6 {
   margin-top: 0.25rem;
 }
 
+// Directly under the release it belongs to, aligned with it rather than stepped in: it is that
+// entry's second line, not a level below it.
 .toc-summary {
   color: #bdbdbd;
   font-size: 0.9rem;
   list-style: none;
-  padding-left: 1rem;
+  padding-left: 0;
+
+  // The app's list styling indents every item by 16px for its marker. This one has no marker,
+  // so that indent would step the summary in from the release it sits under.
+  li {
+    margin-left: 0;
+  }
 }
 
 .toc {
