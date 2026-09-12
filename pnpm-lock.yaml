@@ -34,8 +34,8 @@ catalogs:
       specifier: 8.68.0
       version: 8.68.0
     zod:
-      specifier: 4.5.1
-      version: 4.5.1
+      specifier: 4.5.2
+      version: 4.5.2
 
 overrides:
   js-yaml@^3.13.1: 5.4.0
@@ -96,7 +96,7 @@ importers:
         version: 8.21.3
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -166,7 +166,7 @@ importers:
     dependencies:
       zod:
         specifier: 'catalog:'
-        version: 4.5.1
+        version: 4.5.2
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -5985,8 +5985,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.5.1:
-    resolution: {integrity: sha512-P3GqeAEOEDqKvafVGLezbg+39YW/ze4xrD4qdS0adOY8eoI3zfjv1PQM4UwQzgT8mZKXEbqtVt8K+ZKGqkMFKg==}
+  zod@4.5.2:
+    resolution: {integrity: sha512-XkYXCol10+ba/6F/cueWV+TezUeOqXW0hdeJt5CdXjTYeAgAQg5N03RQdJ80mhfFE72+pblvYMW4wy2Qp4Qbrg==}
 
 snapshots:
 
@@ -12259,4 +12259,4 @@ snapshots:
 
   zod@3.25.76: {}
 
-  zod@4.5.1: {}
+  zod@4.5.2: {}
