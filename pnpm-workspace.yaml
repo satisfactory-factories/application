@@ -10,7 +10,7 @@ catalog:
   typescript: 6.0.3
   ts-node: 10.9.2
   '@eslint/js': 10.0.1
-  eslint: 10.8.1
+  eslint: 10.9.1
   eslint-import-resolver-typescript: 4.4.5
   eslint-plugin-import-x: 4.17.1
   typescript-eslint: 8.68.0
@@ -57,4 +57,8 @@ allowBuilds:
 # Entries here are also exempt from the 14-day minimumReleaseAge guard in renovate.json:
 # that governs what Renovate proposes, not what an override pins.
 overrides:
-  js-yaml@^3.13.1: 5.4.0
+  js-yaml@^3.13.1: 5.4.1
+  # @nestjs/platform-express pins multer 2.2.0 exactly (11.x and 12.x alike), which
+  # carries four DoS advisories fixed in 2.3.0. Nothing here handles multipart uploads,
+  # so the only exposure is the bundled parser; drop this once platform-express moves.
+  multer: 2.3.0

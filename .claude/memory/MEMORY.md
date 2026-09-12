@@ -49,3 +49,5 @@
 - [prom-client label lifecycle](prom-client-label-lifecycle.md) — seed bounded label sets at zero or panels read "No data"; reset ranked ones or dropped labels report forever
 - [Clock step freezes rate limits](clock-step-freezes-rate-limits.md) — a backwards clock step at boot 429'd the API container unhealthy under express-rate-limit; why @nestjs/throttler closed it, why we run our own throttler storage instead of its, and why it looks exactly like prod drift
 - [Grafana dashboard via API](grafana-dashboard-via-api.md) — edit Planner Metrics through the API on the Grafana box with the on-box token, never the browser; ask for SSH first
+- [Renovate automerge is dead](renovate-automerge-blocked-by-ruleset.md) — the "Human review required" ruleset needs one approval, so green Renovate PRs never merge themselves; sweep them in one branch
+- [Nest 12 blocked on throttler](nest-12-blocked-on-throttler.md) — @nestjs/throttler peers on Nest <= 11; merge #687 once its Nest 12 support ships; mongoose/jwt 12 already in
