@@ -58,3 +58,7 @@ allowBuilds:
 # that governs what Renovate proposes, not what an override pins.
 overrides:
   js-yaml@^3.13.1: 5.4.1
+  # @nestjs/platform-express pins multer 2.2.0 exactly (11.x and 12.x alike), which
+  # carries four DoS advisories fixed in 2.3.0. Nothing here handles multipart uploads,
+  # so the only exposure is the bundled parser; drop this once platform-express moves.
+  multer: 2.3.0
