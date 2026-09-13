@@ -20,12 +20,23 @@ import type { EventReason, EventSource } from 'common'
  * Prometheus already does, and would put a database write on the path that runs fastest when
  * something is already going wrong.
  */
+/** Every back-off the API can answer with, so each series exists from boot. */
+const BACKOFFS = [
+  ['telemetry', 'too_soon'],
+  ['telemetry', 'at_capacity'],
+  ['events', 'too_soon'],
+] as const
+
+export type BackoffEndpoint = typeof BACKOFFS[number][0]
+export type BackoffReason = typeof BACKOFFS[number][1]
+
 @Injectable()
 export class EventCountersService {
   readonly registry = new Registry()
 
   private readonly events: Counter<'source' | 'reason'>
   private readonly httpErrors: Counter<'status'>
+  private readonly backoffs: Counter<'endpoint' | 'reason'>
 
   constructor () {
     this.events = new Counter({
@@ -42,12 +53,20 @@ export class EventCountersService {
       registers: [this.registry],
     })
 
+    this.backoffs = new Counter({
+      name: 'sf_backoffs_total',
+      help: 'Requests answered "come back later" and dropped on purpose. Rate limits working as designed, kept apart from sf_http_errors_total so they do not read as faults.',
+      labelNames: ['endpoint', 'reason'],
+      registers: [this.registry],
+    })
+
     // Every series starts at zero rather than appearing on first use. Without this a reason
     // that has never fired is absent, and absent reads as "no data" on a panel rather than as
     // the good news it actually is.
     for (const source of EVENT_SOURCES) {
       for (const reason of EVENT_REASONS) this.events.inc({ source, reason }, 0)
     }
+    for (const [endpoint, reason] of BACKOFFS) this.backoffs.inc({ endpoint, reason }, 0)
   }
 
   /** Never throws: a metric must not be able to break what it is measuring. */
@@ -57,6 +76,12 @@ export class EventCountersService {
     } catch {
       // A counter that cannot count is not worth an exception on an error path.
     }
+  }
+
+  recordBackoff (endpoint: BackoffEndpoint, reason: BackoffReason): void {
+    try {
+      this.backoffs.inc({ endpoint, reason })
+    } catch { /* as above */ }
   }
 
   recordHttpError (status: number): void {

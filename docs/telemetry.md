@@ -18,7 +18,7 @@ case, and roughly how large plans get.
 ## Exactly what is collected
 
 One `POST /telemetry` on page load and one every five minutes after that. The body has
-eight fields, one of them optional, and the server rejects it outright if it has any others:
+nine fields, two of them optional, and the server rejects it outright if it has any others:
 
 | Field | What it is |
 | --- | --- |
@@ -30,8 +30,9 @@ eight fields, one of them optional, and the server rejects it outright if it has
 | `factoriesTotal` | How many factories across all of those tabs. |
 | `appVersion` | Which build of the planner is running. |
 | `gitSha` | Which commit that build came from. Absent on builds that do not know, such as local ones. |
+| `idle` | Whether this browser has gone thirty minutes without a click, key press, scroll or touch in any planner tab. The planner keeps only the time of the last one, in the browser's own storage, never what it was. |
 
-Counts, one flag and two build identifiers. That is the whole payload.
+Counts, two flags and two build identifiers. That is the whole payload.
 
 ## The second endpoint: fault counts
 

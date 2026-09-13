@@ -10,10 +10,23 @@ import { useRoomSyncStore } from '@/stores/room-sync-store'
 /** Where the anonymous instance id lives. Nothing else may be kept under this key. */
 export const TELEMETRY_INSTANCE_KEY = 'telemetryInstanceId'
 
+/**
+ * When somebody last touched any tab of this browser, as a timestamp. Every tab shares the
+ * instance id, and the server keeps whichever tab's heartbeat lands first, so a background
+ * tab must know about the foreground one's clicks or it reports the whole browser idle.
+ */
+export const TELEMETRY_INTERACTION_KEY = 'telemetryLastInteractionAt'
+
+/** Wheel events arrive by the hundred; storage is written at most this often. */
+const INTERACTION_WRITE_INTERVAL_MS = 5_000
+
 /** What the server counts a client under when the build has no version to report. */
 export const UNKNOWN_VERSION = 'unknown'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** What counts as somebody being at the page. Passive: nothing here may slow the input down. */
+const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
 
 /**
  * `crypto.randomUUID` needs a secure context, which a page served over plain http on a
@@ -63,8 +76,9 @@ export const readInstanceId = (): string => {
  * It exists because the server cannot see most of what the planner is used for. A local
  * tab never reaches it, a signed-out user never reaches it, and those are the majority.
  * What goes in the payload is fixed by `telemetryHeartbeatSchema` in `common` and written
- * out in `docs/telemetry.md`; it is counts, a flag and a version, and nothing else may
- * join them.
+ * out in `docs/telemetry.md`; it is counts, two flags and a version, and nothing else may
+ * join them. The idle flag is the only thing that watches input, and all it keeps is the
+ * time of the last one.
  *
  * Two rules it must keep. Offline mode means total backend silence, so nothing is sent
  * while it is on. And a heartbeat is worth nothing, so a failure is swallowed whole
@@ -78,6 +92,32 @@ export const useTelemetryStore = defineStore('telemetry', () => {
 
   let instanceId: string | null = null
   let timer: ReturnType<typeof setInterval> | undefined
+  // Loading the page is an interaction, so a fresh tab is active until proven otherwise.
+  let lastInteractionAt = Date.now()
+  let lastInteractionWriteAt = 0
+
+  const markInteraction = (): void => {
+    lastInteractionAt = Date.now()
+    if (lastInteractionAt - lastInteractionWriteAt < INTERACTION_WRITE_INTERVAL_MS) return
+    lastInteractionWriteAt = lastInteractionAt
+    try {
+      localStorage.setItem(TELEMETRY_INTERACTION_KEY, String(lastInteractionAt))
+    } catch {
+      // Without storage each tab only knows its own touches, which is still an answer.
+    }
+  }
+
+  /** The newest touch across every tab of this browser, falling back to this tab's own. */
+  const lastBrowserInteractionAt = (): number => {
+    try {
+      const shared = Number(localStorage.getItem(TELEMETRY_INTERACTION_KEY))
+      return Number.isFinite(shared) ? Math.max(shared, lastInteractionAt) : lastInteractionAt
+    } catch {
+      return lastInteractionAt
+    }
+  }
+
+  const isIdle = (): boolean => Date.now() - lastBrowserInteractionAt() >= TELEMETRY_CAPS.idleAfterMs
 
   // Resolved once and held: with localStorage unavailable, reading it per heartbeat would
   // mint a new id every time and report one browser as an endless parade of new ones.
@@ -103,6 +143,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
       localTabCount,
       cloudTabCount,
       factoriesTotal,
+      idle: isIdle(),
       appVersion: config.appVersion || UNKNOWN_VERSION,
       // Omitted rather than sent empty when the build knows no commit: the field is optional
       // and the server counts a missing one under `unknown` either way.
@@ -126,6 +167,10 @@ export const useTelemetryStore = defineStore('telemetry', () => {
   const start = (): void => {
     if (timer !== undefined) return
 
+    lastInteractionWriteAt = 0
+    markInteraction()
+    for (const event of INTERACTION_EVENTS) window.addEventListener(event, markInteraction, { passive: true })
+
     void send()
     timer = setInterval(() => void send(), TELEMETRY_CAPS.intervalMs)
     // A browser timer holds nothing open, a Node one holds the process open. Under vitest
@@ -136,6 +181,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
   const stop = (): void => {
     clearInterval(timer)
     timer = undefined
+    for (const event of INTERACTION_EVENTS) window.removeEventListener(event, markInteraction)
   }
 
   return {

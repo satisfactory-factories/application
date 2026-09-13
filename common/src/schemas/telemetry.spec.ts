@@ -35,6 +35,7 @@ const ALLOWED_FIELDS = [
   'factoriesTotal',
   'appVersion',
   'gitSha',
+  'idle',
 ]
 
 describe('telemetryHeartbeatSchema', () => {
@@ -152,5 +153,20 @@ describe('TELEMETRY_VERSION_LABEL_PATTERN', () => {
   it('refuses a trailing newline', () => {
     expect(TELEMETRY_VERSION_LABEL_PATTERN.test('0.7.0\n')).toBe(false)
     expect(TELEMETRY_VERSION_LABEL_PATTERN.test('0.7.0\r\n')).toBe(false)
+  })
+})
+
+describe('the optional idle flag', () => {
+  it.each([true, false])('accepts %s', idle => {
+    expect(parseTelemetryHeartbeat(heartbeat({ idle })).success).toBe(true)
+  })
+
+  it('accepts a heartbeat from a tab that predates the flag', () => {
+    expect(parseTelemetryHeartbeat(heartbeat()).success).toBe(true)
+  })
+
+  it('rejects anything that is not a boolean', () => {
+    expect(parseTelemetryHeartbeat(heartbeat({ idle: 'yes' })).success).toBe(false)
+    expect(parseTelemetryHeartbeat(heartbeat({ idle: 1800000 })).success).toBe(false)
   })
 })

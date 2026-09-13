@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, HttpException } from '@nestjs/common'
 import { BaseExceptionFilter } from '@nestjs/core'
 
+import { BackoffException } from './backoff.exception'
 import { EventCountersService } from './event-counters.service'
 
 /**
@@ -29,8 +30,12 @@ export class HttpErrorFilter extends BaseExceptionFilter {
     // Only HTTP. A gateway exception reaching here would otherwise be counted as a response
     // that was never sent.
     if (host.getType() === 'http') {
-      const status = exception instanceof HttpException ? exception.getStatus() : 500
-      this.counters.recordHttpError(status)
+      if (exception instanceof BackoffException) {
+        this.counters.recordBackoff(exception.endpoint, exception.reason)
+      } else {
+        const status = exception instanceof HttpException ? exception.getStatus() : 500
+        this.counters.recordHttpError(status)
+      }
     }
 
     super.catch(exception, host)

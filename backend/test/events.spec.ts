@@ -148,11 +148,20 @@ describe('POST /events', () => {
   })
 
   describe('the per-instance floor', () => {
-    it('refuses a second batch from the same instance too soon', async () => {
+    // 429 and not 204: the client keeps its batch on any non-2xx and a 204 would erase it.
+    it('refuses a second batch from the same instance too soon, as a back-off rather than an error', async () => {
       const instanceId = randomUUID()
+      const before = sample(await scrape(), 'sf_backoffs_total', 'endpoint="events",reason="too_soon"') ?? 0
+
+      const counted = events(await scrape(), 'plan_repair_duplicate_factory_id') ?? 0
 
       expect((await post(report({ instanceId }))).status).toBe(204)
       expect((await post(report({ instanceId }))).status).toBe(429)
+
+      const body = await scrape()
+      expect(events(body, 'plan_repair_duplicate_factory_id')).toBe(counted + 1)
+      expect(sample(body, 'sf_backoffs_total', 'endpoint="events",reason="too_soon"')).toBe(before + 1)
+      expect(sample(body, 'sf_http_errors_total', 'status="429"')).toBeUndefined()
     })
 
     it('lets it back in once the floor has passed', async () => {
