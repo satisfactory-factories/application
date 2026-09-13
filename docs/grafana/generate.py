@@ -754,7 +754,7 @@ add(40, "Browsers by Build",
 add(41, "Planner Version Over Time",
     "Stacked. After a release, watch the old band drain. While it is still wide, a breaking change will hurt.",
     [query("sum by (version) (sf_clients_by_version%s)" % J, "{{version}}")],
-    timeseries(fill=25, stack="normal"))
+    timeseries(fill=25, stack="percent"))
 
 add(43, "Browsers by Commit",
     "Active browsers by the commit their bundle was built from. A build that reported no commit, such as a local one, counts under \"unknown\". Capped to the busiest 25 commits.",
@@ -764,7 +764,7 @@ add(43, "Browsers by Commit",
 add(44, "Commit Rollout Over Time",
     "Stacked. After a deploy, watch the previous commit drain. This is the panel that says whether a rollout has actually reached people, which a version number cannot: several commits ship under one version.",
     [query("sum by (sha) (sf_clients_by_sha%s)" % J, "{{sha}}")],
-    timeseries(fill=25, stack="normal"))
+    timeseries(fill=25, stack="percent"))
 
 add(45, "Browsers on an Unknown Commit",
     "Builds reporting no usable commit. Expect this to be non-zero only for local development builds.",
