@@ -180,6 +180,7 @@
   } from '@/utils/factory-search'
   import { formatNumber } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
+  import { recordUsage } from '@/utils/record-event'
 
   const props = defineProps<{ factories: Factory[] }>()
 
@@ -306,6 +307,8 @@
 
   const jump = (factoryId: number, targets: string[] = [], fallback?: string) => {
     open.value = false
+    // Counted here and not on the query: a jump is somebody who found what they wanted.
+    recordUsage('search_jump')
 
     // The tab bar is also up on the graph page, where there is no planner listening and nothing
     // to scroll. Hand the jump to the planner the way the Parts page does and go there.
