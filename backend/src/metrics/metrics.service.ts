@@ -1,4 +1,4 @@
-import { Gauge, Registry } from 'prom-client'
+import { Gauge, Registry, collectDefaultMetrics } from 'prom-client'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
@@ -30,7 +30,7 @@ interface CheapCounts {
   privateRooms: number
   roomFactories: number
   roomRevisions: number
-  roomMembers: number
+  roomMembers: Record<'owner' | 'member', number>
   users: number
   signIns: number
   shares: number
@@ -39,8 +39,8 @@ interface CheapCounts {
 }
 
 interface OwnedTotal { name: string, value: number }
-interface RoomTotal { roomId: string, name: string, owner: string, factories: number }
-interface ShareTotal { shareId: string, opens: number }
+interface RoomTotal { roomId: string, name: string, owner: string, value: number }
+interface ShareTotal { shareId: string, owner: string, opens: number }
 
 /** The slow numbers: five window counts and three top-N aggregations. */
 interface SlowStats {
@@ -48,6 +48,8 @@ interface SlowStats {
   newAccounts: Array<readonly [string, number]>
   signedInAccounts: Array<readonly [string, number]>
   topRooms: RoomTotal[]
+  topCollaborated: RoomTotal[]
+  topEdited: RoomTotal[]
   topEditors: OwnedTotal[]
   topOwners: OwnedTotal[]
   topRoomOwners: OwnedTotal[]
@@ -55,6 +57,24 @@ interface SlowStats {
   topShares: ShareTotal[]
   newRooms: Array<readonly [string, number]>
   newMemberships: Array<readonly [string, number]>
+}
+
+let processMetrics: Registry | undefined
+
+/**
+ * Node's own numbers: resident memory, heap, event loop lag, open handles. The one thing
+ * a socket-count panel needs beside it to say whether the sockets cost anything.
+ *
+ * Collected once per process, not per service instance: each call installs a GC observer
+ * and an event loop monitor that nothing ever disposes, and every backend spec file builds
+ * its own app.
+ */
+const processRegistry = (): Registry => {
+  if (!processMetrics) {
+    processMetrics = new Registry()
+    collectDefaultMetrics({ register: processMetrics })
+  }
+  return processMetrics
 }
 
 /**
@@ -76,12 +96,12 @@ export class MetricsService {
   private readonly roomsTotal: Gauge<'shared'>
   private readonly roomFactoriesTotal: Gauge<string>
   private readonly roomRevisions: Gauge<string>
-  private readonly roomMembersTotal: Gauge<string>
+  private readonly roomMembersTotal: Gauge<'role'>
   private readonly usersTotal: Gauge<string>
   private readonly wsConnections: Gauge<string>
   private readonly databaseUp: Gauge<string>
 
-  private readonly activeClients: Gauge<'signed_in'>
+  private readonly activeClients: Gauge<'signed_in' | 'state'>
   private readonly clientTabs: Gauge<'kind'>
   private readonly clientFactoriesTotal: Gauge<string>
   private readonly clientsByVersion: Gauge<'version'>
@@ -92,6 +112,8 @@ export class MetricsService {
   private readonly signedInAccounts: Gauge<'window'>
   private readonly signInsTotal: Gauge<string>
   private readonly roomFactories: Gauge<'room_id' | 'name' | 'owner'>
+  private readonly roomCollaborators: Gauge<'room_id' | 'name' | 'owner'>
+  private readonly roomEdits: Gauge<'room_id' | 'name' | 'owner'>
   private readonly userEdits: Gauge<'username'>
   private readonly userFactories: Gauge<'username'>
   private readonly userRooms: Gauge<'username'>
@@ -99,7 +121,7 @@ export class MetricsService {
   private readonly sharesTotal: Gauge<string>
   private readonly shareOpensTotal: Gauge<string>
   private readonly newShares: Gauge<'window'>
-  private readonly shareOpens: Gauge<'share_id'>
+  private readonly shareOpens: Gauge<'share_id' | 'owner'>
 
   private readonly roomActions: Gauge<'action'>
   private readonly newRooms: Gauge<'window'>
@@ -140,7 +162,8 @@ export class MetricsService {
     })
     this.roomMembersTotal = new Gauge({
       name: 'sf_room_members_total',
-      help: 'Person-to-tab access grants, owners included. One per tab plus one per extra collaborator.',
+      help: 'Person-to-tab access grants by role. Every tab has one owner row; a member row is an invite somebody accepted.',
+      labelNames: ['role'],
       registers,
     })
     this.usersTotal = new Gauge({
@@ -161,8 +184,8 @@ export class MetricsService {
 
     this.activeClients = new Gauge({
       name: 'sf_active_clients',
-      help: 'Browsers that sent a heartbeat inside the active window, by whether somebody is signed in.',
-      labelNames: ['signed_in'],
+      help: 'Browsers that sent a heartbeat inside the active window, by whether somebody is signed in and whether they have touched the page in the last 30 minutes.',
+      labelNames: ['signed_in', 'state'],
       registers,
     })
     this.clientTabs = new Gauge({
@@ -218,6 +241,18 @@ export class MetricsService {
       labelNames: ['room_id', 'name', 'owner'],
       registers,
     })
+    this.roomCollaborators = new Gauge({
+      name: 'sf_room_collaborators',
+      help: `The ${METRICS_TOP_N} synced tabs with the most accepted invites. Owners are not counted.`,
+      labelNames: ['room_id', 'name', 'owner'],
+      registers,
+    })
+    this.roomEdits = new Gauge({
+      name: 'sf_room_edits',
+      help: `The ${METRICS_TOP_N} most-edited synced tabs, by accepted edits still on the plan.`,
+      labelNames: ['room_id', 'name', 'owner'],
+      registers,
+    })
     this.userEdits = new Gauge({
       name: 'sf_user_edits',
       help: `The ${METRICS_TOP_N} busiest accounts by accepted edits. Approximate: the count is written after the edit commits and is allowed to fail. Starts from zero at release rather than being backfilled.`,
@@ -255,8 +290,8 @@ export class MetricsService {
     })
     this.shareOpens = new Gauge({
       name: 'sf_share_opens',
-      help: `The ${METRICS_TOP_N} most-opened snapshot links.`,
-      labelNames: ['share_id'],
+      help: `The ${METRICS_TOP_N} most-opened snapshot links, with the account that made each.`,
+      labelNames: ['share_id', 'owner'],
       registers,
     })
 
@@ -295,7 +330,7 @@ export class MetricsService {
     // The counters live in their own registry, owned by a service that depends on nothing, so
     // that the modules reporting faults do not have to import this one. Merging is how the two
     // arrive in a single scrape.
-    return Registry.merge([this.registry, this.counters.registry]).metrics()
+    return Registry.merge([this.registry, this.counters.registry, processRegistry()]).metrics()
   }
 
   private async refresh (): Promise<void> {
@@ -321,7 +356,8 @@ export class MetricsService {
       this.roomsTotal.set({ shared: 'false' }, cheap.value.privateRooms)
       this.roomFactoriesTotal.set(cheap.value.roomFactories)
       this.roomRevisions.set(cheap.value.roomRevisions)
-      this.roomMembersTotal.set(cheap.value.roomMembers)
+      this.roomMembersTotal.set({ role: 'owner' }, cheap.value.roomMembers.owner)
+      this.roomMembersTotal.set({ role: 'member' }, cheap.value.roomMembers.member)
       this.usersTotal.set(cheap.value.users)
       this.signInsTotal.set(cheap.value.signIns)
       this.sharesTotal.set(cheap.value.shares)
@@ -358,8 +394,10 @@ export class MetricsService {
   }
 
   private setClientGauges (census: TelemetrySnapshot): void {
-    this.activeClients.set({ signed_in: 'true' }, census.activeSignedIn)
-    this.activeClients.set({ signed_in: 'false' }, census.activeSignedOut)
+    for (const [state, clients] of Object.entries(census.clients)) {
+      this.activeClients.set({ signed_in: 'true', state }, clients.signedIn)
+      this.activeClients.set({ signed_in: 'false', state }, clients.signedOut)
+    }
     this.clientTabs.set({ kind: 'local' }, census.localTabs)
     this.clientTabs.set({ kind: 'cloud' }, census.cloudTabs)
     this.clientFactoriesTotal.set(census.factories)
@@ -386,9 +424,15 @@ export class MetricsService {
       this.signedInAccounts.set({ window }, accounts)
     }
 
-    this.roomFactories.reset()
-    for (const room of stats.topRooms) {
-      this.roomFactories.set({ room_id: room.roomId, name: room.name, owner: room.owner }, room.factories)
+    for (const [gauge, rooms] of [
+      [this.roomFactories, stats.topRooms],
+      [this.roomCollaborators, stats.topCollaborated],
+      [this.roomEdits, stats.topEdited],
+    ] as const) {
+      gauge.reset()
+      for (const room of rooms) {
+        gauge.set({ room_id: room.roomId, name: room.name, owner: room.owner }, room.value)
+      }
     }
 
     this.userEdits.reset()
@@ -412,7 +456,7 @@ export class MetricsService {
 
     this.shareOpens.reset()
     for (const share of stats.topShares) {
-      this.shareOpens.set({ share_id: share.shareId }, share.opens)
+      this.shareOpens.set({ share_id: share.shareId, owner: share.owner }, share.opens)
     }
 
     for (const [window, rooms] of stats.newRooms) {
@@ -431,7 +475,7 @@ export class MetricsService {
         // once rather than not at all.
         this.rooms.countDocuments({ deletedAt: null, shared: { $ne: true } }),
         this.sumRoomTotals(),
-        this.memberships.countDocuments(),
+        this.countMembersByRole(),
         this.users.countDocuments(),
         this.sumSignIns(),
         this.shares.countDocuments(),
@@ -447,14 +491,16 @@ export class MetricsService {
   private async loadSlow (): Promise<SlowStats> {
     const now = this.clock.now()
     const [
-      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, topRoomOwners, newShares,
-      topShares, newRooms, newMemberships,
+      activeAccounts, newAccounts, signedInAccounts, topRooms, topCollaborated, topEdited, topEditors, topOwners,
+      topRoomOwners, newShares, topShares, newRooms, newMemberships,
     ] =
       await Promise.all([
         this.countByWindow(now, since => this.users.countDocuments({ lastActiveAt: { $gt: since } })),
         this.countByWindow(now, since => this.users.countDocuments({ registered: { $gt: since } })),
         this.countByWindow(now, since => this.users.countDocuments({ lastSignInAt: { $gt: since } })),
         this.findLargestRooms(),
+        this.findMostCollaboratedRooms(),
+        this.findMostEditedRooms(),
         this.findBusiestEditors(),
         this.findLargestOwners(),
         this.findMostProlificOwners(),
@@ -468,8 +514,8 @@ export class MetricsService {
       ])
 
     return {
-      activeAccounts, newAccounts, signedInAccounts, topRooms, topEditors, topOwners, topRoomOwners, newShares,
-      topShares, newRooms, newMemberships,
+      activeAccounts, newAccounts, signedInAccounts, topRooms, topCollaborated, topEdited, topEditors, topOwners,
+      topRoomOwners, newShares, topShares, newRooms, newMemberships,
     }
   }
 
@@ -510,12 +556,20 @@ export class MetricsService {
   /** Tie-broken on the id, so equally popular links do not swap places between scrapes. */
   private async findMostOpenedShares (): Promise<ShareTotal[]> {
     const rows = await this.shares
-      .find({ views: { $gt: 0 } }, { id: 1, views: 1 })
+      .find({ views: { $gt: 0 } }, { id: 1, createdBy: 1, views: 1 })
       .sort({ views: -1, id: 1 })
       .limit(METRICS_TOP_N)
       .lean()
 
-    return rows.map(row => ({ shareId: row.id, opens: row.views }))
+    return rows.map(row => ({ shareId: row.id, owner: row.createdBy, opens: row.views }))
+  }
+
+  private async countMembersByRole (): Promise<Record<'owner' | 'member', number>> {
+    const [owner, member] = await Promise.all([
+      this.memberships.countDocuments({ role: 'owner' }),
+      this.memberships.countDocuments({ role: 'member' }),
+    ])
+    return { owner, member }
   }
 
   /**
@@ -550,12 +604,55 @@ export class MetricsService {
       { $limit: METRICS_TOP_N },
     ])
 
+    return this.nameRooms(rows.map(row => ({ ...row, value: row.factories })))
+  }
+
+  /** Accepted edits per room. Zero-revision rooms are left out; a plan nobody edited is not busy. */
+  private async findMostEditedRooms (): Promise<RoomTotal[]> {
+    const rows = await this.rooms
+      .find({ deletedAt: null, revision: { $gt: 0 } }, { roomId: 1, name: 1, createdBy: 1, revision: 1 })
+      .sort({ revision: -1, roomId: 1 })
+      .limit(METRICS_TOP_N)
+      .lean()
+
+    return this.nameRooms(rows.map(row => ({ ...row, value: row.revision })))
+  }
+
+  /**
+   * Member-role rows per room, joined back to the room for its name and owner. A deleted
+   * room's memberships are swept with it, so the join is what keeps a tombstoned plan out.
+   */
+  private async findMostCollaboratedRooms (): Promise<RoomTotal[]> {
+    const rows = await this.memberships.aggregate<{ roomId: string, name: string, createdBy: string, members: number }>([
+      { $match: { role: 'member' } },
+      { $group: { _id: '$roomId', members: { $sum: 1 } } },
+      { $sort: { members: -1, _id: 1 } },
+      { $limit: METRICS_TOP_N },
+      {
+        $lookup: {
+          from: this.rooms.collection.name,
+          localField: '_id',
+          foreignField: 'roomId',
+          pipeline: [{ $match: { deletedAt: null } }, { $project: { name: 1, createdBy: 1 } }],
+          as: 'room',
+        },
+      },
+      { $unwind: '$room' },
+      { $project: { _id: 0, roomId: '$_id', name: '$room.name', createdBy: '$room.createdBy', members: 1 } },
+    ])
+
+    return this.nameRooms(rows.map(row => ({ ...row, value: row.members })))
+  }
+
+  private async nameRooms (
+    rows: Array<{ roomId: string, name: string, createdBy: string, value: number }>,
+  ): Promise<RoomTotal[]> {
     const owners = await this.resolveUsernames(rows.map(row => row.createdBy))
     return rows.map(row => ({
       roomId: row.roomId,
       name: row.name,
       owner: owners.get(row.createdBy) ?? DELETED_OWNER,
-      factories: row.factories,
+      value: row.value,
     }))
   }
 

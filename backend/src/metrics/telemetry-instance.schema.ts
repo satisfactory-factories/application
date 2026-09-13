@@ -27,6 +27,10 @@ export class TelemetryInstance {
   @Prop({ type: Boolean, default: false })
   signedIn!: boolean
 
+  /** Nobody has touched that browser for `TELEMETRY_CAPS.idleAfterMs`. Absent counts as active. */
+  @Prop({ type: Boolean, default: false })
+  idle!: boolean
+
   @Prop({ type: Number, default: 0 })
   localTabs!: number
 

@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { APP_VERSION_HEADER, TELEMETRY_CAPS, TELEMETRY_VERSION_FALLBACK } from 'common'
 import request from 'supertest'
 
-import { METRICS_VERSION_LABEL_LIMIT, TELEMETRY_MIN_INTERVAL_MS } from '../src/metrics/metrics.constants'
+import { METRICS_CACHE_MS, METRICS_VERSION_LABEL_LIMIT, TELEMETRY_MIN_INTERVAL_MS } from '../src/metrics/metrics.constants'
 import { TELEMETRY_THROTTLE } from '../src/config/throttling'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { FakeClock } from './utils/rooms'
@@ -125,11 +125,22 @@ describe('POST /telemetry', () => {
   })
 
   describe('the per-instance rate limit', () => {
-    it('refuses a second heartbeat from the same instance too soon after the first', async () => {
+    // 204 rather than 429: two tabs in one browser share an instance id, so this fires in
+    // ordinary use and must not land on the error panel. The back-off counter says it happened.
+    it('drops a second heartbeat from the same instance too soon after the first, and counts it', async () => {
       const instanceId = randomUUID()
+      const before = sample(await scrape(), 'sf_backoffs_total', 'endpoint="telemetry",reason="too_soon"') ?? 0
 
-      expect((await post(heartbeat({ instanceId }))).status).toBe(204)
-      expect((await post(heartbeat({ instanceId }))).status).toBe(429)
+      await post(heartbeat({ instanceId, factoriesTotal: 5 }))
+      const dropped = await post(heartbeat({ instanceId, factoriesTotal: 99 }))
+
+      expect(dropped.status).toBe(204)
+      // Past the census cache, so the scrape reads the heartbeats rather than the `before` read.
+      clock.advance(METRICS_CACHE_MS + 1)
+      const body = await scrape()
+      expect(sample(body, 'sf_backoffs_total', 'endpoint="telemetry",reason="too_soon"')).toBe(before + 1)
+      expect(sample(body, 'sf_client_factories_total')).toBe(5)
+      expect(sample(body, 'sf_http_errors_total', 'status="429"')).toBeUndefined()
     })
 
     it('lets the same instance back in once the floor has passed', async () => {
@@ -163,8 +174,34 @@ describe('POST /telemetry', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_active_clients', 'signed_in="true"')).toBe(2)
-      expect(sample(body, 'sf_active_clients', 'signed_in="false"')).toBe(1)
+      expect(sample(body, 'sf_active_clients', 'signed_in="true",state="active"')).toBe(2)
+      expect(sample(body, 'sf_active_clients', 'signed_in="false",state="active"')).toBe(1)
+    })
+
+    it('counts a browser nobody has touched as idle, and one that said nothing as active', async () => {
+      await post(heartbeat({ signedIn: true, idle: true }))
+      await post(heartbeat({ signedIn: false, idle: true }))
+      await post(heartbeat({ signedIn: false, idle: false }))
+      await post(heartbeat({ signedIn: false }))
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_active_clients', 'signed_in="true",state="idle"')).toBe(1)
+      expect(sample(body, 'sf_active_clients', 'signed_in="false",state="idle"')).toBe(1)
+      expect(sample(body, 'sf_active_clients', 'signed_in="false",state="active"')).toBe(2)
+      expect(sample(body, 'sf_active_clients', 'signed_in="true",state="active"')).toBe(0)
+    })
+
+    it('moves a browser between idle and active on its latest heartbeat', async () => {
+      const instanceId = randomUUID()
+      await post(heartbeat({ instanceId, idle: true }))
+      clock.advance(TELEMETRY_MIN_INTERVAL_MS)
+      await post(heartbeat({ instanceId, idle: false }))
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_active_clients', 'signed_in="false",state="idle"')).toBe(0)
+      expect(sample(body, 'sf_active_clients', 'signed_in="false",state="active"')).toBe(1)
     })
 
     it('sums tabs by kind and factories across every active client', async () => {
@@ -186,7 +223,7 @@ describe('POST /telemetry', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_active_clients', 'signed_in="false"')).toBe(1)
+      expect(sample(body, 'sf_active_clients', 'signed_in="false",state="active"')).toBe(1)
       expect(sample(body, 'sf_client_factories_total')).toBe(25)
     })
 
@@ -205,12 +242,12 @@ describe('POST /telemetry', () => {
   describe('expiry', () => {
     it('drops an instance that has gone quiet for the whole window', async () => {
       await post(heartbeat({ localTabCount: 4, factoriesTotal: 9 }))
-      expect(sample(await scrape(), 'sf_active_clients', 'signed_in="false"')).toBe(1)
+      expect(sample(await scrape(), 'sf_active_clients', 'signed_in="false",state="active"')).toBe(1)
 
       clock.advance(TELEMETRY_CAPS.activeWindowMs)
 
       const body = await scrape()
-      expect(sample(body, 'sf_active_clients', 'signed_in="false"')).toBe(0)
+      expect(sample(body, 'sf_active_clients', 'signed_in="false",state="active"')).toBe(0)
       expect(sample(body, 'sf_client_tabs', 'kind="local"')).toBe(0)
       expect(sample(body, 'sf_client_factories_total')).toBe(0)
     })
@@ -220,7 +257,7 @@ describe('POST /telemetry', () => {
 
       clock.advance(TELEMETRY_CAPS.activeWindowMs - 1)
 
-      expect(sample(await scrape(), 'sf_active_clients', 'signed_in="false"')).toBe(1)
+      expect(sample(await scrape(), 'sf_active_clients', 'signed_in="false",state="active"')).toBe(1)
     })
 
     it('stops reporting a version once the last client running it has gone', async () => {
@@ -240,14 +277,14 @@ describe('POST /telemetry', () => {
     it('still counts a browser after the process is replaced', async () => {
       const instanceId = randomUUID()
       await post(heartbeat({ instanceId, localTabCount: 3, factoriesTotal: 21 }))
-      expect(sample(await scrape(), 'sf_active_clients', 'signed_in="false"')).toBe(1)
+      expect(sample(await scrape(), 'sf_active_clients', 'signed_in="false",state="active"')).toBe(1)
 
       // A second app on the same database is what a redeploy looks like from Mongo's side.
       const restarted = await createTestApp({ clock, unthrottled: true })
       try {
         const response = await scrapeMetrics(restarted.app)
         expect(response.status).toBe(200)
-        expect(sample(response.text, 'sf_active_clients', 'signed_in="false"')).toBe(1)
+        expect(sample(response.text, 'sf_active_clients', 'signed_in="false",state="active"')).toBe(1)
         expect(sample(response.text, 'sf_client_tabs', 'kind="local"')).toBe(3)
         expect(sample(response.text, 'sf_client_factories_total')).toBe(21)
       } finally {

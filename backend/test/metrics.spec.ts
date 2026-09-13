@@ -117,6 +117,14 @@ describe('GET /metrics: who is allowed to ask', () => {
       expect(text).toContain(`# TYPE ${metric} gauge`)
     }
   })
+
+  it('serves the process metrics beside its own', async () => {
+    const { text } = await withToken(context)
+
+    expect(text).toContain('# TYPE process_resident_memory_bytes gauge')
+    expect(text).toContain('# TYPE nodejs_eventloop_lag_seconds gauge')
+    expect(text).toContain('# TYPE nodejs_active_handles_total gauge')
+  })
 })
 
 describe('GET /metrics: the numbers', () => {
@@ -209,7 +217,8 @@ describe('GET /metrics: the numbers', () => {
 
     const body = await scrape()
 
-    expect(sample(body, 'sf_room_members_total')).toBe(2)
+    expect(sample(body, 'sf_room_members_total', 'role="owner"')).toBe(1)
+    expect(sample(body, 'sf_room_members_total', 'role="member"')).toBe(1)
     expect(sample(body, 'sf_users_total')).toBe(3)
   })
 
@@ -295,6 +304,6 @@ describe('GET /metrics when the database is unreachable', () => {
     // A 500 would cost Prometheus every series on the endpoint, the client ones included.
     expect(response.status).toBe(200)
     expect(sample(response.text, 'sf_metrics_database_up')).toBe(0)
-    expect(sample(response.text, 'sf_active_clients', 'signed_in="false"')).toBe(0)
+    expect(sample(response.text, 'sf_active_clients', 'signed_in="false",state="active"')).toBe(0)
   })
 })

@@ -1,9 +1,10 @@
-import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common'
-import { HttpException, HttpStatus, PayloadTooLargeException } from '@nestjs/common'
+import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common'
+import { PayloadTooLargeException } from '@nestjs/common'
 import { TELEMETRY_CAPS, parseTelemetryHeartbeat } from 'common'
 import type { Request } from 'express'
 
 import { SkipVersionGate } from '../common/decorators/skip-version-gate.decorator'
+import { EventCountersService } from '../event-counters/event-counters.service'
 import { TelemetryService } from './telemetry.service'
 
 /**
@@ -23,7 +24,10 @@ const assertWithinCap = (request: Request, body: unknown): void => {
 
 @Controller('telemetry')
 export class TelemetryController {
-  constructor (private readonly telemetry: TelemetryService) {}
+  constructor (
+    private readonly telemetry: TelemetryService,
+    private readonly counters: EventCountersService,
+  ) {}
 
   /**
    * The anonymous usage heartbeat. Unauthenticated by design — the users this exists to
@@ -43,10 +47,10 @@ export class TelemetryController {
     if (!parsed.success) throw new BadRequestException('Malformed telemetry heartbeat.')
 
     const outcome = await this.telemetry.record(parsed.data)
-    if (outcome !== 'accepted') {
-      // Both the per-instance floor and the instance ceiling are "come back later", and
-      // the client's answer to either is the same: drop it and wait for the next tick.
-      throw new HttpException('Too many heartbeats.', HttpStatus.TOO_MANY_REQUESTS)
-    }
+    // A refused heartbeat is the floor working, not a fault, so it is counted as a back-off
+    // and answered 204 rather than 429. Two tabs share one instance id and would otherwise
+    // put a 429 on the error panel every five minutes, in ordinary use.
+    if (outcome === 'too-soon') this.counters.recordBackoff('telemetry', 'too_soon')
+    if (outcome === 'at-capacity') this.counters.recordBackoff('telemetry', 'at_capacity')
   }
 }

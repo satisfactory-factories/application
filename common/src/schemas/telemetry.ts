@@ -20,6 +20,8 @@ export const TELEMETRY_CAPS = {
   activeWindowMs: 15 * 60 * 1000,
   /** How often a browser sends one. */
   intervalMs: 5 * 60 * 1000,
+  /** No pointer, key or touch input for this long and the browser reports itself idle. */
+  idleAfterMs: 30 * 60 * 1000,
 } as const
 
 /**
@@ -78,6 +80,12 @@ export const telemetryHeartbeatSchema = z.strictObject({
    * instead of inventing one. Both cases count under `unknown`.
    */
   gitSha: z.string().max(TELEMETRY_CAPS.gitSha).optional(),
+  /**
+   * True when nobody has touched the page for {@link TELEMETRY_CAPS.idleAfterMs}. Optional
+   * for the same reason as `gitSha`: a tab loaded before the field existed keeps reporting,
+   * and counts as active, which is what every heartbeat meant before this.
+   */
+  idle: z.boolean().optional(),
 })
 
 export type TelemetryHeartbeat = z.infer<typeof telemetryHeartbeatSchema>

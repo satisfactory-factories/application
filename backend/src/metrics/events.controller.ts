@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common'
 import { EVENT_CAPS, parseEventReport } from 'common'
-import { HttpException, PayloadTooLargeException } from '@nestjs/common'
+import { PayloadTooLargeException } from '@nestjs/common'
 import type { Request } from 'express'
 
 import { EventCountersService } from '../event-counters/event-counters.service'
@@ -49,7 +49,8 @@ export class EventsController {
     // interval however hard it tries. Refusing here rather than in the counter service keeps
     // that service dependency-free.
     if (!await this.telemetry.allowEventReport(parsed.data.instanceId)) {
-      throw new HttpException('Too many event reports.', HttpStatus.TOO_MANY_REQUESTS)
+      this.counters.recordBackoff('events', 'too_soon')
+      return
     }
 
     for (const { reason, count } of parsed.data.events) {

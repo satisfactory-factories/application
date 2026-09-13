@@ -148,11 +148,19 @@ describe('POST /events', () => {
   })
 
   describe('the per-instance floor', () => {
-    it('refuses a second batch from the same instance too soon', async () => {
+    it('drops a second batch from the same instance too soon, and counts the drop rather than an error', async () => {
       const instanceId = randomUUID()
+      const before = sample(await scrape(), 'sf_backoffs_total', 'endpoint="events",reason="too_soon"') ?? 0
+
+      const counted = events(await scrape(), 'plan_repair_duplicate_factory_id') ?? 0
 
       expect((await post(report({ instanceId }))).status).toBe(204)
-      expect((await post(report({ instanceId }))).status).toBe(429)
+      expect((await post(report({ instanceId }))).status).toBe(204)
+
+      const body = await scrape()
+      expect(events(body, 'plan_repair_duplicate_factory_id')).toBe(counted + 1)
+      expect(sample(body, 'sf_backoffs_total', 'endpoint="events",reason="too_soon"')).toBe(before + 1)
+      expect(sample(body, 'sf_http_errors_total', 'status="429"')).toBeUndefined()
     })
 
     it('lets it back in once the floor has passed', async () => {
