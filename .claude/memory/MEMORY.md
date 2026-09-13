@@ -48,4 +48,4 @@
 - [Verify: hidden-pane menu freeze](verify-hidden-pane-menu-freeze.md) — a hidden browser pane leaves Vuetify menus stuck invisible with inline pointer-events:none; clear the inline props before hit-testing
 - [prom-client label lifecycle](prom-client-label-lifecycle.md) — seed bounded label sets at zero or panels read "No data"; reset ranked ones or dropped labels report forever
 - [Clock step freezes rate limits](clock-step-freezes-rate-limits.md) — a backwards clock step at boot 429'd the API container unhealthy under express-rate-limit; why @nestjs/throttler closed it, why we run our own throttler storage instead of its, and why it looks exactly like prod drift
-- [Grafana dashboard via API](grafana-dashboard-via-api.md) — edit Planner Metrics through the API on the Grafana box with the on-box token, never the browser; ask for SSH first
+- [Grafana dashboard via API](grafana-dashboard-via-api.md) — `docs/grafana/generate.py` is the source of truth; regenerate and PUT the v2 JSON from the Grafana box with the on-box token, never hand-edit live; ask for SSH first
