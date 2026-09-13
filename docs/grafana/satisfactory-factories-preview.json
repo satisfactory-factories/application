@@ -773,7 +773,7 @@
         "spec": {
           "id": 13,
           "title": "Browsers Over Time, Active vs Idle",
-          "description": "Stacked. Idle is thirty minutes without a click, key press, scroll or touch; a tab left open in the background lands here.",
+          "description": "Stacked to 100%, so it reads as the share of open browsers somebody is actually using. Idle is thirty minutes without a click, key press, scroll or touch; a tab left open in the background lands here.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -891,7 +891,7 @@
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "percent"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -9571,7 +9571,7 @@
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "percent"
                     },
                     "thresholdsStyle": {
                       "mode": "off"
@@ -9776,7 +9776,7 @@
                     "spanNulls": false,
                     "stacking": {
                       "group": "A",
-                      "mode": "normal"
+                      "mode": "percent"
                     },
                     "thresholdsStyle": {
                       "mode": "off"

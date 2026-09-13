@@ -1,0 +1,71 @@
+name: Changed Paths
+
+# The gate in front of the required checks. Those checks cannot be path-filtered at
+# the trigger: a required status check that never triggers sits pending forever, so
+# a docs-only PR could never merge. Instead each check workflow always triggers,
+# asks this for whether the PR touches anything it cares about, and skips its real
+# job if not. A job skipped by `if:` reports "skipped", which branch protection
+# counts as satisfied, so the check stays required and a docs PR passes in seconds.
+#
+# Reads the PR's file list from the API rather than diffing the checkout, so it is
+# exactly the set GitHub shows on the Files tab, however far main has moved since
+# the branch was cut. On any event other than pull_request (a push to main, a
+# workflow_call from a deploy) everything matches: those runs are not the ones
+# being saved.
+on:
+  workflow_call:
+    inputs:
+      patterns:
+        description: >-
+          One bash pattern per line, matched against each changed path with `[[ == ]]`.
+          `*` crosses directory separators, so `web/*` is everything under web/.
+        required: true
+        type: string
+    outputs:
+      matched:
+        description: '"true" when any changed path matches any pattern, or the event is not a pull_request.'
+        value: ${{ jobs.changes.outputs.matched }}
+
+# No permissions block: a called workflow inherits the caller's, and the file list
+# of a public repository's PR needs nothing beyond the caller's `contents: read`.
+jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      matched: ${{ steps.filter.outputs.matched }}
+    steps:
+      - name: Match the PR's files against the patterns
+        id: filter
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PATTERNS: ${{ inputs.patterns }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "matched=true" >> "$GITHUB_OUTPUT"
+            echo "Not a pull request (${GITHUB_EVENT_NAME}): running everything." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          mapfile -t files < <(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename')
+          mapfile -t patterns < <(printf '%s\n' "$PATTERNS" | sed '/^[[:space:]]*$/d')
+
+          matched=false
+          for file in "${files[@]}"; do
+            for pattern in "${patterns[@]}"; do
+              # shellcheck disable=SC2053
+              if [[ "$file" == $pattern ]]; then
+                echo "Running: \`$file\` matches \`$pattern\`." >> "$GITHUB_STEP_SUMMARY"
+                matched=true
+                break 2
+              fi
+            done
+          done
+
+          if [ "$matched" = "false" ]; then
+            echo "Skipped: none of the ${#files[@]} changed file(s) match. Patterns:" >> "$GITHUB_STEP_SUMMARY"
+            printf -- '- `%s`\n' "${patterns[@]}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "matched=$matched" >> "$GITHUB_OUTPUT"
