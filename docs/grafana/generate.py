@@ -218,7 +218,7 @@ add(1, "Browsers",
     stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], color_mode="value", text_mode="value_and_name"))
 
 add(6, "Browsers and Sockets",
-    "Every browser with the planner open, by whether somebody is at it, against the realtime sockets held open. Sockets are only opened by signed-in users and shared-link visitors, so the gap is local-only planning.",
+    "Every browser with the planner open, by whether somebody is at it, against the realtime sockets held open. Sockets are only opened by signed-in users and invite-link visitors, so the gap is local-only planning.",
     [query('sum(sf_active_clients%s)' % sel('state="active"'), "Active browsers", "A"),
      query('sum(sf_active_clients%s)' % sel('state="idle"'), "Idle browsers", "B"),
      query("sum(sf_ws_connections%s)" % J, "Sockets", "C")],
@@ -321,14 +321,14 @@ add(31, "Synced Plans",
     [query("sum(sf_rooms_total%s)" % J, "Synced plans")],
     stat(BLUE))
 
-add(32, "Shared Plans",
-    "Synced plans that have an invite link allocated.",
-    [query('sum(sf_rooms_total%s)' % sel('shared="true"'), "Shared")],
+add(32, "Collaborative Plans",
+    "Synced plans that have an invite link allocated, so other accounts can join and edit. Not share links, which are snapshots.",
+    [query('sum(sf_rooms_total%s)' % sel('shared="true"'), "Collaborative")],
     stat([{"value": 0, "color": "blue"}]))
 
-add(33, "Share Rate",
-    "What fraction of synced plans have been shared with somebody.",
-    [query("sum(sf_rooms_total%s) / sum(sf_rooms_total%s)" % (sel('shared="true"'), J), "Shared")],
+add(33, "Collaboration Rate",
+    "What fraction of synced plans have been opened up to collaborators.",
+    [query("sum(sf_rooms_total%s) / sum(sf_rooms_total%s)" % (sel('shared="true"'), J), "Collaborative")],
     stat([{"value": 0, "color": "blue"}, {"value": 0.1, "color": "green"}],
          unit="percentunit", minmax=(0, 1)))
 
@@ -359,8 +359,9 @@ add(109, "Factories per Synced Plan Over Time",
     timeseries(fill=10, decimals=1))
 
 add(36, "Synced Plans Over Time",
-    "Stacked by whether the plan has an invite link.",
-    [query("sum by (shared) (sf_rooms_total%s)" % J, "{{shared}}")],
+    "Stacked by whether the plan has an invite link for collaborators.",
+    [query('sum(sf_rooms_total%s)' % sel('shared="true"'), "Collaborative", "A"),
+     query('sum(sf_rooms_total%s)' % sel('shared="false"'), "Private", "B")],
     timeseries(fill=25, stack="normal"))
 
 add(37, "Accounts, Plans and Collaborators Over Time",
@@ -548,9 +549,9 @@ add(110, "How Synced Plans Arrived",
      query('sum(sf_room_actions_total%s)' % sel('action="imported"'), "Imported", "C")],
     stat(BLUE, color_mode="value", text_mode="value_and_name"))
 
-add(111, "Plans Ever Shared",
-    "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan shared, unshared and shared again counts twice, because that is two decisions to share.",
-    [query('sum(sf_room_actions_total%s)' % sel('action="shared"'), "Shared")],
+add(111, "Plans Ever Collaborated",
+    "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan opened, closed and opened again counts twice, because that is two decisions to collaborate.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="shared"'), "Collaborated")],
     stat(GREEN, graph="area", color_mode="background_solid"))
 
 add(112, "Invites Accepted",
@@ -572,7 +573,7 @@ add(114, "New Plans",
     stat(BLUE, color_mode="value", text_mode="value_and_name"))
 
 add(115, "Invites Accepted Recently",
-    "Invites accepted inside each rolling window, counted off the membership rows. Same caveat as New Plans: somebody who joined and then left, or who was dropped when the owner unshared, is not in it.",
+    "Invites accepted inside each rolling window, counted off the membership rows. Same caveat as New Plans: somebody who joined and then left, or who was dropped when the owner closed collaboration, is not in it.",
     [query('sum(sf_new_memberships%s)' % sel('window="24h"'), "24 hours", "A"),
      query('sum(sf_new_memberships%s)' % sel('window="7d"'), "7 days", "B"),
      query('sum(sf_new_memberships%s)' % sel('window="30d"'), "30 days", "C")],
@@ -582,8 +583,8 @@ LIFECYCLE_ACTIONS = [
     ("created", "Created"),
     ("adopted", "Adopted (local tab upgraded to cloud)"),
     ("imported", "Imported (old cloud sync restored)"),
-    ("shared", "Shared"),
-    ("unshared", "Unshared"),
+    ("shared", "Collaboration opened"),
+    ("unshared", "Collaboration closed"),
     ("joined", "Invite accepted"),
     ("left", "Left"),
     ("deleted", "Deleted"),
