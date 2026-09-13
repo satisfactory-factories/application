@@ -4,7 +4,7 @@ import { TELEMETRY_CAPS, parseTelemetryHeartbeat } from 'common'
 import type { Request } from 'express'
 
 import { SkipVersionGate } from '../common/decorators/skip-version-gate.decorator'
-import { EventCountersService } from '../event-counters/event-counters.service'
+import { BackoffException } from '../event-counters/backoff.exception'
 import { TelemetryService } from './telemetry.service'
 
 /**
@@ -24,10 +24,7 @@ const assertWithinCap = (request: Request, body: unknown): void => {
 
 @Controller('telemetry')
 export class TelemetryController {
-  constructor (
-    private readonly telemetry: TelemetryService,
-    private readonly counters: EventCountersService,
-  ) {}
+  constructor (private readonly telemetry: TelemetryService) {}
 
   /**
    * The anonymous usage heartbeat. Unauthenticated by design — the users this exists to
@@ -47,10 +44,10 @@ export class TelemetryController {
     if (!parsed.success) throw new BadRequestException('Malformed telemetry heartbeat.')
 
     const outcome = await this.telemetry.record(parsed.data)
-    // A refused heartbeat is the floor working, not a fault, so it is counted as a back-off
-    // and answered 204 rather than 429. Two tabs share one instance id and would otherwise
-    // put a 429 on the error panel every five minutes, in ordinary use.
-    if (outcome === 'too-soon') this.counters.recordBackoff('telemetry', 'too_soon')
-    if (outcome === 'at-capacity') this.counters.recordBackoff('telemetry', 'at_capacity')
+    // Both the per-instance floor and the instance ceiling are "come back later", and the
+    // client's answer to either is the same: drop it and wait for the next tick. Two tabs
+    // share one instance id, so the floor fires in ordinary use; a back-off, not an error.
+    if (outcome === 'too-soon') throw new BackoffException('telemetry', 'too_soon', 'Too many heartbeats.')
+    if (outcome === 'at-capacity') throw new BackoffException('telemetry', 'at_capacity', 'Too many heartbeats.')
   }
 }

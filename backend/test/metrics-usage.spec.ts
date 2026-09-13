@@ -631,6 +631,31 @@ describe('the database-backed usage metrics', () => {
       expect(labelValues(await scrape(), 'sf_room_collaborators', 'room_id')).not.toContain(gone.roomId)
     })
 
+    it('does not let tombstoned rooms crowd a live one out of the top N', async () => {
+      for (let index = 0; index < METRICS_TOP_N; index++) {
+        const gone = await seedRoom(1, { deletedAt: new Date() })
+        await join(gone.roomId, 'member')
+        await join(gone.roomId, 'member')
+      }
+      const live = await seedRoom(1)
+      await join(live.roomId, 'member')
+
+      expect(labelValues(await scrape(), 'sf_room_collaborators', 'room_id')).toEqual([live.roomId])
+    })
+
+    // An unshare voids member rows by bumping the room's epoch; the rows themselves are
+    // cleaned up afterwards and that cleanup may lag. Voided rows are not collaboration.
+    it('ignores a membership revoked by an unshare whose cleanup has not run', async () => {
+      const room = await seedRoom(1, { membershipEpoch: 2 })
+      await memberships().create({ userId: randomUUID(), roomId: room.roomId, role: 'member', epoch: 1 })
+      await memberships().create({ userId: randomUUID(), roomId: room.roomId, role: 'member', epoch: 2 })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_room_collaborators', `room_id="${room.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(1)
+      expect(sample(body, 'sf_room_members_total', 'role="member"')).toBe(1)
+    })
+
     it(`exports at most ${METRICS_TOP_N} rooms however many exist`, async () => {
       for (let index = 0; index < METRICS_TOP_N + 8; index++) {
         const room = await seedRoom(1)

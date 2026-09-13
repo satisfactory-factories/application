@@ -4508,7 +4508,7 @@
         "spec": {
           "id": 98,
           "title": "Backed Off, Last 24h",
-          "description": "Requests the API answered \"come back later\" and dropped on purpose: a second heartbeat from one browser inside 30 seconds, mostly two tabs sharing an instance id. Rate limits working, not faults, which is why these are not in the error counts.",
+          "description": "Requests the API answered \"come back later\" on purpose: a second heartbeat or fault batch from one browser inside 30 seconds, mostly two tabs sharing an instance id. The heartbeat is dropped and the batch is retried next tick. Rate limits working, not faults, which is why these are not in the error counts.",
           "links": [],
           "data": {
             "kind": "QueryGroup",

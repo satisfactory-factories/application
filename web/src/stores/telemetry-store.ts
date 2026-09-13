@@ -10,6 +10,16 @@ import { useRoomSyncStore } from '@/stores/room-sync-store'
 /** Where the anonymous instance id lives. Nothing else may be kept under this key. */
 export const TELEMETRY_INSTANCE_KEY = 'telemetryInstanceId'
 
+/**
+ * When somebody last touched any tab of this browser, as a timestamp. Every tab shares the
+ * instance id, and the server keeps whichever tab's heartbeat lands first, so a background
+ * tab must know about the foreground one's clicks or it reports the whole browser idle.
+ */
+export const TELEMETRY_INTERACTION_KEY = 'telemetryLastInteractionAt'
+
+/** Wheel events arrive by the hundred; storage is written at most this often. */
+const INTERACTION_WRITE_INTERVAL_MS = 5_000
+
 /** What the server counts a client under when the build has no version to report. */
 export const UNKNOWN_VERSION = 'unknown'
 
@@ -84,12 +94,30 @@ export const useTelemetryStore = defineStore('telemetry', () => {
   let timer: ReturnType<typeof setInterval> | undefined
   // Loading the page is an interaction, so a fresh tab is active until proven otherwise.
   let lastInteractionAt = Date.now()
+  let lastInteractionWriteAt = 0
 
   const markInteraction = (): void => {
     lastInteractionAt = Date.now()
+    if (lastInteractionAt - lastInteractionWriteAt < INTERACTION_WRITE_INTERVAL_MS) return
+    lastInteractionWriteAt = lastInteractionAt
+    try {
+      localStorage.setItem(TELEMETRY_INTERACTION_KEY, String(lastInteractionAt))
+    } catch {
+      // Without storage each tab only knows its own touches, which is still an answer.
+    }
   }
 
-  const isIdle = (): boolean => Date.now() - lastInteractionAt >= TELEMETRY_CAPS.idleAfterMs
+  /** The newest touch across every tab of this browser, falling back to this tab's own. */
+  const lastBrowserInteractionAt = (): number => {
+    try {
+      const shared = Number(localStorage.getItem(TELEMETRY_INTERACTION_KEY))
+      return Number.isFinite(shared) ? Math.max(shared, lastInteractionAt) : lastInteractionAt
+    } catch {
+      return lastInteractionAt
+    }
+  }
+
+  const isIdle = (): boolean => Date.now() - lastBrowserInteractionAt() >= TELEMETRY_CAPS.idleAfterMs
 
   // Resolved once and held: with localStorage unavailable, reading it per heartbeat would
   // mint a new id every time and report one browser as an endless parade of new ones.
@@ -139,6 +167,7 @@ export const useTelemetryStore = defineStore('telemetry', () => {
   const start = (): void => {
     if (timer !== undefined) return
 
+    lastInteractionWriteAt = 0
     markInteraction()
     for (const event of INTERACTION_EVENTS) window.addEventListener(event, markInteraction, { passive: true })
 

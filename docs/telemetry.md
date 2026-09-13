@@ -30,7 +30,7 @@ nine fields, two of them optional, and the server rejects it outright if it has 
 | `factoriesTotal` | How many factories across all of those tabs. |
 | `appVersion` | Which build of the planner is running. |
 | `gitSha` | Which commit that build came from. Absent on builds that do not know, such as local ones. |
-| `idle` | Whether the page has gone thirty minutes without a click, key press, scroll or touch. The planner keeps only the time of the last one, never what it was. |
+| `idle` | Whether this browser has gone thirty minutes without a click, key press, scroll or touch in any planner tab. The planner keeps only the time of the last one, in the browser's own storage, never what it was. |
 
 Counts, two flags and two build identifiers. That is the whole payload.
 

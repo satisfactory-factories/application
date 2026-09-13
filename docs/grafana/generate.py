@@ -478,7 +478,7 @@ add(96, "HTTP Errors by Status",
     timeseries(fill=15))
 
 add(98, "Backed Off, Last 24h",
-    "Requests the API answered \"come back later\" and dropped on purpose: a second heartbeat from one browser inside 30 seconds, mostly two tabs sharing an instance id. Rate limits working, not faults, which is why these are not in the error counts.",
+    "Requests the API answered \"come back later\" on purpose: a second heartbeat or fault batch from one browser inside 30 seconds, mostly two tabs sharing an instance id. The heartbeat is dropped and the batch is retried next tick. Rate limits working, not faults, which is why these are not in the error counts.",
     [query("round(sum by (endpoint, reason) (increase(sf_backoffs_total%s[24h])))" % J, "{{endpoint}} · {{reason}}")],
     stat([{"value": 0, "color": "#6a6a6a"}], color_mode="value", text_mode="value_and_name"))
 

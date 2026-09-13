@@ -222,6 +222,13 @@ describe('GET /metrics: the numbers', () => {
     expect(sample(body, 'sf_users_total')).toBe(3)
   })
 
+  it('counts a live room as its own owner row, and a deleted room as nothing', async () => {
+    await seedRoom(0)
+    await seedRoom(0, { deletedAt: new Date() })
+
+    expect(sample(await scrape(), 'sf_room_members_total', 'role="owner"')).toBe(1)
+  })
+
   it('reports no live sockets when nothing has connected', async () => {
     expect(sample(await scrape(), 'sf_ws_connections')).toBe(0)
   })

@@ -2,7 +2,7 @@ import { Gauge, Registry, collectDefaultMetrics } from 'prom-client'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
-import type { Model } from 'mongoose'
+import type { Model, PipelineStage } from 'mongoose'
 
 import {
   ACTIVE_ACCOUNT_WINDOWS,
@@ -58,6 +58,45 @@ interface SlowStats {
   newRooms: Array<readonly [string, number]>
   newMemberships: Array<readonly [string, number]>
 }
+
+/**
+ * Live rooms with the count of member rows that still grant access, by the same epoch rule
+ * `membershipGrantsAccess` applies: a row below the room's epoch was revoked by an unshare
+ * whose cleanup has not run yet. Absent epochs read as 0 on both sides, as there.
+ */
+const liveCollaboratorsPipeline = (memberships: string): PipelineStage[] => [
+  { $match: { deletedAt: null } },
+  {
+    $lookup: {
+      from: memberships,
+      let: { roomId: '$roomId', epoch: { $ifNull: ['$membershipEpoch', 0] } },
+      pipeline: [
+        {
+          $match: {
+            role: 'member',
+            $expr: {
+              $and: [
+                { $eq: ['$roomId', '$$roomId'] },
+                { $gte: [{ $ifNull: ['$epoch', 0] }, '$$epoch'] },
+              ],
+            },
+          },
+        },
+        { $count: 'members' },
+      ],
+      as: 'collaborators',
+    },
+  },
+  {
+    $project: {
+      _id: 0,
+      roomId: 1,
+      name: 1,
+      createdBy: 1,
+      members: { $ifNull: [{ $first: '$collaborators.members' }, 0] },
+    },
+  },
+]
 
 let processMetrics: Registry | undefined
 
@@ -564,12 +603,21 @@ export class MetricsService {
     return rows.map(row => ({ shareId: row.id, owner: row.createdBy, opens: row.views }))
   }
 
+  /**
+   * Owner rows are one per live room. Member rows are counted only where they still grant
+   * access: an unshare voids them by bumping the room's epoch before the cleanup that deletes
+   * them, and that cleanup is allowed to lag, so a bare row count would report revoked
+   * invites as collaboration.
+   */
   private async countMembersByRole (): Promise<Record<'owner' | 'member', number>> {
-    const [owner, member] = await Promise.all([
-      this.memberships.countDocuments({ role: 'owner' }),
-      this.memberships.countDocuments({ role: 'member' }),
+    const [owner, [row]] = await Promise.all([
+      this.rooms.countDocuments({ deletedAt: null }),
+      this.rooms.aggregate<{ members: number }>([
+        ...liveCollaboratorsPipeline(this.memberships.collection.name),
+        { $group: { _id: null, members: { $sum: '$members' } } },
+      ]),
     ])
-    return { owner, member }
+    return { owner, member: row?.members ?? 0 }
   }
 
   /**
@@ -618,27 +666,13 @@ export class MetricsService {
     return this.nameRooms(rows.map(row => ({ ...row, value: row.revision })))
   }
 
-  /**
-   * Member-role rows per room, joined back to the room for its name and owner. A deleted
-   * room's memberships are swept with it, so the join is what keeps a tombstoned plan out.
-   */
+  /** Starts from live rooms, so a tombstoned plan's lingering rows can never take a slot. */
   private async findMostCollaboratedRooms (): Promise<RoomTotal[]> {
-    const rows = await this.memberships.aggregate<{ roomId: string, name: string, createdBy: string, members: number }>([
-      { $match: { role: 'member' } },
-      { $group: { _id: '$roomId', members: { $sum: 1 } } },
-      { $sort: { members: -1, _id: 1 } },
+    const rows = await this.rooms.aggregate<{ roomId: string, name: string, createdBy: string, members: number }>([
+      ...liveCollaboratorsPipeline(this.memberships.collection.name),
+      { $match: { members: { $gt: 0 } } },
+      { $sort: { members: -1, roomId: 1 } },
       { $limit: METRICS_TOP_N },
-      {
-        $lookup: {
-          from: this.rooms.collection.name,
-          localField: '_id',
-          foreignField: 'roomId',
-          pipeline: [{ $match: { deletedAt: null } }, { $project: { name: 1, createdBy: 1 } }],
-          as: 'room',
-        },
-      },
-      { $unwind: '$room' },
-      { $project: { _id: 0, roomId: '$_id', name: '$room.name', createdBy: '$room.createdBy', members: 1 } },
     ])
 
     return this.nameRooms(rows.map(row => ({ ...row, value: row.members })))

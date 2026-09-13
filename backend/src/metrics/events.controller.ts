@@ -3,6 +3,7 @@ import { EVENT_CAPS, parseEventReport } from 'common'
 import { PayloadTooLargeException } from '@nestjs/common'
 import type { Request } from 'express'
 
+import { BackoffException } from '../event-counters/backoff.exception'
 import { EventCountersService } from '../event-counters/event-counters.service'
 import { SkipVersionGate } from '../common/decorators/skip-version-gate.decorator'
 import { TelemetryService } from './telemetry.service'
@@ -48,9 +49,9 @@ export class EventsController {
     // Reuses the heartbeat's per-instance floor, so one browser cannot flush faster than the
     // interval however hard it tries. Refusing here rather than in the counter service keeps
     // that service dependency-free.
+    // A 429 the client keeps the batch on; a 204 would have told it the counts were taken.
     if (!await this.telemetry.allowEventReport(parsed.data.instanceId)) {
-      this.counters.recordBackoff('events', 'too_soon')
-      return
+      throw new BackoffException('events', 'too_soon', 'Too many event reports.')
     }
 
     for (const { reason, count } of parsed.data.events) {

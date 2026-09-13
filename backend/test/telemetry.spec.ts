@@ -125,16 +125,16 @@ describe('POST /telemetry', () => {
   })
 
   describe('the per-instance rate limit', () => {
-    // 204 rather than 429: two tabs in one browser share an instance id, so this fires in
-    // ordinary use and must not land on the error panel. The back-off counter says it happened.
-    it('drops a second heartbeat from the same instance too soon after the first, and counts it', async () => {
+    // Two tabs in one browser share an instance id, so this fires in ordinary use and must
+    // land on the back-off counter, never the error counter.
+    it('refuses a second heartbeat from the same instance too soon after the first, as a back-off', async () => {
       const instanceId = randomUUID()
       const before = sample(await scrape(), 'sf_backoffs_total', 'endpoint="telemetry",reason="too_soon"') ?? 0
 
       await post(heartbeat({ instanceId, factoriesTotal: 5 }))
       const dropped = await post(heartbeat({ instanceId, factoriesTotal: 99 }))
 
-      expect(dropped.status).toBe(204)
+      expect(dropped.status).toBe(429)
       // Past the census cache, so the scrape reads the heartbeats rather than the `before` read.
       clock.advance(METRICS_CACHE_MS + 1)
       const body = await scrape()
