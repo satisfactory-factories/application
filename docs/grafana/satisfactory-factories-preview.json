@@ -142,7 +142,7 @@
         "spec": {
           "id": 6,
           "title": "Browsers and Sockets",
-          "description": "Every browser with the planner open, by whether somebody is at it, against the realtime sockets held open. Sockets are only opened by signed-in users and shared-link visitors, so the gap is local-only planning.",
+          "description": "Every browser with the planner open, by whether somebody is at it, against the realtime sockets held open. Sockets are only opened by signed-in users and invite-link visitors, so the gap is local-only planning.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2020,8 +2020,8 @@
         "kind": "Panel",
         "spec": {
           "id": 32,
-          "title": "Shared Plans",
-          "description": "Synced plans that have an invite link allocated.",
+          "title": "Collaborative Plans",
+          "description": "Synced plans that have an invite link allocated, so other accounts can join and edit. Not share links, which are snapshots.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2040,7 +2040,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sum(sf_rooms_total{job=\"satisfactory-factories-preview\",shared=\"true\"})",
-                        "legendFormat": "Shared",
+                        "legendFormat": "Collaborative",
                         "range": true
                       }
                     },
@@ -2101,8 +2101,8 @@
         "kind": "Panel",
         "spec": {
           "id": 33,
-          "title": "Share Rate",
-          "description": "What fraction of synced plans have been shared with somebody.",
+          "title": "Collaboration Rate",
+          "description": "What fraction of synced plans have been opened up to collaborators.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2121,7 +2121,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sum(sf_rooms_total{job=\"satisfactory-factories-preview\",shared=\"true\"}) / sum(sf_rooms_total{job=\"satisfactory-factories-preview\"})",
-                        "legendFormat": "Shared",
+                        "legendFormat": "Collaborative",
                         "range": true
                       }
                     },
@@ -2689,7 +2689,7 @@
         "spec": {
           "id": 36,
           "title": "Synced Plans Over Time",
-          "description": "Stacked by whether the plan has an invite link.",
+          "description": "Stacked by whether the plan has an invite link for collaborators.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2707,12 +2707,33 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (shared) (sf_rooms_total{job=\"satisfactory-factories-preview\"})",
-                        "legendFormat": "{{shared}}",
+                        "expr": "sum(sf_rooms_total{job=\"satisfactory-factories-preview\",shared=\"true\"})",
+                        "legendFormat": "Collaborative",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_rooms_total{job=\"satisfactory-factories-preview\",shared=\"false\"})",
+                        "legendFormat": "Private",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -5786,8 +5807,8 @@
         "kind": "Panel",
         "spec": {
           "id": 111,
-          "title": "Plans Ever Shared",
-          "description": "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan shared, unshared and shared again counts twice, because that is two decisions to share.",
+          "title": "Plans Ever Collaborated",
+          "description": "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan opened, closed and opened again counts twice, because that is two decisions to collaborate.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -5806,7 +5827,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"shared\"})",
-                        "legendFormat": "Shared",
+                        "legendFormat": "Collaborated",
                         "range": true
                       }
                     },
@@ -6157,7 +6178,7 @@
         "spec": {
           "id": 115,
           "title": "Invites Accepted Recently",
-          "description": "Invites accepted inside each rolling window, counted off the membership rows. Same caveat as New Plans: somebody who joined and then left, or who was dropped when the owner unshared, is not in it.",
+          "description": "Invites accepted inside each rolling window, counted off the membership rows. Same caveat as New Plans: somebody who joined and then left, or who was dropped when the owner closed collaboration, is not in it.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -6362,7 +6383,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"shared\"})",
-                        "legendFormat": "Shared",
+                        "legendFormat": "Collaboration opened",
                         "range": true
                       }
                     },
@@ -6383,7 +6404,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"unshared\"})",
-                        "legendFormat": "Unshared",
+                        "legendFormat": "Collaboration closed",
                         "range": true
                       }
                     },
