@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Beta v0.7.2
+
+Housekeeping under the hood, and a nudge to reload so everyone is on the same build.
+
+- **The anonymous usage heartbeat now says whether a tab is idle**, meaning no click, key press, scroll or touch in the last thirty minutes, and the planner counts how often a search result is used to jump to a factory. Nothing about what you searched for is sent. Every field is listed in `docs/telemetry.md`.
+- **Two planner tabs in one browser no longer trip a server error every five minutes.** They share one heartbeat identity, and the second one to check in was being logged as a fault. It is now counted as the rate limit doing its job.
+- **Dependency updates** across the API and the build tooling.
+
 ## Beta v0.7.1
 
 The Beta v0.7 "What's new" deck, and three fixes found while building it.
