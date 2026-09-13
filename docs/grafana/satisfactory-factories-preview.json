@@ -6238,7 +6238,7 @@
         "spec": {
           "id": 116,
           "title": "Plan Lifecycle Over Time",
-          "description": "Every tallied action. Flat lines are the normal state; a step is somebody doing that thing. Ops are deliberately absent, since Edits and Activity already covers them.",
+          "description": "Flat lines are the normal state; a step is somebody doing that thing. Renames and password changes are tallied but not plotted, and ops are covered by Edits and Activity.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -6256,12 +6256,159 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum by (action) (sf_room_actions_total{job=\"satisfactory-factories-preview\"})",
-                        "legendFormat": "{{action}}",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"created\"})",
+                        "legendFormat": "Created",
                         "range": true
                       }
                     },
                     "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"adopted\"})",
+                        "legendFormat": "Adopted (local tab upgraded to cloud)",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"imported\"})",
+                        "legendFormat": "Imported (old cloud sync restored)",
+                        "range": true
+                      }
+                    },
+                    "refId": "C",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"shared\"})",
+                        "legendFormat": "Shared",
+                        "range": true
+                      }
+                    },
+                    "refId": "D",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"unshared\"})",
+                        "legendFormat": "Unshared",
+                        "range": true
+                      }
+                    },
+                    "refId": "E",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"joined\"})",
+                        "legendFormat": "Invite accepted",
+                        "range": true
+                      }
+                    },
+                    "refId": "F",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"left\"})",
+                        "legendFormat": "Left",
+                        "range": true
+                      }
+                    },
+                    "refId": "G",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_actions_total{job=\"satisfactory-factories-preview\",action=\"deleted\"})",
+                        "legendFormat": "Deleted",
+                        "range": true
+                      }
+                    },
+                    "refId": "H",
                     "hidden": false
                   }
                 }

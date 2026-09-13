@@ -574,9 +574,21 @@ add(115, "Invites Accepted Recently",
      query('sum(sf_new_memberships%s)' % sel('window="30d"'), "30 days", "C")],
     stat(GREEN, color_mode="value", text_mode="value_and_name"))
 
+LIFECYCLE_ACTIONS = [
+    ("created", "Created"),
+    ("adopted", "Adopted (local tab upgraded to cloud)"),
+    ("imported", "Imported (old cloud sync restored)"),
+    ("shared", "Shared"),
+    ("unshared", "Unshared"),
+    ("joined", "Invite accepted"),
+    ("left", "Left"),
+    ("deleted", "Deleted"),
+]
+
 add(116, "Plan Lifecycle Over Time",
-    "Every tallied action. Flat lines are the normal state; a step is somebody doing that thing. Ops are deliberately absent, since Edits and Activity already covers them.",
-    [query("sum by (action) (sf_room_actions_total%s)" % J, "{{action}}")],
+    "Flat lines are the normal state; a step is somebody doing that thing. Renames and password changes are tallied but not plotted, and ops are covered by Edits and Activity.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="%s"' % action), legend, "ABCDEFGH"[index])
+     for index, (action, legend) in enumerate(LIFECYCLE_ACTIONS)],
     timeseries(fill=8))
 
 # ----------------------------------------------------------------- share links
