@@ -688,8 +688,8 @@ describe('the database-backed usage metrics', () => {
         powerTarget: 300,
         factories: [
           { id: 1, partDisposal: { IronIngot: { sinks: 1, depots: 0 } }, checklistEnabled: true },
-          { id: 2, partDisposal: { Copper: { sinks: 2, depots: 0 } }, notes: 'x' },
-          { id: 3 },
+          { id: 2, partDisposal: { Copper: { sinks: 2, depots: 0 } }, notes: 'x', inSync: false },
+          { id: 3, inSync: null },
         ],
       })
       await rooms().create({
@@ -699,7 +699,7 @@ describe('the database-backed usage metrics', () => {
         depotExpansionTier: 4,
         factories: [
           { id: 1, products: [{ id: 'IronIngot', buildingGroups: [{ id: 1, overclockPercent: 200, somersloops: 1 }] }] },
-          { id: 2, powerProducers: [{ id: 'g', buildingGroups: [{ id: 1, overclockPercent: 100 }] }] },
+          { id: 2, powerProducers: [{ id: 'g', buildingGroups: [{ id: 1, overclockPercent: 100 }, { id: 2 }] }] },
         ],
       })
       await rooms().create({ roomId: randomUUID(), name: 'Gone', createdBy: 'someone', deletedAt: new Date(), factories: [{ id: 1, notes: 'deleted' }] })
@@ -719,6 +719,10 @@ describe('the database-backed usage metrics', () => {
       expect(plans(body, 'power_producers')).toBe(1)
       expect(plans(body, 'depot')).toBe(0)
       expect(plans(body, 'depot_settings')).toBe(1)
+      expect(plans(body, 'building_groups')).toBe(1)
+      expect(plans(body, 'game_sync')).toBe(1)
+      expect(factories(body, 'game_sync')).toBe(1)
+      expect(factories(body, 'building_groups')).toBe(1)
       expect(sample(body, 'sf_rooms_total', 'shared="false"')).toBe(2)
     })
 

@@ -6542,7 +6542,7 @@
         "spec": {
           "id": 130,
           "title": "Plans Using Each Feature",
-          "description": "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target, depot settings and groups are plan-level; everything else is any factory in the plan. Depot settings means somebody answered the MAM research tiers, at any tier; unset reads as fully researched and is not counted.",
+          "description": "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target, depot settings and groups are plan-level; everything else is any factory in the plan. Depot settings means somebody answered the MAM research tiers, at any tier; unset reads as fully researched and is not counted. Building groups means a product's buildings split into more than one group. Game sync means a factory has been marked in sync with the game at some point.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -6954,12 +6954,54 @@
                       },
                       "spec": {
                         "editorMode": "code",
+                        "expr": "sum(sf_room_feature_plans{job=\"satisfactory-factories-preview\",feature=\"building_groups\"}) / sum(sf_rooms_total{job=\"satisfactory-factories-preview\"})",
+                        "legendFormat": "Building groups",
+                        "range": true
+                      }
+                    },
+                    "refId": "K",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_feature_plans{job=\"satisfactory-factories-preview\",feature=\"game_sync\"}) / sum(sf_rooms_total{job=\"satisfactory-factories-preview\"})",
+                        "legendFormat": "Game sync",
+                        "range": true
+                      }
+                    },
+                    "refId": "L",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
                         "expr": "sum(sf_room_feature_plans{job=\"satisfactory-factories-preview\",feature=\"custom_buildings\"}) / sum(sf_rooms_total{job=\"satisfactory-factories-preview\"})",
                         "legendFormat": "Custom buildings",
                         "range": true
                       }
                     },
-                    "refId": "K",
+                    "refId": "M",
                     "hidden": false
                   }
                 },
@@ -6980,7 +7022,7 @@
                         "range": true
                       }
                     },
-                    "refId": "L",
+                    "refId": "N",
                     "hidden": false
                   }
                 }
@@ -7302,12 +7344,54 @@
                       },
                       "spec": {
                         "editorMode": "code",
+                        "expr": "sum(sf_room_feature_factories{job=\"satisfactory-factories-preview\",feature=\"building_groups\"}) / sum(sf_room_factories_total{job=\"satisfactory-factories-preview\"})",
+                        "legendFormat": "Building groups",
+                        "range": true
+                      }
+                    },
+                    "refId": "K",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_room_feature_factories{job=\"satisfactory-factories-preview\",feature=\"game_sync\"}) / sum(sf_room_factories_total{job=\"satisfactory-factories-preview\"})",
+                        "legendFormat": "Game sync",
+                        "range": true
+                      }
+                    },
+                    "refId": "L",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
                         "expr": "sum(sf_room_feature_factories{job=\"satisfactory-factories-preview\",feature=\"custom_buildings\"}) / sum(sf_room_factories_total{job=\"satisfactory-factories-preview\"})",
                         "legendFormat": "Custom buildings",
                         "range": true
                       }
                     },
-                    "refId": "K",
+                    "refId": "M",
                     "hidden": false
                   }
                 },
@@ -7328,7 +7412,7 @@
                         "range": true
                       }
                     },
-                    "refId": "L",
+                    "refId": "N",
                     "hidden": false
                   }
                 }

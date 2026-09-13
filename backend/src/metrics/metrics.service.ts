@@ -604,6 +604,7 @@ export class MetricsService {
         'factories.notes': 1,
         'factories.tasks': 1,
         'factories.customBuildings': 1,
+        'factories.inSync': 1,
         'factories.powerProducers.buildingGroups': 1,
         'factories.products.buildingGroups': 1,
       })
