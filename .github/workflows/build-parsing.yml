@@ -1,8 +1,9 @@
 name: Parsing Checks
 
-# The push trigger stays path-filtered, the pull_request one does not. A required
-# status check that never triggers sits pending forever rather than passing, so a
-# path filter here would block every PR that does not touch parsing/.
+# The push trigger is path-filtered; the pull_request one cannot be, because this is
+# a required status check and one that never triggers sits pending forever. It
+# always triggers and the `changes` gate decides whether the real job runs: see
+# changed-paths.yml.
 on:
   push:
     branches:
@@ -19,8 +20,21 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    uses: ./.github/workflows/changed-paths.yml
+    with:
+      patterns: |
+        parsing/*
+        package.json
+        pnpm-workspace.yaml
+        pnpm-lock.yaml
+        .github/workflows/build-parsing.yml
+        .github/workflows/changed-paths.yml
+
   build-parsing:
     name: Build Parsing
+    needs: changes
+    if: needs.changes.outputs.matched == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

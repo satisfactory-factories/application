@@ -1,8 +1,9 @@
 name: Web Checks
 
-# The push trigger stays path-filtered, the pull_request one does not. A required
-# status check that never triggers sits pending forever rather than passing, so a
-# path filter here would block every PR that does not touch web/.
+# The push trigger is path-filtered; the pull_request one cannot be, because this is
+# a required status check and one that never triggers sits pending forever. So it
+# always triggers and the `changes` gate decides whether the real job runs: see
+# changed-paths.yml. A docs-only PR passes in seconds with the job skipped.
 on:
   push:
     branches:
@@ -11,12 +12,6 @@ on:
       - beta7
     paths:
       - 'web/**'
-  # Deliberately NOT path-filtered, unlike the push trigger above. This job is a
-  # required status check on main, and a required check that never runs sits
-  # pending forever rather than passing — so a path filter here would block every
-  # PR that does not touch web/ (a backend bump, a docs change, a config edit)
-  # with no way to satisfy it. Running the web suite on those PRs costs a couple
-  # of minutes and is the price of it being required.
   pull_request:
     branches:
       - main
@@ -24,8 +19,24 @@ on:
 permissions:
   contents: read
 jobs:
+  changes:
+    uses: ./.github/workflows/changed-paths.yml
+    with:
+      # The API is in here on purpose: web's e2e and typed client follow its shapes.
+      patterns: |
+        web/*
+        backend/*
+        common/*
+        package.json
+        pnpm-workspace.yaml
+        pnpm-lock.yaml
+        .github/workflows/build-web.yml
+        .github/workflows/changed-paths.yml
+
   build-web:
     name: Build & Test Web
+    needs: changes
+    if: needs.changes.outputs.matched == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
