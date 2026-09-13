@@ -609,6 +609,8 @@ FEATURES = [
     ("tasks", "Tasks"),
     ("somersloops", "Somersloops"),
     ("overclocking", "Overclocking"),
+    ("building_groups", "Building groups"),
+    ("game_sync", "Game sync"),
     ("custom_buildings", "Custom buildings"),
     ("power_producers", "Power producers"),
 ]
@@ -617,13 +619,13 @@ FEATURES = [
 def feature_queries(metric, total):
     return [
         query("sum(%s%s) / sum(%s%s)" % (metric, sel('feature="%s"' % feature), total, J), legend,
-              "ABCDEFGHIJKL"[index])
+              "ABCDEFGHIJKLMN"[index])
         for index, (feature, legend) in enumerate(FEATURES)
     ]
 
 
 add(130, "Plans Using Each Feature",
-    "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target, depot settings and groups are plan-level; everything else is any factory in the plan. Depot settings means somebody answered the MAM research tiers, at any tier; unset reads as fully researched and is not counted.",
+    "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target, depot settings and groups are plan-level; everything else is any factory in the plan. Depot settings means somebody answered the MAM research tiers, at any tier; unset reads as fully researched and is not counted. Building groups means a product's buildings split into more than one group. Game sync means a factory has been marked in sync with the game at some point.",
     [query("sort_desc(sum by (feature) (sf_room_feature_plans%s) / ignoring(feature) group_left sum(sf_rooms_total%s))" % (J, J), "{{feature}}", instant=True)],
     bargauge(display_name="${__field.labels.feature}", unit="percentunit", minmax=(0, 1)))
 

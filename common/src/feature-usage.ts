@@ -17,6 +17,8 @@ export const PLAN_FEATURES = [
   'tasks',
   'somersloops',
   'overclocking',
+  'building_groups',
+  'game_sync',
   'custom_buildings',
   'power_producers',
 ] as const
@@ -46,18 +48,22 @@ const isTier = (value: unknown): boolean => typeof value === 'number' && Number.
 
 const positive = (value: unknown): boolean => typeof value === 'number' && Number.isFinite(value) && value > 0
 
-/** Building groups sit under products and under power producers; both are searched. */
-const buildingGroups = (factory: Record<string, unknown>): Record<string, unknown>[] => {
-  const groups: Record<string, unknown>[] = []
+/**
+ * Building groups sit under products and under power producers; both are searched. Kept per
+ * owner, because "split into groups" is a property of one product's buildings: every product
+ * starts with a single group, so only a second one on the same owner means somebody split it.
+ */
+const buildingGroupsByOwner = (factory: Record<string, unknown>): Record<string, unknown>[][] => {
+  const owners: Record<string, unknown>[][] = []
   for (const key of ['products', 'powerProducers']) {
-    const owners = factory[key]
-    if (!Array.isArray(owners)) continue
-    for (const owner of owners) {
+    const candidates = factory[key]
+    if (!Array.isArray(candidates)) continue
+    for (const owner of candidates) {
       if (!isObject(owner) || !Array.isArray(owner.buildingGroups)) continue
-      for (const group of owner.buildingGroups) if (isObject(group)) groups.push(group)
+      owners.push(owner.buildingGroups.filter(isObject))
     }
   }
-  return groups
+  return owners
 }
 
 const disposes = (factory: Record<string, unknown>, field: 'sinks' | 'depots'): boolean => {
@@ -68,7 +74,8 @@ const disposes = (factory: Record<string, unknown>, field: 'sinks' | 'depots'): 
 /** Per-factory features. The plan-level ones (`power_target`, `groups`) are decided by the caller. */
 export const factoryFeatures = (factory: unknown): Record<PlanFeature, boolean> | null => {
   if (!isObject(factory)) return null
-  const groups = buildingGroups(factory)
+  const owners = buildingGroupsByOwner(factory)
+  const groups = owners.flat()
 
   return {
     sink: disposes(factory, 'sinks'),
@@ -84,6 +91,9 @@ export const factoryFeatures = (factory: unknown): Record<PlanFeature, boolean> 
       typeof group.overclockPercent === 'number' &&
       Number.isFinite(group.overclockPercent) &&
       group.overclockPercent !== 100),
+    building_groups: owners.some(groups => groups.length > 1),
+    // null means never marked; true or false means somebody has used "in sync with the game".
+    game_sync: typeof factory.inSync === 'boolean',
     custom_buildings: nonEmptyArray(factory.customBuildings),
     power_producers: nonEmptyArray(factory.powerProducers),
   }

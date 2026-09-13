@@ -23,12 +23,24 @@ describe('factoryFeatures', () => {
     ['notes', { notes: 'remember the belts' }],
     ['tasks', { tasks: [{ title: 'build it', completed: false }] }],
     ['custom_buildings', { customBuildings: [{ id: 'p', building: 'portal', amount: 1 }] }],
+    ['game_sync', { inSync: true }],
+    ['game_sync', { inSync: false }],
     ['power_producers', { powerProducers: [{ id: 'g', building: 'generatorcoal' }] }],
     ['somersloops', { products: [{ id: 'IronIngot', buildingGroups: [{ id: 1, somersloops: 2 }] }] }],
     ['overclocking', { products: [{ id: 'IronIngot', buildingGroups: [{ id: 1, overclockPercent: 150 }] }] }],
     ['overclocking', { products: [{ id: 'IronIngot', buildingGroups: [{ id: 1, overclockPercent: 50 }] }] }],
   ])('detects %s', (feature, extra) => {
     expect(factoryFeatures({ ...bare(), ...extra })).toEqual({ ...none(), [feature]: true })
+  })
+
+  it('counts building groups only once a product has been split into more than one', () => {
+    const one = { ...bare(), products: [{ id: 'a', buildingGroups: [{ id: 1 }] }, { id: 'b', buildingGroups: [{ id: 2 }] }] }
+    const split = { ...bare(), products: [{ id: 'a', buildingGroups: [{ id: 1 }, { id: 2 }] }] }
+    const splitGenerator = { ...bare(), powerProducers: [{ id: 'g', buildingGroups: [{ id: 1 }, { id: 2 }] }] }
+
+    expect(factoryFeatures(one)?.building_groups).toBe(false)
+    expect(factoryFeatures(split)?.building_groups).toBe(true)
+    expect(factoryFeatures(splitGenerator)?.building_groups).toBe(true)
   })
 
   it('finds somersloops and overclocking under power producers as well as products', () => {
@@ -47,6 +59,8 @@ describe('factoryFeatures', () => {
     ['an empty task list', { tasks: [] }],
     ['a group that is not an object', { group: 'steel' }],
     ['checklistEnabled as a string', { checklistEnabled: 'true' }],
+    ['a factory never marked in sync', { inSync: null }],
+    ['inSync as a string', { inSync: 'true' }],
     ['a partDisposal that is an array', { partDisposal: [{ sinks: 3 }] }],
     ['building groups that are not objects', { products: [{ id: 'x', buildingGroups: [3, null, 'x'] }] }],
   ])('reads %s as not used', (_label, extra) => {
