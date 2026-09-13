@@ -1,4 +1,4 @@
-import type { EventReason } from 'common'
+import type { EventReason, UsageAction } from 'common'
 import { useEventsStore } from '@/stores/events-store'
 
 /**
@@ -18,5 +18,14 @@ export const recordEvent = (reason: EventReason, count = 1): void => {
   } catch {
     // No active Pinia, or a store that would not construct. Losing a count is the correct
     // trade against interrupting a recovery path.
+  }
+}
+
+/** Count something somebody did, with the same guarantees: a search that cannot be counted still jumps. */
+export const recordUsage = (action: UsageAction, count = 1): void => {
+  try {
+    useEventsStore().recordUsage(action, count)
+  } catch {
+    // As above.
   }
 }

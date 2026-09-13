@@ -166,12 +166,14 @@ def timeseries(unit="short", fill=15, stack="none", steps=None, decimals=None,
     }
 
 
-def bargauge(display_name=None, unit="short"):
+def bargauge(display_name=None, unit="short", minmax=None):
     defaults = {
         "unit": unit,
         "thresholds": {"mode": "absolute", "steps": [{"value": 0, "color": "green"}]},
         "color": {"mode": "palette-classic"},
     }
+    if minmax:
+        defaults["min"], defaults["max"] = minmax
     if display_name:
         defaults["displayName"] = display_name
     return {
@@ -539,10 +541,12 @@ add(87, "Of Those Who Signed In, How Many Edited",
 # is the opposite — a stored tally that only ever rises, so a plan made and then deleted
 # still counts. It starts at zero when this shipped, because the activity log it would
 # otherwise be read from is trimmed to 200 rows a plan and deleted with the plan.
-add(110, "Plans Ever Created",
-    "Synced plans made, all time. Unlike Synced Plans above, deleting a plan does not take it back off this number. Counts from when this metric shipped.",
-    [query('sum(sf_room_actions_total%s)' % sel('action="created"'), "Created")],
-    stat(BLUE, graph="area", color_mode="background_solid"))
+add(110, "How Synced Plans Arrived",
+    "Every way a synced plan comes to exist, all time since this tally shipped: made from scratch while signed in, a local tab adopted into the account at sign-in, or the old cloud sync restored. Deleting a plan does not take it back off, so these minus Plans Ever Deleted is roughly Synced Plans.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="created"'), "From scratch", "A"),
+     query('sum(sf_room_actions_total%s)' % sel('action="adopted"'), "Adopted", "B"),
+     query('sum(sf_room_actions_total%s)' % sel('action="imported"'), "Imported", "C")],
+    stat(BLUE, color_mode="value", text_mode="value_and_name"))
 
 add(111, "Plans Ever Shared",
     "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan shared, unshared and shared again counts twice, because that is two decisions to share.",
@@ -590,6 +594,64 @@ add(116, "Plan Lifecycle Over Time",
     [query('sum(sf_room_actions_total%s)' % sel('action="%s"' % action), legend, "ABCDEFGH"[index])
      for index, (action, legend) in enumerate(LIFECYCLE_ACTIONS)],
     timeseries(fill=8))
+
+# ---------------------------------------------------------- feature utilisation
+# Synced plans only. Local plans never reach the server and are not counted anywhere here;
+# these rates are over the plans the service can see, which are the people who use it most.
+FEATURES = [
+    ("sink", "AWESOME Sink"),
+    ("depot", "Dimensional Depot"),
+    ("power_target", "Power target"),
+    ("groups", "Groups"),
+    ("checklist", "Checklist"),
+    ("notes", "Notes"),
+    ("tasks", "Tasks"),
+    ("somersloops", "Somersloops"),
+    ("overclocking", "Overclocking"),
+    ("custom_buildings", "Custom buildings"),
+    ("power_producers", "Power producers"),
+]
+
+
+def feature_queries(metric, total):
+    return [
+        query("sum(%s%s) / sum(%s%s)" % (metric, sel('feature="%s"' % feature), total, J), legend,
+              "ABCDEFGHIJK"[index])
+        for index, (feature, legend) in enumerate(FEATURES)
+    ]
+
+
+add(130, "Plans Using Each Feature",
+    "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target and groups are plan-level settings; everything else is any factory in the plan.",
+    [query("sort_desc(sum by (feature) (sf_room_feature_plans%s) / ignoring(feature) group_left sum(sf_rooms_total%s))" % (J, J), "{{feature}}", instant=True)],
+    bargauge(display_name="${__field.labels.feature}", unit="percentunit", minmax=(0, 1)))
+
+add(131, "Factories Using Each Feature",
+    "Share of factories across live synced plans using each feature. Plan-level settings read zero here by design.",
+    [query("sort_desc(sum by (feature) (sf_room_feature_factories%s) / ignoring(feature) group_left sum(sf_room_factories_total%s))" % (J, J), "{{feature}}", instant=True)],
+    bargauge(display_name="${__field.labels.feature}", unit="percentunit", minmax=(0, 1)))
+
+add(132, "Plan Utilisation Over Time",
+    "The same plan-level rates, plotted. A line rising is a feature being picked up.",
+    feature_queries("sf_room_feature_plans", "sf_rooms_total"),
+    timeseries(unit="percentunit", fill=0, minmax=(0, 1)))
+
+add(133, "Factory Utilisation Over Time",
+    "The same factory-level rates, plotted.",
+    feature_queries("sf_room_feature_factories", "sf_room_factories_total"),
+    timeseries(unit="percentunit", fill=0, minmax=(0, 1)))
+
+add(134, "Searches Used",
+    "Search results somebody activated to jump to a factory; typing is not counted. Arrives over the same anonymous endpoint as the fault counts, so it is indicative rather than exact.",
+    [query("round(sum(increase(sf_usage_total%s[24h])))" % sel('action="search_jump"'), "24 hours", "A"),
+     query("round(sum(increase(sf_usage_total%s[7d])))" % sel('action="search_jump"'), "7 days", "B"),
+     query("sum(sf_usage_total%s)" % sel('action="search_jump"'), "Since deploy", "C")],
+    stat(GREEN, color_mode="value", text_mode="value_and_name"))
+
+add(135, "Searches Used Over Time",
+    "Per hour. Indicative, as above.",
+    [query("round(sum(increase(sf_usage_total%s[1h])))" % sel('action="search_jump"'), "Searches used")],
+    timeseries(fill=15))
 
 # ----------------------------------------------------------------- share links
 # Snapshot links, the "copy a link to this plan" feature. Every number here comes from the
@@ -764,6 +826,11 @@ rows = [
         item(12, 0, 6, 4, 112), item(18, 0, 6, 4, 113),
         item(0, 4, 12, 4, 114), item(12, 4, 12, 4, 115),
         item(0, 8, 24, 8, 116),
+    ]),
+    row("🧰 Feature Utilisation · from the database, synced plans only", [
+        item(0, 0, 12, 10, 130), item(12, 0, 12, 10, 131),
+        item(0, 10, 12, 8, 132), item(12, 10, 12, 8, 133),
+        item(0, 18, 8, 4, 134), item(8, 18, 16, 4, 135),
     ]),
     row("🔗 Share Links · from the database", [
         item(0, 0, 5, 4, 100), item(5, 0, 5, 4, 101), item(10, 0, 4, 4, 102),

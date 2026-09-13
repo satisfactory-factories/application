@@ -39,14 +39,15 @@ Counts, two flags and two build identifiers. That is the whole payload.
 There is one other thing the planner sends, `POST /events`, and it carries even less.
 
 When the app corrects a broken plan on load, or shows you an error it had to admit defeat
-over, it counts that. Once a minute, if and only if it has anything to report, it sends the
-counts:
+over, it counts that. It also counts one thing you did: using a search result to jump to a
+factory. Once a minute, if and only if it has anything to report, it sends the counts:
 
 | Field | What it is |
 | --- | --- |
 | `instanceId` | The same random browser identifier as above |
 | `appVersion`, `gitSha` | The same build identifiers as above |
 | `events` | A list of `{ reason, count }` |
+| `usage` | A list of `{ action, count }`. The only action today is `search_jump`. What you searched for is never sent. |
 
 **`reason` is one of a fixed list written into the code.** The app cannot invent one, and the
 server refuses anything not on the list. A reason is a short slug like
@@ -65,8 +66,9 @@ Offline mode stops this too.
 No names of any kind: not your username, not plan names, not tab names, not factory names.
 No account id, no email address, no token, no room id or invite link. No IP address is
 stored (the request has one, as every request does, and nothing writes it down). No page
-addresses, no clicks, no timings, no recipes, no plan contents. No error messages and no
-stack traces. Nothing that is not in the two tables above.
+addresses, no timings, no recipes, no plan contents. No clicks, beyond the one count of
+search results used described above. No error messages and no stack traces. Nothing that is
+not in the two tables above.
 
 ## The instance id
 

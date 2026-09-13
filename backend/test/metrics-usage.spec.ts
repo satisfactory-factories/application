@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { getModelToken } from '@nestjs/mongoose'
 import type { Model } from 'mongoose'
 
+import { PLAN_FEATURES } from 'common'
 import {
   ACTIVE_ACCOUNT_WINDOWS,
   DELETED_OWNER,
@@ -663,6 +664,79 @@ describe('the database-backed usage metrics', () => {
       }
 
       expect(labelValues(await scrape(), 'sf_room_collaborators', 'room_id').length).toBe(METRICS_TOP_N)
+    })
+  })
+
+  describe('feature utilisation over synced plans', () => {
+    const plans = (body: string, feature: string) => sample(body, 'sf_room_feature_plans', `feature="${feature}"`)
+    const factories = (body: string, feature: string) => sample(body, 'sf_room_feature_factories', `feature="${feature}"`)
+
+    it('starts every feature at zero rather than absent', async () => {
+      const body = await scrape()
+
+      for (const feature of PLAN_FEATURES) {
+        expect(plans(body, feature)).toBe(0)
+        expect(factories(body, feature)).toBe(0)
+      }
+    })
+
+    it('counts plans and factories using each feature across live rooms', async () => {
+      await rooms().create({
+        roomId: randomUUID(),
+        name: 'Sinks',
+        createdBy: 'someone',
+        powerTarget: 300,
+        factories: [
+          { id: 1, partDisposal: { IronIngot: { sinks: 1, depots: 0 } }, checklistEnabled: true },
+          { id: 2, partDisposal: { Copper: { sinks: 2, depots: 0 } }, notes: 'x' },
+          { id: 3 },
+        ],
+      })
+      await rooms().create({
+        roomId: randomUUID(),
+        name: 'Clocked',
+        createdBy: 'someone',
+        factories: [
+          { id: 1, products: [{ id: 'IronIngot', buildingGroups: [{ id: 1, overclockPercent: 200, somersloops: 1 }] }] },
+          { id: 2, powerProducers: [{ id: 'g', buildingGroups: [{ id: 1, overclockPercent: 100 }] }] },
+        ],
+      })
+      await rooms().create({ roomId: randomUUID(), name: 'Gone', createdBy: 'someone', deletedAt: new Date(), factories: [{ id: 1, notes: 'deleted' }] })
+
+      const body = await scrape()
+
+      expect(plans(body, 'sink')).toBe(1)
+      expect(factories(body, 'sink')).toBe(2)
+      expect(plans(body, 'power_target')).toBe(1)
+      expect(factories(body, 'power_target')).toBe(0)
+      expect(plans(body, 'checklist')).toBe(1)
+      expect(plans(body, 'notes')).toBe(1)
+      expect(factories(body, 'notes')).toBe(1)
+      expect(plans(body, 'overclocking')).toBe(1)
+      expect(factories(body, 'overclocking')).toBe(1)
+      expect(plans(body, 'somersloops')).toBe(1)
+      expect(plans(body, 'power_producers')).toBe(1)
+      expect(plans(body, 'depot')).toBe(0)
+      expect(sample(body, 'sf_rooms_total', 'shared="false"')).toBe(2)
+    })
+
+    // `factories` is Mixed, so nothing in Mongo checks what an old document holds inside it.
+    it('survives a room whose factories are not what the type says', async () => {
+      await rooms().collection.insertOne({
+        roomId: randomUUID(),
+        name: 'Worse',
+        createdBy: 'someone',
+        deletedAt: null,
+        powerTarget: 'lots',
+        factories: [null, 5, { id: 1, partDisposal: [1, 2], tasks: 'none', notes: 'kept' }],
+      })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_metrics_database_up')).toBe(1)
+      expect(plans(body, 'notes')).toBe(1)
+      expect(plans(body, 'sink')).toBe(0)
+      expect(plans(body, 'power_target')).toBe(0)
     })
   })
 

@@ -1,4 +1,6 @@
 import { Gauge, Registry, collectDefaultMetrics } from 'prom-client'
+import { PLAN_FEATURES, emptyFeatureCounts, planFeatureUsage } from 'common'
+import type { FeatureCounts } from 'common'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Types } from 'mongoose'
@@ -57,6 +59,9 @@ interface SlowStats {
   topShares: ShareTotal[]
   newRooms: Array<readonly [string, number]>
   newMemberships: Array<readonly [string, number]>
+  /** Live synced plans using each feature, and factories across them using each. */
+  featurePlans: FeatureCounts
+  featureFactories: FeatureCounts
 }
 
 /**
@@ -153,6 +158,8 @@ export class MetricsService {
   private readonly roomFactories: Gauge<'room_id' | 'name' | 'owner'>
   private readonly roomCollaborators: Gauge<'room_id' | 'name' | 'owner'>
   private readonly roomEdits: Gauge<'room_id' | 'name' | 'owner'>
+  private readonly roomFeaturePlans: Gauge<'feature'>
+  private readonly roomFeatureFactories: Gauge<'feature'>
   private readonly userEdits: Gauge<'username'>
   private readonly userFactories: Gauge<'username'>
   private readonly userRooms: Gauge<'username'>
@@ -290,6 +297,18 @@ export class MetricsService {
       name: 'sf_room_edits',
       help: `The ${METRICS_TOP_N} most-edited synced tabs, by accepted edits still on the plan.`,
       labelNames: ['room_id', 'name', 'owner'],
+      registers,
+    })
+    this.roomFeaturePlans = new Gauge({
+      name: 'sf_room_feature_plans',
+      help: 'Live synced tabs using each planner feature. Divide by sf_rooms_total for the rate. Synced plans only; local plans never reach the server.',
+      labelNames: ['feature'],
+      registers,
+    })
+    this.roomFeatureFactories = new Gauge({
+      name: 'sf_room_feature_factories',
+      help: 'Factories across live synced tabs using each planner feature. Divide by sf_room_factories_total for the rate.',
+      labelNames: ['feature'],
       registers,
     })
     this.userEdits = new Gauge({
@@ -504,6 +523,11 @@ export class MetricsService {
     for (const [window, memberships] of stats.newMemberships) {
       this.newMemberships.set({ window }, memberships)
     }
+    // Every feature is written each time, so a never-used one reads zero rather than absent.
+    for (const feature of PLAN_FEATURES) {
+      this.roomFeaturePlans.set({ feature }, stats.featurePlans[feature])
+      this.roomFeatureFactories.set({ feature }, stats.featureFactories[feature])
+    }
   }
 
   private async loadCheap (): Promise<CheapCounts> {
@@ -531,7 +555,7 @@ export class MetricsService {
     const now = this.clock.now()
     const [
       activeAccounts, newAccounts, signedInAccounts, topRooms, topCollaborated, topEdited, topEditors, topOwners,
-      topRoomOwners, newShares, topShares, newRooms, newMemberships,
+      topRoomOwners, newShares, topShares, newRooms, newMemberships, features,
     ] =
       await Promise.all([
         this.countByWindow(now, since => this.users.countDocuments({ lastActiveAt: { $gt: since } })),
@@ -550,12 +574,48 @@ export class MetricsService {
         // would report every new room as an invite somebody accepted.
         this.countByWindow(now, since =>
           this.memberships.countDocuments({ role: 'member', joinedAt: { $gt: since } })),
+        this.sumFeatureUsage(),
       ])
 
     return {
       activeAccounts, newAccounts, signedInAccounts, topRooms, topCollaborated, topEdited, topEditors, topOwners,
-      topRoomOwners, newShares, topShares, newRooms, newMemberships,
+      topRoomOwners, newShares, topShares, newRooms, newMemberships, ...features,
     }
+  }
+
+  /**
+   * Feature usage summed over live rooms, derived in Node rather than in a pipeline:
+   * `factories` is Mixed, so an aggregate over its innards can fail the whole reload on one
+   * malformed document, where `planFeatureUsage` reads junk as "not used" and carries on.
+   * The projection keeps the read to the fields that decide it.
+   */
+  private async sumFeatureUsage (): Promise<{ featurePlans: FeatureCounts, featureFactories: FeatureCounts }> {
+    const featurePlans = emptyFeatureCounts()
+    const featureFactories = emptyFeatureCounts()
+    const cursor = this.rooms
+      .find({ deletedAt: null }, {
+        powerTarget: 1,
+        groups: 1,
+        'factories.partDisposal': 1,
+        'factories.group': 1,
+        'factories.checklistEnabled': 1,
+        'factories.notes': 1,
+        'factories.tasks': 1,
+        'factories.customBuildings': 1,
+        'factories.powerProducers.buildingGroups': 1,
+        'factories.products.buildingGroups': 1,
+      })
+      .lean()
+      .cursor()
+
+    for await (const room of cursor) {
+      const usage = planFeatureUsage(room)
+      for (const feature of PLAN_FEATURES) {
+        if (usage.plan[feature]) featurePlans[feature]++
+        featureFactories[feature] += usage.factories[feature]
+      }
+    }
+    return { featurePlans, featureFactories }
   }
 
   /** Factories and accepted edits in one pass, since both are sums over the same documents. */

@@ -1,7 +1,7 @@
 import { Counter, Registry } from 'prom-client'
-import { EVENT_REASONS, EVENT_SOURCES } from 'common'
+import { EVENT_REASONS, EVENT_SOURCES, USAGE_ACTIONS } from 'common'
 import { Injectable } from '@nestjs/common'
-import type { EventReason, EventSource } from 'common'
+import type { EventReason, EventSource, UsageAction } from 'common'
 
 /**
  * The error counters, and nothing else.
@@ -37,6 +37,7 @@ export class EventCountersService {
   private readonly events: Counter<'source' | 'reason'>
   private readonly httpErrors: Counter<'status'>
   private readonly backoffs: Counter<'endpoint' | 'reason'>
+  private readonly usage: Counter<'action'>
 
   constructor () {
     this.events = new Counter({
@@ -60,6 +61,13 @@ export class EventCountersService {
       registers: [this.registry],
     })
 
+    this.usage = new Counter({
+      name: 'sf_usage_total',
+      help: 'Things people did in the planner, by action. Arrives over POST /events like the client faults, so it is indicative rather than authoritative: the endpoint is unauthenticated and anonymous.',
+      labelNames: ['action'],
+      registers: [this.registry],
+    })
+
     // Every series starts at zero rather than appearing on first use. Without this a reason
     // that has never fired is absent, and absent reads as "no data" on a panel rather than as
     // the good news it actually is.
@@ -67,6 +75,13 @@ export class EventCountersService {
       for (const reason of EVENT_REASONS) this.events.inc({ source, reason }, 0)
     }
     for (const [endpoint, reason] of BACKOFFS) this.backoffs.inc({ endpoint, reason }, 0)
+    for (const action of USAGE_ACTIONS) this.usage.inc({ action }, 0)
+  }
+
+  recordUsage (action: UsageAction, count = 1): void {
+    try {
+      this.usage.inc({ action }, count)
+    } catch { /* as above */ }
   }
 
   /** Never throws: a metric must not be able to break what it is measuring. */

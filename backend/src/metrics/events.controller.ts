@@ -54,8 +54,11 @@ export class EventsController {
       throw new BackoffException('events', 'too_soon', 'Too many event reports.')
     }
 
-    for (const { reason, count } of parsed.data.events) {
+    for (const { reason, count } of parsed.data.events ?? []) {
       this.counters.record('client', reason, count)
+    }
+    for (const { action, count } of parsed.data.usage ?? []) {
+      this.counters.recordUsage(action, count)
     }
   }
 }

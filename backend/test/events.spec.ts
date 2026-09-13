@@ -101,6 +101,42 @@ describe('POST /events', () => {
     })
   })
 
+  describe('usage', () => {
+    const usage = (body: string, action: string) => sample(body, 'sf_usage_total', `action="${action}"`)
+
+    it('starts every action at zero rather than absent', async () => {
+      expect(usage(await scrape(), 'search_jump')).toBe(0)
+    })
+
+    it('counts a usage-only report, with no fault in it', async () => {
+      const body = report({ usage: [{ action: 'search_jump', count: 4 }] })
+      delete (body as Record<string, unknown>).events
+
+      expect((await post(body)).status).toBe(204)
+      expect(usage(await scrape(), 'search_jump')).toBe(4)
+    })
+
+    it('counts usage beside faults from the same batch, and never mixes them', async () => {
+      const before = await scrape()
+      await post(report({
+        events: [{ reason: 'api_network_error', count: 2 }],
+        usage: [{ action: 'search_jump', count: 3 }],
+      }))
+
+      const body = await scrape()
+      expect(usage(body, 'search_jump')).toBe((usage(before, 'search_jump') ?? 0) + 3)
+      expect(events(body, 'api_network_error')).toBe((events(before, 'api_network_error') ?? 0) + 2)
+      expect(sample(body, 'sf_events_total', 'source="client",reason="search_jump"')).toBeUndefined()
+    })
+
+    it('refuses an action it does not know', async () => {
+      const body = report({ usage: [{ action: 'search_typed', count: 1 }] })
+      delete (body as Record<string, unknown>).events
+
+      expect((await post(body)).status).toBe(400)
+    })
+  })
+
   describe('what it refuses', () => {
     // The whole cardinality design: a client cannot invent a label.
     it.each(['not_a_reason', 'plan_repair_made_up', '../../etc', ''])(
