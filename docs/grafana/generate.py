@@ -253,10 +253,10 @@ add(10, "Browsers Over Time, Signed In vs Out",
     timeseries(fill=25, stack="normal"))
 
 add(13, "Browsers Over Time, Active vs Idle",
-    "Stacked. Idle is thirty minutes without a click, key press, scroll or touch; a tab left open in the background lands here.",
+    "Stacked to 100%, so it reads as the share of open browsers somebody is actually using. Idle is thirty minutes without a click, key press, scroll or touch; a tab left open in the background lands here.",
     [query('sum(sf_active_clients%s)' % sel('state="active"'), "Active", "A"),
      query('sum(sf_active_clients%s)' % sel('state="idle"'), "Idle", "B")],
-    timeseries(fill=25, stack="normal"))
+    timeseries(fill=25, stack="percent"))
 
 add(11, "Live Sockets Over Time",
     "Realtime connections held open.",
