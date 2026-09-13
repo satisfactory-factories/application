@@ -696,6 +696,7 @@ describe('the database-backed usage metrics', () => {
         roomId: randomUUID(),
         name: 'Clocked',
         createdBy: 'someone',
+        depotExpansionTier: 4,
         factories: [
           { id: 1, products: [{ id: 'IronIngot', buildingGroups: [{ id: 1, overclockPercent: 200, somersloops: 1 }] }] },
           { id: 2, powerProducers: [{ id: 'g', buildingGroups: [{ id: 1, overclockPercent: 100 }] }] },
@@ -717,6 +718,7 @@ describe('the database-backed usage metrics', () => {
       expect(plans(body, 'somersloops')).toBe(1)
       expect(plans(body, 'power_producers')).toBe(1)
       expect(plans(body, 'depot')).toBe(0)
+      expect(plans(body, 'depot_settings')).toBe(1)
       expect(sample(body, 'sf_rooms_total', 'shared="false"')).toBe(2)
     })
 

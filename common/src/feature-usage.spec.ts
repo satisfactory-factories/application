@@ -77,6 +77,26 @@ describe('planFeatureUsage', () => {
     expect(usage.factories.power_target).toBe(0)
   })
 
+  it.each([
+    ['the upload tier', { depotUploadTier: 2 }],
+    ['the expansion tier', { depotExpansionTier: 0 }],
+    ['both at the maximum', { depotUploadTier: 4, depotExpansionTier: 4 }],
+  ])('counts depot settings once %s has been set', (_label, tiers) => {
+    const usage = planFeatureUsage({ ...tiers, factories: [bare()] })
+
+    expect(usage.plan.depot_settings).toBe(true)
+    expect(usage.factories.depot_settings).toBe(0)
+  })
+
+  it.each([
+    ['nothing set', {}],
+    ['a tier that is not a number', { depotUploadTier: '3' }],
+    ['a NaN tier', { depotExpansionTier: NaN }],
+    ['null tiers', { depotUploadTier: null, depotExpansionTier: null }],
+  ])('does not count depot settings with %s', (_label, tiers) => {
+    expect(planFeatureUsage({ ...tiers, factories: [] }).plan.depot_settings).toBe(false)
+  })
+
   it.each([0, -5, NaN, '500', null, undefined])('does not count a power target of %s', target => {
     expect(planFeatureUsage({ powerTarget: target, factories: [] }).plan.power_target).toBe(false)
   })

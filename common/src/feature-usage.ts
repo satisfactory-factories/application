@@ -9,6 +9,7 @@
 export const PLAN_FEATURES = [
   'sink',
   'depot',
+  'depot_settings',
   'power_target',
   'groups',
   'checklist',
@@ -41,6 +42,8 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 const nonEmptyArray = (value: unknown): value is unknown[] => Array.isArray(value) && value.length > 0
 
+const isTier = (value: unknown): boolean => typeof value === 'number' && Number.isFinite(value)
+
 const positive = (value: unknown): boolean => typeof value === 'number' && Number.isFinite(value) && value > 0
 
 /** Building groups sit under products and under power producers; both are searched. */
@@ -70,6 +73,7 @@ export const factoryFeatures = (factory: unknown): Record<PlanFeature, boolean> 
   return {
     sink: disposes(factory, 'sinks'),
     depot: disposes(factory, 'depots'),
+    depot_settings: false,
     power_target: false,
     groups: isObject(factory.group),
     checklist: factory.checklistEnabled === true,
@@ -87,7 +91,7 @@ export const factoryFeatures = (factory: unknown): Record<PlanFeature, boolean> 
 
 /**
  * One plan's usage. `plan` is the shape a room or a tab shares: its factories, its power
- * target and its groups; nothing else is read.
+ * target, its depot tiers and its groups; nothing else is read.
  */
 export const planFeatureUsage = (plan: unknown): PlanFeatureUsage => {
   const factories = emptyFeatureCounts()
@@ -99,6 +103,9 @@ export const planFeatureUsage = (plan: unknown): PlanFeatureUsage => {
   if (!isObject(plan)) return usage
 
   usage.plan.power_target = positive(plan.powerTarget)
+  // Absent means "fully researched" and nobody touched it; any number, tier 4 included,
+  // means somebody opened the depot settings and answered.
+  usage.plan.depot_settings = isTier(plan.depotUploadTier) || isTier(plan.depotExpansionTier)
   usage.plan.groups = nonEmptyArray(plan.groups)
 
   if (!Array.isArray(plan.factories)) return usage

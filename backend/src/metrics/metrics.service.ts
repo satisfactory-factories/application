@@ -595,6 +595,8 @@ export class MetricsService {
     const cursor = this.rooms
       .find({ deletedAt: null }, {
         powerTarget: 1,
+        depotUploadTier: 1,
+        depotExpansionTier: 1,
         groups: 1,
         'factories.partDisposal': 1,
         'factories.group': 1,

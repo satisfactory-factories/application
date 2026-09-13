@@ -601,6 +601,7 @@ add(116, "Plan Lifecycle Over Time",
 FEATURES = [
     ("sink", "AWESOME Sink"),
     ("depot", "Dimensional Depot"),
+    ("depot_settings", "Depot settings"),
     ("power_target", "Power target"),
     ("groups", "Groups"),
     ("checklist", "Checklist"),
@@ -616,13 +617,13 @@ FEATURES = [
 def feature_queries(metric, total):
     return [
         query("sum(%s%s) / sum(%s%s)" % (metric, sel('feature="%s"' % feature), total, J), legend,
-              "ABCDEFGHIJK"[index])
+              "ABCDEFGHIJKL"[index])
         for index, (feature, legend) in enumerate(FEATURES)
     ]
 
 
 add(130, "Plans Using Each Feature",
-    "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target and groups are plan-level settings; everything else is any factory in the plan.",
+    "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target, depot settings and groups are plan-level; everything else is any factory in the plan. Depot settings means somebody answered the MAM research tiers, at any tier; unset reads as fully researched and is not counted.",
     [query("sort_desc(sum by (feature) (sf_room_feature_plans%s) / ignoring(feature) group_left sum(sf_rooms_total%s))" % (J, J), "{{feature}}", instant=True)],
     bargauge(display_name="${__field.labels.feature}", unit="percentunit", minmax=(0, 1)))
 
