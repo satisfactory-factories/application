@@ -8,7 +8,7 @@ import { METRICS_CACHE_MS, METRICS_VERSION_LABEL_LIMIT, TELEMETRY_MIN_INTERVAL_M
 import { TELEMETRY_THROTTLE } from '../src/config/throttling'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { FakeClock } from './utils/rooms'
-import { clearMetricsToken, labelValues, sample, scrapeMetrics, useMetricsToken } from './utils/metrics'
+import { clearMetricsToken, labelValues, sample, sampleWhere, scrapeMetrics, useMetricsToken } from './utils/metrics'
 
 const heartbeat = (overrides: Record<string, unknown> = {}) => ({
   instanceId: randomUUID(),
@@ -140,7 +140,7 @@ describe('POST /telemetry', () => {
       const body = await scrape()
       expect(sample(body, 'sf_backoffs_total', 'endpoint="telemetry",reason="too_soon"')).toBe(before + 1)
       expect(sample(body, 'sf_client_factories_total')).toBe(5)
-      expect(sample(body, 'sf_http_errors_total', 'status="429"')).toBeUndefined()
+      expect(sampleWhere(body, 'sf_http_errors_total', 'status="429"')).toBeUndefined()
     })
 
     it('lets the same instance back in once the floor has passed', async () => {

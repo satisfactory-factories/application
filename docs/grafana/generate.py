@@ -471,13 +471,27 @@ add(94, "Faults Over Time",
     timeseries(fill=15))
 
 add(95, "Client and Server",
-    "Which half of the app is reporting. A spike on one side only usually says where to look first.",
-    [query("round(sum by (source) (increase(sf_events_total%s[24h])))" % J, "{{source}}")],
+    "Which half of the app is reporting, as a rolling one-hour count. A spike on one side only usually says where to look first. Named faults only: this never sees an HTTP status, so it will not move with the response panels below.",
+    [query("round(sum by (source) (increase(sf_events_total%s[1h])))" % J, "{{source}}")],
     timeseries(fill=25, stack="normal"))
 
-add(96, "HTTP Errors by Status",
-    "Per-response view. 4xx is dominated by ordinary refusals and is mostly noise; 5xx is not.",
-    [query("round(sum by (status) (increase(sf_http_errors_total%s[24h]))) > 0" % J, "{{status}}")],
+# Three panels from one counter, split on the client label. The split is a heuristic: a
+# version header says the planner sent it, a headerless hit on the beacon routes is still the
+# planner, and anything else is a stranger. A bot can send the header, so "versioned" means
+# "claimed to be the planner", nothing stronger.
+add(96, "Planner Errors by Status",
+    "Error responses to requests that carried a planner version header, or hit the beacon endpoints the planner deliberately calls without one. The line for real users. 4xx here is mostly ordinary refusals; a 404 means a dead share link or a plan that no longer exists.",
+    [query('round(sum by (status) (increase(sf_http_errors_total%s[24h]))) > 0' % sel('client=~"versioned|beacon"'), "{{status}}")],
+    timeseries(fill=15))
+
+add(99, "Planner Errors by Route, Last 24h",
+    "What the planner was asking for when it was refused. The route pattern as the router matched it, never the raw path.",
+    [query('sort_desc(round(sum by (route, status) (increase(sf_http_errors_total%s[24h]))) > 0)' % sel('client=~"versioned|beacon"'), "{{status}} · {{route}}", instant=True)],
+    bargauge(display_name="${__field.labels.status} · ${__field.labels.route}"))
+
+add(106, "Unversioned Responses by Status",
+    "Error responses to requests with no planner version header: scanners, uptime monitors, curl, and planner builds too old to send one. A 404 on \"unmatched\" is a probe for a path that does not exist. Kept visible so a change in the probing is still noticed, and kept apart so it cannot be mistaken for users.",
+    [query('round(sum by (status, route) (increase(sf_http_errors_total%s[24h]))) > 0' % sel('client="unversioned"'), "{{status}} · {{route}}")],
     timeseries(fill=15))
 
 add(98, "Backed Off, Last 24h",
@@ -817,7 +831,8 @@ rows = [
         item(15, 0, 9, 4, 97),
         item(0, 4, 12, 10, 93), item(12, 4, 12, 10, 94),
         item(0, 14, 12, 8, 95), item(12, 14, 12, 8, 96),
-        item(0, 22, 24, 4, 98),
+        item(0, 22, 12, 8, 99), item(12, 22, 12, 8, 106),
+        item(0, 30, 24, 4, 98),
     ]),
     row("🌱 Growth · from the database", [
         item(0, 0, 5, 4, 81), item(5, 0, 5, 4, 82), item(10, 0, 4, 4, 87),
@@ -834,7 +849,7 @@ rows = [
     row("🧰 Feature Utilisation · from the database, synced plans only", [
         item(0, 0, 12, 10, 130), item(12, 0, 12, 10, 131),
         item(0, 10, 12, 8, 132), item(12, 10, 12, 8, 133),
-        item(0, 18, 8, 4, 134), item(8, 18, 16, 4, 135),
+        item(0, 18, 8, 7, 134), item(8, 18, 16, 7, 135),
     ]),
     row("🔗 Share Links · from the database", [
         item(0, 0, 5, 4, 100), item(5, 0, 5, 4, 101), item(10, 0, 4, 4, 102),
