@@ -27,7 +27,11 @@ be allowlisted), so that route is out. The way that works:
    quoting through ssh breaks). The Editor token is enough for the PUT. Do `satisfactory-factories-metrics`
    and `-preview` both, each with its own resourceVersion.
 4. Re-fetch and diff `spec.elements` and `spec.layout` against the generated file: with the
-   generator they should be identical, key for key, and were on 2026-09-13.
+   generator they should be identical, key for key, and were on 2026-09-13. Diff *before*
+   editing too, because the board is hand-tweakable on purpose (on 2026-09-17 production
+   carried two panel heights preview did not). `vizConfig.version` differing on every panel
+   is Grafana stamping its plugin version, not an edit. Validate each new expression with
+   `GET $PROM/api/v1/query` (URL from `GET /api/datasources`) before applying.
 
 **Why the generator rule matters:** by 2026-09-13 the live dashboard had drifted both ways.
 Sessions on 09-11 had added panels and dropped one through the v1 API without folding it
