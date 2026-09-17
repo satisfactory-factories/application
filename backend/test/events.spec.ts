@@ -334,6 +334,12 @@ describe('the HTTP error filter', () => {
     expect(httpErrors(await scrape(), labels)).toBe(before + 1)
   })
 
+  // A scanner sweep starts and finishes inside one scrape; an unseeded series would be born
+  // at its final count and never move on the board.
+  it('exposes the scanner series at zero before any probe arrives', async () => {
+    expect(sample(await scrape(), 'sf_http_errors_total', 'status="404",client="unversioned",route="unmatched"')).toBeDefined()
+  })
+
   it('counts a path the router does not know as unmatched, never by its raw path', async () => {
     const labels = 'status="404",client="unversioned",route="unmatched"'
     const before = httpErrors(await scrape(), labels) ?? 0
