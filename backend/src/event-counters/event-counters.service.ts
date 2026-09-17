@@ -14,6 +14,9 @@ import type { EventReason, EventSource, UsageAction } from 'common'
  */
 export type HttpErrorClient = 'versioned' | 'beacon' | 'unversioned'
 
+/** The route label when the router matched nothing. */
+export const UNMATCHED_ROUTE = 'unmatched'
+
 export interface HttpErrorLabels {
   client: HttpErrorClient
   /** `METHOD /route/:pattern` as the router matched it, or `unmatched`. Never the raw path. */
@@ -92,6 +95,11 @@ export class EventCountersService {
       for (const reason of EVENT_REASONS) this.events.inc({ source, reason }, 0)
     }
     for (const [endpoint, reason] of BACKOFFS) this.backoffs.inc({ endpoint, reason }, 0)
+    // The scanner series is seeded too, and it is the one that has to be. A sweep is a burst
+    // that starts and finishes inside one scrape, so Prometheus's first sight of an unseeded
+    // series is already the final count, and increase() never sees it move. Seen on
+    // 2026-09-17: 280 probes in one minute, a flat line on every panel.
+    this.httpErrors.inc({ status: '404', client: 'unversioned', route: UNMATCHED_ROUTE }, 0)
     for (const action of USAGE_ACTIONS) this.usage.inc({ action }, 0)
   }
 
