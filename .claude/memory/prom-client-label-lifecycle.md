@@ -4,7 +4,7 @@ description: A prom-client gauge publishes a label set only after it is set, and
 metadata:
   type: project
   volatility: durable
-  lastVerified: 2026-09-02
+  lastVerified: 2026-09-17
 ---
 
 `prom-client` emits a series for a label combination only once `.set()` has been called with
@@ -34,3 +34,12 @@ So:
 A related trap on the query side: `increase()` and `delta()` extrapolate to the range
 boundaries, so a flat counter reports drifting non-integers. Wrap them in `round()`, and for a
 monotonic value held in a gauge use `x - (x offset 7d)` rather than `delta()`, which is exact.
+
+**Counters have a third failure, and it is silent.** An unseeded counter series is born at the
+first scrape after its first increment, already carrying whatever count arrived before that
+scrape. `increase()` and `rate()` only see movement between samples, so a burst that starts
+and finishes inside one scrape interval reads as a flat line forever: on 2026-09-17, 280
+scanner 404s in one minute after a deploy drew nothing on any panel. Any series whose traffic
+arrives in bursts shorter than the scrape interval (`sf_http_errors_total` for
+`404/unversioned/unmatched`) must be seeded at zero at boot, and a level stat beside the rate
+panel is the number that survives whatever the timing was.
