@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   volatility: durable
-  lastVerified: 2026-09-07
+  lastVerified: 2026-09-21
 ---
 
 ## What happened
@@ -60,10 +60,12 @@ duration and no longer. Everything the guard reads is unchanged — `totalHits`,
 `timeToBlockExpire` in whole seconds, `isBlocked`, blocking on the hit that passes the limit.
 
 Two spec files, and both are the thing to re-run if the throttler is upgraded or swapped.
-`backend/test/throttler-storage.spec.ts` pins our storage, and deliberately holds the library to
-the stranding defect, so an upstream fix surfaces as a red test rather than silently.
-`backend/test/throttler-clock-step.spec.ts` pins what the library does under a clock step; it uses
-one key per bucket, which is exactly why the cross-client cancellation was invisible to it.
+`backend/test/throttler-storage.spec.ts` pins our storage. It also held the library to the
+stranding defect until `@nestjs/throttler` 6.6.0 keyed its pending decrements per client, at
+which point the canary went red as designed (Nest 12 sweep, 2026-09-21) and now pins the fix.
+The library still expires blocks on `Date.now()`, which is why our storage stays;
+`backend/test/throttler-clock-step.spec.ts` pins that. It uses one key per bucket, which is
+exactly why the cross-client cancellation was invisible to it.
 
 ## The traps worth keeping
 

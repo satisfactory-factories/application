@@ -59,7 +59,9 @@ import { VersionModule } from './version/version.module'
     }),
     // Async so the factory runs per application and each gets its own storage, which is what
     // forRoot does for the library's storage. The storage is ours; see config/throttler-storage.ts.
-    ThrottlerModule.forRootAsync({ useFactory: createThrottlerOptions }),
+    // `imports` is required only because throttler's types import `@nestjs/common/interfaces`,
+    // which Nest 12's exports map hides under nodenext, so ModuleMetadata degrades to `any`.
+    ThrottlerModule.forRootAsync({ imports: [], useFactory: createThrottlerOptions }),
     // Global, and imported first: everything below may need to report a fault.
     EventCountersModule,
     HealthModule,

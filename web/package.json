@@ -61,7 +61,7 @@
     "unplugin-vue-components": "^32.1.0",
     "vite": "^8.0.0",
     "vite-plugin-vue-devtools": "^8.1.5",
-    "vite-plugin-vue-layouts-next": "^2.1.0",
+    "vite-plugin-vue-layouts-next": "^3.0.0",
     "vite-plugin-vuetify": "^2.1.3",
     "vitest": "^5.0.0",
     "vue-router": "^5.2.0",
