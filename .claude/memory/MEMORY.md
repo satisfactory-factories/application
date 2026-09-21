@@ -51,3 +51,4 @@
 - [Grafana dashboard via API](grafana-dashboard-via-api.md) — `docs/grafana/generate.py` is the source of truth; regenerate and PUT the v2 JSON from the Grafana box with the on-box token, never hand-edit live; ask for SSH first
 - [Renovate automerge is dead](renovate-automerge-blocked-by-ruleset.md) — the "Human review required" ruleset needs one approval, so green Renovate PRs never merge themselves; sweep them in one branch
 - [Nest 12 blocked on throttler](nest-12-blocked-on-throttler.md) — @nestjs/throttler peers on Nest <= 11; merge #687 once its Nest 12 support ships; mongoose/jwt 12 already in
+- [E2E concurrency flake](e2e-concurrency-flake.md) — the debounce straddle behind weeks of Playwright failures, why collisions are judged by op id, and why retries are CI-only
