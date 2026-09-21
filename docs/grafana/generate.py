@@ -150,6 +150,7 @@ def timeseries(unit="short", fill=15, stack="none", steps=None, decimals=None,
         defaults["decimals"] = decimals
     if minmax:
         defaults["min"], defaults["max"] = minmax
+        defaults = {k: v for k, v in defaults.items() if v is not None}
     return {
         "kind": "VizConfig",
         "group": "timeseries",
@@ -165,12 +166,14 @@ def timeseries(unit="short", fill=15, stack="none", steps=None, decimals=None,
     }
 
 
-def bargauge(display_name=None, unit="short"):
+def bargauge(display_name=None, unit="short", minmax=None):
     defaults = {
         "unit": unit,
         "thresholds": {"mode": "absolute", "steps": [{"value": 0, "color": "green"}]},
         "color": {"mode": "palette-classic"},
     }
+    if minmax:
+        defaults["min"], defaults["max"] = minmax
     if display_name:
         defaults["displayName"] = display_name
     return {
@@ -208,10 +211,18 @@ def add(pid, *args, **kwargs):
 
 
 # ---------------------------------------------------------------- live right now
-add(1, "Active Browsers",
-    "Browsers that sent a heartbeat in the last 15 minutes. Counts local-only and signed-out users, who are invisible to the server otherwise.",
-    [query("sum(sf_active_clients%s)" % J, "Active")],
-    stat([{"value": 0, "color": "red"}, {"value": 1, "color": "green"}], graph="area"))
+add(1, "Browsers",
+    "Browsers that sent a heartbeat in the last 15 minutes, split by whether anybody has touched the page in the last 30. Counts local-only and signed-out users, who are invisible to the server otherwise.",
+    [query('sum(sf_active_clients%s)' % sel('state="active"'), "Active", "A"),
+     query('sum(sf_active_clients%s)' % sel('state="idle"'), "Idle", "B")],
+    stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], color_mode="value", text_mode="value_and_name"))
+
+add(6, "Browsers and Sockets",
+    "Every browser with the planner open, by whether somebody is at it, against the realtime sockets held open. Sockets are only opened by signed-in users and invite-link visitors, so the gap is local-only planning.",
+    [query('sum(sf_active_clients%s)' % sel('state="active"'), "Active browsers", "A"),
+     query('sum(sf_active_clients%s)' % sel('state="idle"'), "Idle browsers", "B"),
+     query("sum(sf_ws_connections%s)" % J, "Sockets", "C")],
+    timeseries(fill=10))
 
 add(2, "Signed In vs Signed Out",
     "Whether somebody is signed in. Never who.",
@@ -236,10 +247,16 @@ add(5, "Database Readable",
     stat([{"value": 0, "color": "red"}, {"value": 1, "color": "green"}]))
 
 # ------------------------------------------------------------ clients over time
-add(10, "Active Browsers Over Time",
-    "Stacked, so the total height is every active browser.",
-    [query("sum by (signed_in) (sf_active_clients%s)" % J, "{{signed_in}}")],
+add(10, "Browsers Over Time, Signed In vs Out",
+    "Stacked, so the total height is every browser with the planner open.",
+    [query("sum by (signed_in) (sf_active_clients%s)" % J, "signed in: {{signed_in}}")],
     timeseries(fill=25, stack="normal"))
+
+add(13, "Browsers Over Time, Active vs Idle",
+    "Stacked to 100%, so it reads as the share of open browsers somebody is actually using. Idle is thirty minutes without a click, key press, scroll or touch; a tab left open in the background lands here.",
+    [query('sum(sf_active_clients%s)' % sel('state="active"'), "Active", "A"),
+     query('sum(sf_active_clients%s)' % sel('state="idle"'), "Idle", "B")],
+    timeseries(fill=25, stack="percent"))
 
 add(11, "Live Sockets Over Time",
     "Realtime connections held open.",
@@ -304,25 +321,26 @@ add(31, "Synced Plans",
     [query("sum(sf_rooms_total%s)" % J, "Synced plans")],
     stat(BLUE))
 
-add(32, "Shared Plans",
-    "Synced plans that have an invite link allocated.",
-    [query('sum(sf_rooms_total%s)' % sel('shared="true"'), "Shared")],
+add(32, "Collaborative Plans",
+    "Synced plans that have an invite link allocated, so other accounts can join and edit. Not share links, which are snapshots.",
+    [query('sum(sf_rooms_total%s)' % sel('shared="true"'), "Collaborative")],
     stat([{"value": 0, "color": "blue"}]))
 
-add(33, "Share Rate",
-    "What fraction of synced plans have been shared with somebody.",
-    [query("sum(sf_rooms_total%s) / sum(sf_rooms_total%s)" % (sel('shared="true"'), J), "Shared")],
+add(33, "Collaboration Rate",
+    "What fraction of synced plans have been opened up to collaborators.",
+    [query("sum(sf_rooms_total%s) / sum(sf_rooms_total%s)" % (sel('shared="true"'), J), "Collaborative")],
     stat([{"value": 0, "color": "blue"}, {"value": 0.1, "color": "green"}],
          unit="percentunit", minmax=(0, 1)))
 
-add(34, "Plan Access",
-    "One row per person-to-plan link. Creating a plan gives you one; joining somebody's shared plan gives you another. So this is plans plus extra people on them.",
-    [query("sum(sf_room_members_total%s)" % J, "Access grants")],
-    stat(GREEN))
+add(34, "Plan Access by Role",
+    "One row per person-to-plan link. Every synced plan has one owner row; a member row is an invite somebody accepted into their account.",
+    [query('sum(sf_room_members_total%s)' % sel('role="owner"'), "Owned", "A"),
+     query('sum(sf_room_members_total%s)' % sel('role="member"'), "As member", "B")],
+    stat(GREEN, color_mode="value", text_mode="value_and_name"))
 
-add(38, "Collaborators",
-    "People editing plans they do not own: access grants minus plans. This is the number that says whether sharing is actually being used, rather than just available.",
-    [query("clamp_min(sum(sf_room_members_total%s) - sum(sf_rooms_total%s), 0)" % (J, J), "Collaborators")],
+add(38, "Signed-in Collaborators",
+    "Accounts holding a plan they do not own: accepted invites still in place. Says whether sharing is actually used rather than just available. Visitors on a share link have no account and are not here.",
+    [query('sum(sf_room_members_total%s)' % sel('role="member"'), "Collaborators")],
     stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}]))
 
 add(35, "Factories per Synced Plan",
@@ -330,15 +348,26 @@ add(35, "Factories per Synced Plan",
     [query("sum(sf_room_factories_total%s) / sum(sf_rooms_total%s)" % (J, J), "Factories")],
     stat(BLUE, color_mode="value", decimals=1))
 
+add(107, "Synced Factories Over Time",
+    "Factories summed across every live synced plan.",
+    [query("sum(sf_room_factories_total%s)" % J, "Factories")],
+    timeseries(fill=15))
+
+add(109, "Factories per Synced Plan Over Time",
+    "The average size of a synced plan. Rises as people build out, falls when a lot of small plans are made.",
+    [query("sum(sf_room_factories_total%s) / sum(sf_rooms_total%s)" % (J, J), "Factories per plan")],
+    timeseries(fill=10, decimals=1))
+
 add(36, "Synced Plans Over Time",
-    "Stacked by whether the plan has an invite link.",
-    [query("sum by (shared) (sf_rooms_total%s)" % J, "{{shared}}")],
+    "Stacked by whether the plan has an invite link for collaborators.",
+    [query('sum(sf_rooms_total%s)' % sel('shared="true"'), "Collaborative", "A"),
+     query('sum(sf_rooms_total%s)' % sel('shared="false"'), "Private", "B")],
     timeseries(fill=25, stack="normal"))
 
-add(37, "Accounts and Access Over Time",
-    "All three grow in normal use. Access falling without accounts falling is the sweeper clearing deleted plans.",
+add(37, "Accounts, Plans and Collaborators Over Time",
+    "All three grow in normal use. Collaborators falling without accounts falling is the sweeper clearing deleted plans.",
     [query("sum(sf_users_total%s)" % J, "Accounts", "A"),
-     query("sum(sf_room_members_total%s)" % J, "Access grants", "B"),
+     query('sum(sf_room_members_total%s)' % sel('role="member"'), "Collaborators", "B"),
      query("sum(sf_rooms_total%s)" % J, "Synced plans", "C")],
     timeseries(fill=10))
 
@@ -442,14 +471,41 @@ add(94, "Faults Over Time",
     timeseries(fill=15))
 
 add(95, "Client and Server",
-    "Which half of the app is reporting. A spike on one side only usually says where to look first.",
-    [query("round(sum by (source) (increase(sf_events_total%s[24h])))" % J, "{{source}}")],
+    "Which half of the app is reporting, as a rolling one-hour count. A spike on one side only usually says where to look first. Named faults only: this never sees an HTTP status, so it will not move with the response panels below.",
+    [query("round(sum by (source) (increase(sf_events_total%s[1h])))" % J, "{{source}}")],
     timeseries(fill=25, stack="normal"))
 
-add(96, "HTTP Errors by Status",
-    "Per-response view. 4xx is dominated by ordinary refusals and is mostly noise; 5xx is not.",
-    [query("round(sum by (status) (increase(sf_http_errors_total%s[24h]))) > 0" % J, "{{status}}")],
+# Three panels from one counter, split on the client label. The split is a heuristic: a
+# version header says the planner sent it, a headerless hit on the beacon routes is still the
+# planner, and anything else is a stranger. A bot can send the header, so "versioned" means
+# "claimed to be the planner", nothing stronger.
+add(96, "Planner Errors by Status",
+    "Error responses to requests that carried a planner version header, or hit the beacon endpoints the planner deliberately calls without one. The line for real users. 4xx here is mostly ordinary refusals; a 404 means a dead share link or a plan that no longer exists.",
+    [query('round(sum by (status) (increase(sf_http_errors_total%s[24h]))) > 0' % sel('client=~"versioned|beacon"'), "{{status}}")],
     timeseries(fill=15))
+
+add(99, "Planner Errors by Route, Last 24h",
+    "What the planner was asking for when it was refused. The route pattern as the router matched it, never the raw path.",
+    [query('sort_desc(round(sum by (route, status) (increase(sf_http_errors_total%s[24h]))) > 0)' % sel('client=~"versioned|beacon"'), "{{status}} · {{route}}", instant=True)],
+    bargauge(display_name="${__field.labels.status} · ${__field.labels.route}"))
+
+# A level, not an increase, on purpose: a sweep is a burst inside one scrape, and increase()
+# only sees movement between samples. Since the scanner series is seeded at zero it now moves
+# on the panel above too, but the level is the number that cannot be missed.
+add(117, "Unversioned 404s Since Restart",
+    "Probes for paths the API does not have, counted since the API last started. A level rather than a rate: a sweep is over inside one scrape, so this is the figure that survives whatever the timing was.",
+    [query('sum(sf_http_errors_total%s)' % sel('status="404",client="unversioned",route="unmatched"'), "Probes")],
+    stat([{"value": 0, "color": "#6a6a6a"}], color_mode="value", graph="area"))
+
+add(106, "Unversioned Responses by Status",
+    "Error responses to requests with no planner version header: scanners, uptime monitors, curl, and planner builds too old to send one. A 404 on \"unmatched\" is a probe for a path that does not exist. Kept visible so a change in the probing is still noticed, and kept apart so it cannot be mistaken for users.",
+    [query('round(sum by (status, route) (increase(sf_http_errors_total%s[24h]))) > 0' % sel('client="unversioned"'), "{{status}} · {{route}}")],
+    timeseries(fill=15))
+
+add(98, "Backed Off, Last 24h",
+    "Requests the API answered \"come back later\" on purpose: a second heartbeat or fault batch from one browser inside 30 seconds, mostly two tabs sharing an instance id. The heartbeat is dropped and the batch is retried next tick. Rate limits working, not faults, which is why these are not in the error counts.",
+    [query("round(sum by (endpoint, reason) (increase(sf_backoffs_total%s[24h])))" % J, "{{endpoint}} · {{reason}}")],
+    stat([{"value": 0, "color": "#6a6a6a"}], color_mode="value", text_mode="value_and_name"))
 
 add(97, "Records Lost After a Commit",
     "Times somebody's change was saved and the record of it was not. Each one is a silent gap in the activity log or the account stamps.",
@@ -508,14 +564,16 @@ add(87, "Of Those Who Signed In, How Many Edited",
 # is the opposite — a stored tally that only ever rises, so a plan made and then deleted
 # still counts. It starts at zero when this shipped, because the activity log it would
 # otherwise be read from is trimmed to 200 rows a plan and deleted with the plan.
-add(110, "Plans Ever Created",
-    "Synced plans made, all time. Unlike Synced Plans above, deleting a plan does not take it back off this number. Counts from when this metric shipped.",
-    [query('sum(sf_room_actions_total%s)' % sel('action="created"'), "Created")],
-    stat(BLUE, graph="area", color_mode="background_solid"))
+add(110, "How Synced Plans Arrived",
+    "Every way a synced plan comes to exist, all time since this tally shipped: made from scratch while signed in, a local tab adopted into the account at sign-in, or the old cloud sync restored. Deleting a plan does not take it back off, so these minus Plans Ever Deleted is roughly Synced Plans.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="created"'), "From scratch", "A"),
+     query('sum(sf_room_actions_total%s)' % sel('action="adopted"'), "Adopted", "B"),
+     query('sum(sf_room_actions_total%s)' % sel('action="imported"'), "Imported", "C")],
+    stat(BLUE, color_mode="value", text_mode="value_and_name"))
 
-add(111, "Plans Ever Shared",
-    "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan shared, unshared and shared again counts twice, because that is two decisions to share.",
-    [query('sum(sf_room_actions_total%s)' % sel('action="shared"'), "Shared")],
+add(111, "Plans Ever Collaborated",
+    "Times somebody turned a plan into a collaborative one by allocating an invite link. A plan opened, closed and opened again counts twice, because that is two decisions to collaborate.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="shared"'), "Collaborated")],
     stat(GREEN, graph="area", color_mode="background_solid"))
 
 add(112, "Invites Accepted",
@@ -537,16 +595,89 @@ add(114, "New Plans",
     stat(BLUE, color_mode="value", text_mode="value_and_name"))
 
 add(115, "Invites Accepted Recently",
-    "Invites accepted inside each rolling window, counted off the membership rows. Same caveat as New Plans: somebody who joined and then left, or who was dropped when the owner unshared, is not in it.",
+    "Invites accepted inside each rolling window, counted off the membership rows. Same caveat as New Plans: somebody who joined and then left, or who was dropped when the owner closed collaboration, is not in it.",
     [query('sum(sf_new_memberships%s)' % sel('window="24h"'), "24 hours", "A"),
      query('sum(sf_new_memberships%s)' % sel('window="7d"'), "7 days", "B"),
      query('sum(sf_new_memberships%s)' % sel('window="30d"'), "30 days", "C")],
     stat(GREEN, color_mode="value", text_mode="value_and_name"))
 
+LIFECYCLE_ACTIONS = [
+    ("created", "Created"),
+    ("adopted", "Adopted (local tab upgraded to cloud)"),
+    ("imported", "Imported (old cloud sync restored)"),
+    ("shared", "Collaboration opened"),
+    ("unshared", "Collaboration closed"),
+    ("joined", "Invite accepted"),
+    ("left", "Left"),
+    ("deleted", "Deleted"),
+]
+
 add(116, "Plan Lifecycle Over Time",
-    "Every tallied action. Flat lines are the normal state; a step is somebody doing that thing. Ops are deliberately absent, since Edits and Activity already covers them.",
-    [query("sum by (action) (sf_room_actions_total%s)" % J, "{{action}}")],
+    "Flat lines are the normal state; a step is somebody doing that thing. Renames and password changes are tallied but not plotted, and ops are covered by Edits and Activity.",
+    [query('sum(sf_room_actions_total%s)' % sel('action="%s"' % action), legend, "ABCDEFGH"[index])
+     for index, (action, legend) in enumerate(LIFECYCLE_ACTIONS)],
     timeseries(fill=8))
+
+# ---------------------------------------------------------- feature utilisation
+# Synced plans only. Local plans never reach the server and are not counted anywhere here;
+# these rates are over the plans the service can see, which are the people who use it most.
+FEATURES = [
+    ("sink", "AWESOME Sink"),
+    ("depot", "Dimensional Depot"),
+    ("depot_settings", "Depot settings"),
+    ("power_target", "Power target"),
+    ("groups", "Groups"),
+    ("checklist", "Checklist"),
+    ("notes", "Notes"),
+    ("tasks", "Tasks"),
+    ("somersloops", "Somersloops"),
+    ("overclocking", "Overclocking"),
+    ("building_groups", "Building groups"),
+    ("game_sync", "Game sync"),
+    ("custom_buildings", "Custom buildings"),
+    ("power_producers", "Power producers"),
+]
+
+
+def feature_queries(metric, total):
+    return [
+        query("sum(%s%s) / sum(%s%s)" % (metric, sel('feature="%s"' % feature), total, J), legend,
+              "ABCDEFGHIJKLMN"[index])
+        for index, (feature, legend) in enumerate(FEATURES)
+    ]
+
+
+add(130, "Plans Using Each Feature",
+    "Share of live synced plans using each feature at all. A plan counts once however many of its factories use it. Power target, depot settings and groups are plan-level; everything else is any factory in the plan. Depot settings means somebody answered the MAM research tiers, at any tier; unset reads as fully researched and is not counted. Building groups means a product's buildings split into more than one group. Game sync means a factory has been marked in sync with the game at some point.",
+    [query("sort_desc(sum by (feature) (sf_room_feature_plans%s) / ignoring(feature) group_left sum(sf_rooms_total%s))" % (J, J), "{{feature}}", instant=True)],
+    bargauge(display_name="${__field.labels.feature}", unit="percentunit", minmax=(0, 1)))
+
+add(131, "Factories Using Each Feature",
+    "Share of factories across live synced plans using each feature. Plan-level settings read zero here by design.",
+    [query("sort_desc(sum by (feature) (sf_room_feature_factories%s) / ignoring(feature) group_left sum(sf_room_factories_total%s))" % (J, J), "{{feature}}", instant=True)],
+    bargauge(display_name="${__field.labels.feature}", unit="percentunit", minmax=(0, 1)))
+
+add(132, "Plan Utilisation Over Time",
+    "The same plan-level rates, plotted. A line rising is a feature being picked up.",
+    feature_queries("sf_room_feature_plans", "sf_rooms_total"),
+    timeseries(unit="percentunit", fill=0, minmax=(0, 1)))
+
+add(133, "Factory Utilisation Over Time",
+    "The same factory-level rates, plotted.",
+    feature_queries("sf_room_feature_factories", "sf_room_factories_total"),
+    timeseries(unit="percentunit", fill=0, minmax=(0, 1)))
+
+add(134, "Searches Used",
+    "Search results somebody activated to jump to a factory; typing is not counted. Arrives over the same anonymous endpoint as the fault counts, so it is indicative rather than exact.",
+    [query("round(sum(increase(sf_usage_total%s[24h])))" % sel('action="search_jump"'), "24 hours", "A"),
+     query("round(sum(increase(sf_usage_total%s[7d])))" % sel('action="search_jump"'), "7 days", "B"),
+     query("sum(sf_usage_total%s)" % sel('action="search_jump"'), "Since deploy", "C")],
+    stat(GREEN, color_mode="value", text_mode="value_and_name"))
+
+add(135, "Searches Used Over Time",
+    "Per hour. Indicative, as above.",
+    [query("round(sum(increase(sf_usage_total%s[1h])))" % sel('action="search_jump"'), "Searches used")],
+    timeseries(fill=15))
 
 # ----------------------------------------------------------------- share links
 # Snapshot links, the "copy a link to this plan" feature. Every number here comes from the
@@ -580,15 +711,30 @@ add(104, "Share Links Created Over Time",
     timeseries(fill=8))
 
 add(105, "Most Opened Share Links",
-    "The links people actually pass around. Top 20 only, and a link that has never been opened is left out rather than shown at zero.",
-    [query("sort_desc(sf_share_opens%s)" % J, "{{share_id}}", instant=True)],
-    bargauge(display_name="${__field.labels.share_id}"))
+    "The links people actually pass around, with the account that made each. A snapshot link carries no plan name. Top 20 only, and a link that has never been opened is left out rather than shown at zero.",
+    [query("sort_desc(sf_share_opens%s)" % J, "{{owner}} · {{share_id}}", instant=True)],
+    bargauge(display_name="${__field.labels.owner} · ${__field.labels.share_id}"))
 
 # ------------------------------------------------------------- biggest and busiest
 add(70, "Biggest Plans",
     "The largest synced plans by factory count, with the account that owns each. Top 20 only.",
-    [query("sort_desc(sf_room_factories%s)" % J, "{{owner}} · {{room_id}}", instant=True)],
-    bargauge(display_name="${__field.labels.owner} · ${__field.labels.room_id}"))
+    [query("sort_desc(sf_room_factories%s)" % J, "{{owner}} · {{name}}", instant=True)],
+    bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
+
+add(74, "Most Edited Plans",
+    "Accepted edits per synced plan, the exact count still on the plan. Top 20 only; a plan nobody has edited is left out.",
+    [query("sort_desc(sf_room_edits%s)" % J, "{{owner}} · {{name}}", instant=True)],
+    bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
+
+add(75, "Invites Accepted by Plan",
+    "Accounts that accepted an invite into each plan, the owner not counted. Top 20 only; a plan nobody has joined is left out.",
+    [query("sort_desc(sf_room_collaborators%s)" % J, "{{owner}} · {{name}}", instant=True)],
+    bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
+
+add(108, "Accounts With the Most Plans",
+    "Live synced plans per account, counted over the tabs each account created. Top 20 only.",
+    [query("sort_desc(sf_user_rooms%s)" % J, "{{username}}", instant=True)],
+    bargauge(display_name="${__field.labels.username}"))
 
 add(71, "Busiest Accounts",
     "Accepted edits per account. Approximate by design: the count is written after the edit commits and is allowed to fail, and it starts from zero at release rather than being backfilled. Top 20 only.",
@@ -600,10 +746,30 @@ add(72, "Accounts With the Most Factories",
     [query("sort_desc(sf_user_factories%s)" % J, "{{username}}", instant=True)],
     bargauge(display_name="${__field.labels.username}"))
 
-add(73, "Largest Plan",
-    "Factory count of the biggest single synced plan.",
-    [query("max(sf_room_factories%s)" % J, "Factories")],
-    stat(BLUE, color_mode="value"))
+# -------------------------------------------------------------------- process
+# Node's own numbers, so a socket count can be read against what the sockets cost.
+add(120, "Memory",
+    "Resident set and the V8 heap in use. Read against the socket count: memory tracking sockets is the signal that idle connections are worth doing something about.",
+    [query("sum(process_resident_memory_bytes%s)" % J, "Resident", "A"),
+     query("sum(nodejs_heap_size_used_bytes%s)" % J, "Heap used", "B")],
+    timeseries(unit="bytes", fill=10))
+
+add(121, "Event Loop Lag",
+    "How late the event loop is running its timers. Mean and 99th percentile; sustained lag is the process struggling to keep up.",
+    [query("max(nodejs_eventloop_lag_mean_seconds%s)" % J, "Mean", "A"),
+     query("max(nodejs_eventloop_lag_p99_seconds%s)" % J, "p99", "B")],
+    timeseries(unit="s", fill=10))
+
+add(122, "CPU",
+    "Process CPU as a fraction of one core, over five minutes.",
+    [query("sum(rate(process_cpu_seconds_total%s[5m]))" % J, "CPU")],
+    timeseries(unit="percentunit", fill=10, minmax=(0, None)))
+
+add(123, "Open Handles",
+    "Sockets, timers and file descriptors Node is holding. Each realtime socket is one handle, so this should sit a little above the socket count and no more.",
+    [query("sum(nodejs_active_handles_total%s)" % J, "Handles", "A"),
+     query("sum(sf_ws_connections%s)" % J, "Sockets", "B")],
+    timeseries(fill=10))
 
 # ------------------------------------------------------------ client versions
 add(40, "Browsers by Build",
@@ -611,10 +777,10 @@ add(40, "Browsers by Build",
     [query("sort_desc(sum by (version) (sf_clients_by_version%s))" % J, "{{version}}", instant=True)],
     bargauge(display_name="${__field.labels.version}"))
 
-add(41, "Build Adoption Over Time",
+add(41, "Planner Version Over Time",
     "Stacked. After a release, watch the old band drain. While it is still wide, a breaking change will hurt.",
     [query("sum by (version) (sf_clients_by_version%s)" % J, "{{version}}")],
-    timeseries(fill=25, stack="normal"))
+    timeseries(fill=25, stack="percent"))
 
 add(43, "Browsers by Commit",
     "Active browsers by the commit their bundle was built from. A build that reported no commit, such as a local one, counts under \"unknown\". Capped to the busiest 25 commits.",
@@ -624,7 +790,7 @@ add(43, "Browsers by Commit",
 add(44, "Commit Rollout Over Time",
     "Stacked. After a deploy, watch the previous commit drain. This is the panel that says whether a rollout has actually reached people, which a version number cannot: several commits ship under one version.",
     [query("sum by (sha) (sf_clients_by_sha%s)" % J, "{{sha}}")],
-    timeseries(fill=25, stack="normal"))
+    timeseries(fill=25, stack="percent"))
 
 add(45, "Browsers on an Unknown Commit",
     "Builds reporting no usable commit. Expect this to be non-zero only for local development builds.",
@@ -658,8 +824,9 @@ def row(title, items):
 # Anything marked "database" is permanent and survives a restart.
 rows = [
     row("👥 Live Right Now · from browsers, 15 min window", [
-        item(0, 0, 5, 4, 1), item(5, 0, 5, 4, 2), item(10, 0, 4, 4, 3),
-        item(14, 0, 5, 4, 4), item(19, 0, 5, 4, 5),
+        item(0, 0, 14, 8, 6),
+        item(14, 0, 5, 4, 1), item(19, 0, 5, 4, 3),
+        item(14, 4, 4, 4, 2), item(18, 4, 3, 4, 4), item(21, 4, 3, 4, 5),
     ]),
     row("✏️ Edits and Activity · from the database", [
         item(0, 0, 5, 4, 60), item(5, 0, 5, 4, 61), item(10, 0, 4, 4, 66),
@@ -672,6 +839,8 @@ rows = [
         item(15, 0, 9, 4, 97),
         item(0, 4, 12, 10, 93), item(12, 4, 12, 10, 94),
         item(0, 14, 12, 8, 95), item(12, 14, 12, 8, 96),
+        item(0, 22, 12, 8, 99), item(12, 22, 12, 8, 106),
+        item(0, 30, 6, 4, 117), item(6, 30, 18, 4, 98),
     ]),
     row("🌱 Growth · from the database", [
         item(0, 0, 5, 4, 81), item(5, 0, 5, 4, 82), item(10, 0, 4, 4, 87),
@@ -685,24 +854,35 @@ rows = [
         item(0, 4, 12, 4, 114), item(12, 4, 12, 4, 115),
         item(0, 8, 24, 8, 116),
     ]),
+    row("🧰 Feature Utilisation · from the database, synced plans only", [
+        item(0, 0, 12, 10, 130), item(12, 0, 12, 10, 131),
+        item(0, 10, 12, 8, 132), item(12, 10, 12, 8, 133),
+        item(0, 18, 8, 7, 134), item(8, 18, 16, 7, 135),
+    ]),
     row("🔗 Share Links · from the database", [
         item(0, 0, 5, 4, 100), item(5, 0, 5, 4, 101), item(10, 0, 4, 4, 102),
         item(14, 0, 10, 4, 103),
         item(0, 4, 12, 8, 104), item(12, 4, 12, 8, 105),
     ]),
     row("🏆 Biggest and Busiest · from the database", [
-        item(0, 0, 4, 4, 73),
-        item(0, 4, 12, 10, 70), item(12, 0, 12, 10, 71),
-        item(12, 10, 12, 10, 72),
+        item(0, 0, 12, 10, 70), item(12, 0, 12, 10, 74),
+        item(0, 10, 12, 10, 75), item(12, 10, 12, 10, 71),
+        item(0, 20, 12, 10, 72), item(12, 20, 12, 10, 108),
     ]),
     row("🏭 Synced Plans and Accounts · from the database", [
         item(0, 0, 4, 4, 30), item(4, 0, 4, 4, 31), item(8, 0, 4, 4, 32),
         item(12, 0, 4, 4, 33), item(16, 0, 4, 4, 34), item(20, 0, 4, 4, 38),
         item(0, 4, 4, 4, 35),
         item(4, 4, 10, 8, 36), item(14, 4, 10, 8, 37),
+        item(0, 12, 12, 8, 107), item(12, 12, 12, 8, 109),
     ]),
     row("📈 Browsers Over Time · from browsers, 15 min window", [
-        item(0, 0, 12, 8, 10), item(12, 0, 12, 8, 11), item(0, 8, 24, 4, 12),
+        item(0, 0, 12, 8, 13), item(12, 0, 12, 8, 10),
+        item(0, 8, 12, 8, 11), item(12, 8, 12, 4, 12),
+    ]),
+    row("⚙️ Process · from Node, the API itself", [
+        item(0, 0, 12, 8, 120), item(12, 0, 12, 8, 123),
+        item(0, 8, 12, 8, 121), item(12, 8, 12, 8, 122),
     ]),
     row("🗂️ Plans in Browsers · from browsers, includes local plans", [
         item(0, 0, 6, 4, 20), item(6, 0, 6, 4, 21), item(12, 0, 6, 4, 22),

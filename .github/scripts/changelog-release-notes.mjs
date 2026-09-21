@@ -13,10 +13,17 @@
 //
 // A release is an `<h1>` naming its version, e.g.
 //
-//   <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span></h1>
+//   <h1>Beta v0.6 - The "Groundwork" Update <span class="release-date">19/Aug/2026</span>
+//   <span class="release-summary">Raw resources, mines, resource wells and factory groups</span></h1>
 //
 // and runs until the next `<h1>`. A heading naming the exact version wins;
 // failing that, the version's major.minor does, so `0.6.0` finds `v0.6`.
+//
+// The heading carries two asides that are not part of its title: the date, which
+// becomes the "_Released …_" line, and the one-line summary the page's contents
+// list shows under each entry. Neither reaches the title, and the summary is
+// dropped from the body too, because the release's own opening paragraph already
+// says the same thing at more length.
 //
 // Usage:
 //   node .github/scripts/changelog-release-notes.mjs --version 0.6.0 [--out notes.md]
@@ -302,6 +309,10 @@ function list (node, indent) {
   }).join('\n')
 }
 
+// Spans a release heading carries beside its title. Each has its own home, so
+// none of them is part of the name of the release.
+const ASIDE = /\b(?:release-date|release-summary)\b/
+
 // Splits the page into releases: each <h1> that names one, plus everything up to
 // the next <h1>. The "Change Log" heading is the page title, not a release.
 export function parseReleases (source) {
@@ -318,11 +329,14 @@ export function parseReleases (source) {
   const releases = []
   for (const node of flatten(tree.children)) {
     if (node.tag === 'h1') {
-      const dateNode = node.children.find(child => child.attrs?.class?.includes('release-date'))
+      const asides = node.children.filter(child => ASIDE.test(child.attrs?.class ?? ''))
+      const dateNode = asides.find(child => child.attrs.class.includes('release-date'))
+      const summaryNode = asides.find(child => child.attrs.class.includes('release-summary'))
       const date = dateNode ? inline(dateNode.children).trim() : ''
-      const title = inline(node.children.filter(child => child !== dateNode)).replace(/\s+/g, ' ').trim()
+      const summary = summaryNode ? inline(summaryNode.children).trim() : ''
+      const title = inline(node.children.filter(child => !asides.includes(child))).replace(/\s+/g, ' ').trim()
       if (!title || title === 'Change Log') { releases.push(null); continue }
-      releases.push({ title, date, nodes: [] })
+      releases.push({ title, date, summary, nodes: [] })
       continue
     }
     releases.at(-1)?.nodes?.push(node)

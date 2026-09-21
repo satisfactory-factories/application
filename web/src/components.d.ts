@@ -105,6 +105,7 @@ declare module 'vue' {
     ShareDialog: typeof import('./components/sync/ShareDialog.vue')['default']
     Splash: typeof import('./components/Splash.vue')['default']
     SplashV6: typeof import('./components/SplashV6.vue')['default']
+    SplashV7: typeof import('./components/SplashV7.vue')['default']
     Statistics: typeof import('./components/planner/Statistics.vue')['default']
     StatisticsBuildings: typeof import('./components/planner/StatisticsBuildings.vue')['default']
     StatisticsFactorySummary: typeof import('./components/planner/StatisticsFactorySummary.vue')['default']

@@ -6,6 +6,7 @@ import { AccountTokenService } from './account-token.service'
 import { AuthTokenPayload, isAccountTokenPayload } from './auth-token'
 import { AuthService } from './auth.service'
 import { CurrentUser, JwtAuthGuard } from './jwt-auth.guard'
+import { UserActivityService } from '../user-activity/user-activity.service'
 
 interface CredentialsBody { username?: string, password?: string }
 interface TokenBody { token?: string }
@@ -21,6 +22,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly jwtService: JwtService,
     private readonly accounts: AccountTokenService,
+    private readonly userActivity: UserActivityService,
   ) {}
 
   @Post('register')
@@ -59,12 +61,22 @@ export class AuthController {
       // A token the account has since superseded is as invalid as an expired one, and the
       // client reads this route's answer to decide whether it is still signed in.
       if (!await this.accounts.isCurrent(payload)) throw new Error('token superseded')
+      await this.stampSessionResumed(payload.id)
       return { valid: true, decoded: payload }
     } catch {
       throw new HttpException(
         { valid: false, message: 'Invalid or expired token' },
         HttpStatus.UNAUTHORIZED,
       )
+    }
+  }
+
+  /** Allowed to fail: a metrics write must never be the reason a session looks signed out. */
+  private async stampSessionResumed (userId: string): Promise<void> {
+    try {
+      await this.userActivity.recordSessionResumed(userId, new Date())
+    } catch (cause) {
+      console.error(`Failed to stamp the resumed session for ${userId}`, cause)
     }
   }
 

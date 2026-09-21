@@ -107,6 +107,7 @@ export const newClient = async (
     { name: 'dismissed-introduction', value: 'true' },
     { name: 'seenV51Splash', value: 'true' },
     { name: 'seenV6Splash', value: 'true' },
+    { name: 'seenV7Splash', value: 'true' },
     { name: 'newTabChooserSeen', value: 'true' },
   ]
   if (user) {

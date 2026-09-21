@@ -18,9 +18,11 @@ import {
 } from './metrics.constants'
 import { TelemetryInstance } from './telemetry-instance.schema'
 
+export type ClientState = 'active' | 'idle'
+
 export interface TelemetrySnapshot {
-  activeSignedIn: number
-  activeSignedOut: number
+  /** Browsers inside the window, by signed-in and by whether anybody is at the keyboard. */
+  clients: Record<ClientState, { signedIn: number, signedOut: number }>
   localTabs: number
   cloudTabs: number
   factories: number
@@ -69,6 +71,7 @@ export class TelemetryService {
         $set: {
           lastSeenAt: now,
           signedIn: heartbeat.signedIn,
+          idle: heartbeat.idle ?? false,
           localTabs: heartbeat.localTabCount,
           cloudTabs: heartbeat.cloudTabCount,
           factories: heartbeat.factoriesTotal,
@@ -100,12 +103,14 @@ export class TelemetryService {
   async snapshot (): Promise<TelemetrySnapshot> {
     const since = new Date(this.clock.now().getTime() - TELEMETRY_CAPS.activeWindowMs)
     const active = await this.instances
-      .find({ lastSeenAt: { $gt: since } }, { signedIn: 1, localTabs: 1, cloudTabs: 1, factories: 1, version: 1, sha: 1 })
+      .find({ lastSeenAt: { $gt: since } }, { signedIn: 1, idle: 1, localTabs: 1, cloudTabs: 1, factories: 1, version: 1, sha: 1 })
       .lean()
 
     const snapshot: TelemetrySnapshot = {
-      activeSignedIn: 0,
-      activeSignedOut: 0,
+      clients: {
+        active: { signedIn: 0, signedOut: 0 },
+        idle: { signedIn: 0, signedOut: 0 },
+      },
       localTabs: 0,
       cloudTabs: 0,
       factories: 0,
@@ -116,8 +121,9 @@ export class TelemetryService {
     const rawShas = new Map<string, number>()
 
     for (const instance of active) {
-      if (instance.signedIn) snapshot.activeSignedIn++
-      else snapshot.activeSignedOut++
+      const bucket = snapshot.clients[instance.idle ? 'idle' : 'active']
+      if (instance.signedIn) bucket.signedIn++
+      else bucket.signedOut++
       snapshot.localTabs += instance.localTabs
       snapshot.cloudTabs += instance.cloudTabs
       snapshot.factories += instance.factories

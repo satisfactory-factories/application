@@ -107,6 +107,23 @@ const eventEntrySchema = z.strictObject({
 })
 
 /**
+ * Things people did, as opposed to things that went wrong. Counted the same way and carried on
+ * the same report, kept apart so the fault panels stay faults. Closed list: a client cannot
+ * invent an action, so the series count is bounded by this file.
+ */
+export const USAGE_ACTIONS = [
+  /** A search result was activated: somebody found what they were looking for. Keystrokes are not counted. */
+  'search_jump',
+] as const
+
+export type UsageAction = typeof USAGE_ACTIONS[number]
+
+const usageEntrySchema = z.strictObject({
+  action: z.enum(USAGE_ACTIONS),
+  count: z.number().int().min(1).max(EVENT_CAPS.count),
+})
+
+/**
  * A batch of counts, posted to `POST /events`.
  *
  * Batched rather than one request per event, because one request per occurrence is a request
@@ -121,12 +138,20 @@ export const eventReportSchema = z.strictObject({
   instanceId: z.uuid(),
   appVersion: z.string().min(1).max(32),
   gitSha: z.string().max(40).optional(),
-  events: z.array(eventEntrySchema).min(1).max(EVENT_CAPS.entries),
-})
+  events: z.array(eventEntrySchema).max(EVENT_CAPS.entries).optional(),
+  usage: z.array(usageEntrySchema).max(USAGE_ACTIONS.length).optional(),
+}).refine(
+  report => (report.events?.length ?? 0) + (report.usage?.length ?? 0) > 0,
+  { message: 'A report carries at least one event or one usage entry.' },
+)
 
 export type EventReport = z.infer<typeof eventReportSchema>
 
 export const parseEventReport = (input: unknown) => eventReportSchema.safeParse(input)
+
+/** True when a value is an action the server would accept. Used to bound the client buffer. */
+export const isUsageAction = (value: unknown): value is UsageAction =>
+  typeof value === 'string' && (USAGE_ACTIONS as readonly string[]).includes(value)
 
 /** True when a value is a reason the server would accept. Used to bound the client buffer. */
 export const isEventReason = (value: unknown): value is EventReason =>

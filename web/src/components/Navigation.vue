@@ -70,11 +70,13 @@
   import { config } from '@/config/config'
   const { mdAndDown } = useDisplay()
 
-  // Read off the build rather than typed in, because a hardcoded badge is only ever
-  // right until the next release.
+  // Read off the build rather than typed in, because a hardcoded badge is only ever right until
+  // the next release. The whole version, patch included: it used to be trimmed to major.minor,
+  // which made the badge a release-line label rather than a statement of what is actually running,
+  // and left anyone reporting a bug reading "v0.7" at every point in the 0.7 line.
   const releaseBadge = computed(() => {
-    const [major, minor] = (config.appVersion ?? '').split('.')
-    return major && minor ? `BETA v${major}.${minor}` : 'BETA'
+    const version = (config.appVersion ?? '').trim()
+    return version ? `BETA v${version}` : 'BETA'
   })
 
   const toolbarDensity = computed(() => mdAndDown.value ? 'compact' : undefined)

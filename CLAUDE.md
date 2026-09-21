@@ -36,7 +36,7 @@ Per-package (from inside `web/`, `backend/`, or `parsing/`):
 - Backend tests: `cd backend && pnpm exec vitest run` (supertest + `mongodb-memory-server`; one mongod is started for the whole run).
 - `web` build runs `vue-tsc --noEmit` first, so a type error fails the build.
 
-Node **>= 24** (Node 26 works since jsonwebtoken 9.0.3 dropped its transitive `SlowBuffer` dependency). pnpm **>= 11.3**.
+Node **>= 24** (Node 26 works since jsonwebtoken 9.0.3 dropped its transitive `SlowBuffer` dependency). pnpm **>= 12**.
 
 ## Architecture
 

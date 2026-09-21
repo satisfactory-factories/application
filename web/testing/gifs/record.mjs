@@ -47,6 +47,7 @@ const rowId = base => `${base.factory}-products-item-${base.product}`
 const seedScript = seed => `
   localStorage.setItem('dismissed-introduction', 'true')
   localStorage.setItem('seenV6Splash', 'true')
+  localStorage.setItem('seenV7Splash', 'true')
   localStorage.setItem('seenV51Splash', 'true')
   localStorage.setItem('seenV5Splash', 'true')
   localStorage.setItem('tutorialBuildingGroups2', 'true')

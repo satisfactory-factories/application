@@ -4,12 +4,11 @@ name: E2E Checks
 # production build of the client, real WebSockets and two browser contexts per
 # test. `web/e2e/README.md` covers what it proves and why the ports are fixed.
 #
-# Unlike its sibling check workflows, this one IS path-filtered on pull_request.
-# Those three are required status checks on main, and a required check that never
-# triggers sits pending forever rather than passing — so they cannot filter. This
-# one is not required, which is what buys the filter. Making it required later
-# means deleting both paths blocks first, or a PR that touches only docs can
-# never be merged.
+# Path-filtered at the trigger, which it can be because it is not a required status
+# check. The three required ones cannot (a required check that never triggers sits
+# pending forever) and gate inside the workflow instead, via changed-paths.yml.
+# Making this one required later means moving to that gate first, or a PR that
+# touches only docs can never be merged.
 #
 # The two lists are duplicated rather than shared: the workflow parser does not
 # accept YAML anchors, which is why deploy-backend.yml and pr-docker-backend.yml

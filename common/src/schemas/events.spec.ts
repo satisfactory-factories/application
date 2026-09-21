@@ -4,7 +4,9 @@ import {
   EVENT_CAPS,
   EVENT_REASONS,
   EVENT_SOURCES,
+  USAGE_ACTIONS,
   isEventReason,
+  isUsageAction,
   parseEventReport,
 } from './events'
 
@@ -71,6 +73,7 @@ describe('eventReportSchema', () => {
 
   it('rejects an empty batch and one past the entry cap', () => {
     expect(parseEventReport(report({ events: [] })).success).toBe(false)
+    expect(parseEventReport(report({ events: undefined })).success).toBe(false)
 
     const tooMany = Array.from(
       { length: EVENT_CAPS.entries + 1 },
@@ -122,5 +125,46 @@ describe('the reason enum', () => {
     expect(isEventReason('sync_op_reject_stale')).toBe(false)
     expect(isEventReason('sync_op_reject_duplicate')).toBe(false)
     expect(isEventReason('sync_op_reject_forbidden')).toBe(true)
+  })
+})
+
+describe('the usage list', () => {
+  const usageOnly = (overrides: Record<string, unknown> = {}) => {
+    const body = report({ usage: [{ action: 'search_jump', count: 3 }], ...overrides })
+    delete (body as Record<string, unknown>).events
+    return body
+  }
+
+  it('accepts a report carrying only usage', () => {
+    expect(parseEventReport(usageOnly()).success).toBe(true)
+  })
+
+  it('accepts usage beside events', () => {
+    expect(parseEventReport(report({ usage: [{ action: 'search_jump', count: 1 }] })).success).toBe(true)
+  })
+
+  it('rejects a report with neither events nor usage, however it is spelled', () => {
+    expect(parseEventReport(usageOnly({ usage: [] })).success).toBe(false)
+    expect(parseEventReport(usageOnly({ usage: undefined })).success).toBe(false)
+    expect(parseEventReport(report({ events: [], usage: [] })).success).toBe(false)
+  })
+
+  it('rejects an action the server has never heard of', () => {
+    expect(parseEventReport(usageOnly({ usage: [{ action: 'typed_a_letter', count: 1 }] })).success).toBe(false)
+  })
+
+  it('rejects an entry with anything beyond action and count', () => {
+    expect(parseEventReport(usageOnly({ usage: [{ action: 'search_jump', count: 1, query: 'copper' }] })).success).toBe(false)
+  })
+
+  it('bounds the count the same way as an event', () => {
+    expect(parseEventReport(usageOnly({ usage: [{ action: 'search_jump', count: 0 }] })).success).toBe(false)
+    expect(parseEventReport(usageOnly({ usage: [{ action: 'search_jump', count: EVENT_CAPS.count + 1 }] })).success).toBe(false)
+  })
+
+  it('knows its own actions', () => {
+    expect(USAGE_ACTIONS).toContain('search_jump')
+    expect(isUsageAction('search_jump')).toBe(true)
+    expect(isUsageAction('search_typed')).toBe(false)
   })
 })

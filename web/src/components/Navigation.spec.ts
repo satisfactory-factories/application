@@ -21,11 +21,7 @@ const desktopVuetify = () => {
 }
 
 describe('Component: Navigation', () => {
-  // Typed in, the badge is only ever right until the next release: it sat on
-  // "BETA v0.6" for the whole of v0.7.
-  it('takes the release badge from the build it was made from', () => {
-    const [major, minor] = config.appVersion.split('.')
-
+  const badge = () => {
     const wrapper = mount(Navigation, {
       global: {
         plugins: [desktopVuetify(), router()],
@@ -33,7 +29,21 @@ describe('Component: Navigation', () => {
         stubs: { VNavigationDrawer: true },
       },
     })
+    return wrapper.find('[data-testid="release-badge"]').text()
+  }
 
-    expect(wrapper.find('[data-testid="release-badge"]').text()).toContain(`v${major}.${minor}`)
+  // Typed in, the badge is only ever right until the next release: it sat on
+  // "BETA v0.6" for the whole of v0.7.
+  it('takes the release badge from the build it was made from', () => {
+    expect(badge()).toContain(`v${config.appVersion}`)
+  })
+
+  // It used to be trimmed to major.minor, so every build in a release line claimed to be the
+  // same one and a patch never showed up in a bug report.
+  it('carries the patch version, not just the release line', () => {
+    const [major, minor, patch] = config.appVersion.split('.')
+    expect(patch).toBeDefined()
+
+    expect(badge()).toContain(`v${major}.${minor}.${patch}`)
   })
 })

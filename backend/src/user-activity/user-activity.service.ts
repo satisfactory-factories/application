@@ -39,10 +39,20 @@ export class UserActivityService {
   async recordEdit (userId: string, at: Date): Promise<void> {
     if (userId === ANONYMOUS_ACTOR) return
 
+    // An accepted edit proves the account was signed in, whether or not it typed a password
+    // today, so the signed-in window always contains the active one.
     await this.users.updateOne(
       { _id: userId },
-      { $max: { lastActiveAt: at }, $inc: { editCount: 1 } },
+      { $max: { lastActiveAt: at, lastSignInAt: at }, $inc: { editCount: 1 } },
     )
+  }
+
+  /**
+   * A stored token resumed without a password is still a sign-in as far as the windows
+   * are concerned, but not a sign-in event: `signInCount` is left alone.
+   */
+  async recordSessionResumed (userId: string, at: Date): Promise<void> {
+    await this.users.updateOne({ _id: userId }, { $max: { lastSignInAt: at } })
   }
 
   /**

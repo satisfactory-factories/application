@@ -151,6 +151,21 @@ describe('auth', () => {
       expect(response.body.decoded.username).toBe(CREDENTIALS.username)
     })
 
+    it('stamps the account as signed in, without counting another sign-in', async () => {
+      await post('/register').send(CREDENTIALS)
+      const { body } = await post('/login').send(CREDENTIALS)
+      await connection.collection('users').updateOne(
+        { username: CREDENTIALS.username },
+        { $set: { lastSignInAt: new Date('2026-01-01T00:00:00Z') } },
+      )
+
+      await post('/validate-token').send({ token: body.token })
+
+      const stored = await connection.collection('users').findOne({ username: CREDENTIALS.username })
+      expect(stored?.lastSignInAt.getTime()).toBeGreaterThan(new Date('2026-01-01T00:00:00Z').getTime())
+      expect(stored?.signInCount).toBe(1)
+    })
+
     it('answers 401 for a token signed with another secret', async () => {
       const foreign = jwt.sign({ id: 'x', username: 'x' }, 'not-the-secret')
 

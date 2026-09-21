@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { getModelToken } from '@nestjs/mongoose'
 import type { Model } from 'mongoose'
+import { PLAN_FEATURES } from 'common'
 
 import {
   ACTIVE_ACCOUNT_WINDOWS,
@@ -204,6 +205,19 @@ describe('the database-backed usage metrics', () => {
       expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(2)
       expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(1)
     })
+
+    // A resumed session edits without ever hitting /login. Left out of the signed-in
+    // window, the "of those who signed in, how many edited" ratio climbed past 100%.
+    it('counts an editor as signed in even without a password login', async () => {
+      const user = await seedUser('resumed')
+      await context.app.get(UserActivityService).recordEdit(String(user._id), clock.now())
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_active_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_signed_in_accounts', 'window="24h"')).toBe(1)
+      expect(sample(body, 'sf_signins_total')).toBe(0)
+    })
   })
 
   describe('sf_room_factories, the largest plans', () => {
@@ -214,7 +228,15 @@ describe('the database-backed usage metrics', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_room_factories', `room_id="${big.roomId}",owner="mael"`)).toBe(40)
+      expect(sample(body, 'sf_room_factories', `room_id="${big.roomId}",name="Iron Line",owner="mael"`)).toBe(40)
+    })
+
+    it('carries the plan name so the panel can show more than an id', async () => {
+      const room = await seedRoom(12, { name: 'Nuclear "Mk2"' })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",name="Nuclear \\"Mk2\\"",owner="${DELETED_OWNER}"`)).toBe(12)
     })
 
     it('labels an owner who no longer exists rather than dropping the room', async () => {
@@ -222,7 +244,7 @@ describe('the database-backed usage metrics', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",owner="${DELETED_OWNER}"`)).toBe(9)
+      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(9)
     })
 
     // A cast error on one bad row must not take the whole scrape down.
@@ -231,7 +253,7 @@ describe('the database-backed usage metrics', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",owner="${DELETED_OWNER}"`)).toBe(4)
+      expect(sample(body, 'sf_room_factories', `room_id="${room.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(4)
     })
 
     it(`exports at most ${METRICS_TOP_N} rooms however many exist`, async () => {
@@ -244,12 +266,12 @@ describe('the database-backed usage metrics', () => {
 
     it('drops a room that has fallen out of the top N', async () => {
       const small = await seedRoom(1)
-      expect(sample(await scrape(), 'sf_room_factories', `room_id="${small.roomId}",owner="${DELETED_OWNER}"`)).toBe(1)
+      expect(sample(await scrape(), 'sf_room_factories', `room_id="${small.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(1)
 
       for (let index = 0; index < METRICS_TOP_N; index++) await seedRoom(50 + index)
 
       const body = await scrape()
-      expect(sample(body, 'sf_room_factories', `room_id="${small.roomId}",owner="${DELETED_OWNER}"`)).toBeUndefined()
+      expect(sample(body, 'sf_room_factories', `room_id="${small.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBeUndefined()
     })
 
     it('breaks ties on room id, so equal rooms keep their order between scrapes', async () => {
@@ -493,14 +515,20 @@ describe('the database-backed usage metrics', () => {
 
       const body = await scrape()
 
-      expect(sample(body, 'sf_share_opens', 'share_id="popular-copper-belt"')).toBe(42)
-      expect(sample(body, 'sf_share_opens', 'share_id="quiet-iron-rod"')).toBe(1)
+      expect(sample(body, 'sf_share_opens', 'share_id="popular-copper-belt",owner="Anonymous"')).toBe(42)
+      expect(sample(body, 'sf_share_opens', 'share_id="quiet-iron-rod",owner="Anonymous"')).toBe(1)
+    })
+
+    it('names the account that made each link', async () => {
+      await seedShare({ id: 'signed-link', createdBy: 'mael', views: 3 })
+
+      expect(sample(await scrape(), 'sf_share_opens', 'share_id="signed-link",owner="mael"')).toBe(3)
     })
 
     it('leaves a never-opened link out of the top N rather than listing it at zero', async () => {
       await seedShare({ id: 'never-opened', views: 0 })
 
-      expect(sample(await scrape(), 'sf_share_opens', 'share_id="never-opened"')).toBeUndefined()
+      expect(sample(await scrape(), 'sf_share_opens', 'share_id="never-opened",owner="Anonymous"')).toBeUndefined()
     })
 
     it(`exports at most ${METRICS_TOP_N} links however many exist`, async () => {
@@ -511,11 +539,11 @@ describe('the database-backed usage metrics', () => {
 
     it('drops a link that has fallen out of the top N', async () => {
       await seedShare({ id: 'one-open', views: 1 })
-      expect(sample(await scrape(), 'sf_share_opens', 'share_id="one-open"')).toBe(1)
+      expect(sample(await scrape(), 'sf_share_opens', 'share_id="one-open",owner="Anonymous"')).toBe(1)
 
       for (let index = 0; index < METRICS_TOP_N; index++) await seedShare({ views: 50 + index })
 
-      expect(sample(await scrape(), 'sf_share_opens', 'share_id="one-open"')).toBeUndefined()
+      expect(sample(await scrape(), 'sf_share_opens', 'share_id="one-open",owner="Anonymous"')).toBeUndefined()
     })
 
     it('breaks ties on the link id, so equal links keep their order between scrapes', async () => {
@@ -536,8 +564,217 @@ describe('the database-backed usage metrics', () => {
       await call(context.app, 'get', '/share/opened-for-real')
 
       const body = await scrape()
-      expect(sample(body, 'sf_share_opens', 'share_id="opened-for-real"')).toBe(2)
+      expect(sample(body, 'sf_share_opens', 'share_id="opened-for-real",owner="Anonymous"')).toBe(2)
       expect(sample(body, 'sf_share_opens_total')).toBe(2)
+    })
+  })
+
+  describe('sf_room_edits, the most-edited plans', () => {
+    it('reports accepted edits per room with the owner resolved', async () => {
+      const owner = await seedUser('editor')
+      const busy = await seedRoom(2, { createdBy: String(owner._id), revision: 57 })
+      await seedRoom(2, { revision: 3 })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_room_edits', `room_id="${busy.roomId}",name="Iron Line",owner="editor"`)).toBe(57)
+    })
+
+    it('leaves an unedited room out rather than listing it at zero', async () => {
+      const untouched = await seedRoom(2)
+
+      expect(sample(await scrape(), 'sf_room_edits', `room_id="${untouched.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBeUndefined()
+    })
+
+    it('ignores a deleted room, however edited it was', async () => {
+      const gone = await seedRoom(2, { revision: 900, deletedAt: new Date() })
+
+      expect(sample(await scrape(), 'sf_room_edits', `room_id="${gone.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBeUndefined()
+    })
+
+    it(`exports at most ${METRICS_TOP_N} rooms however many exist`, async () => {
+      for (let index = 0; index < METRICS_TOP_N + 8; index++) await seedRoom(1, { revision: index + 1 })
+
+      expect(labelValues(await scrape(), 'sf_room_edits', 'room_id').length).toBe(METRICS_TOP_N)
+    })
+  })
+
+  describe('sf_room_collaborators, the plans with the most accepted invites', () => {
+    const memberships = () => context.app.get<Model<RoomMembership>>(getModelToken(RoomMembership.name))
+
+    const join = (roomId: string, role: 'owner' | 'member') =>
+      memberships().create({ userId: randomUUID(), roomId, role })
+
+    it('counts member rows per room and not the owner row', async () => {
+      const owner = await seedUser('host')
+      const popular = await seedRoom(1, { createdBy: String(owner._id), name: 'Party Plan' })
+      await join(popular.roomId, 'owner')
+      await join(popular.roomId, 'member')
+      await join(popular.roomId, 'member')
+      await join(popular.roomId, 'member')
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_room_collaborators', `room_id="${popular.roomId}",name="Party Plan",owner="host"`)).toBe(3)
+    })
+
+    it('leaves a room nobody has joined out rather than listing it at zero', async () => {
+      const lonely = await seedRoom(1)
+      await join(lonely.roomId, 'owner')
+
+      expect(labelValues(await scrape(), 'sf_room_collaborators', 'room_id')).not.toContain(lonely.roomId)
+    })
+
+    it('drops a deleted room even while its membership rows still exist', async () => {
+      const gone = await seedRoom(1, { deletedAt: new Date() })
+      await join(gone.roomId, 'member')
+
+      expect(labelValues(await scrape(), 'sf_room_collaborators', 'room_id')).not.toContain(gone.roomId)
+    })
+
+    it('does not let tombstoned rooms crowd a live one out of the top N', async () => {
+      for (let index = 0; index < METRICS_TOP_N; index++) {
+        const gone = await seedRoom(1, { deletedAt: new Date() })
+        await join(gone.roomId, 'member')
+        await join(gone.roomId, 'member')
+      }
+      const live = await seedRoom(1)
+      await join(live.roomId, 'member')
+
+      expect(labelValues(await scrape(), 'sf_room_collaborators', 'room_id')).toEqual([live.roomId])
+    })
+
+    // An unshare voids member rows by bumping the room's epoch; the rows themselves are
+    // cleaned up afterwards and that cleanup may lag. Voided rows are not collaboration.
+    it('ignores a membership revoked by an unshare whose cleanup has not run', async () => {
+      const room = await seedRoom(1, { membershipEpoch: 2 })
+      await memberships().create({ userId: randomUUID(), roomId: room.roomId, role: 'member', epoch: 1 })
+      await memberships().create({ userId: randomUUID(), roomId: room.roomId, role: 'member', epoch: 2 })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_room_collaborators', `room_id="${room.roomId}",name="Iron Line",owner="${DELETED_OWNER}"`)).toBe(1)
+      expect(sample(body, 'sf_room_members_total', 'role="member"')).toBe(1)
+    })
+
+    it(`exports at most ${METRICS_TOP_N} rooms however many exist`, async () => {
+      for (let index = 0; index < METRICS_TOP_N + 8; index++) {
+        const room = await seedRoom(1)
+        for (let members = 0; members <= index; members++) await join(room.roomId, 'member')
+      }
+
+      expect(labelValues(await scrape(), 'sf_room_collaborators', 'room_id').length).toBe(METRICS_TOP_N)
+    })
+  })
+
+  describe('feature utilisation over synced plans', () => {
+    const plans = (body: string, feature: string) => sample(body, 'sf_room_feature_plans', `feature="${feature}"`)
+    const factories = (body: string, feature: string) => sample(body, 'sf_room_feature_factories', `feature="${feature}"`)
+
+    it('starts every feature at zero rather than absent', async () => {
+      const body = await scrape()
+
+      for (const feature of PLAN_FEATURES) {
+        expect(plans(body, feature)).toBe(0)
+        expect(factories(body, feature)).toBe(0)
+      }
+    })
+
+    it('counts plans and factories using each feature across live rooms', async () => {
+      await rooms().create({
+        roomId: randomUUID(),
+        name: 'Sinks',
+        createdBy: 'someone',
+        powerTarget: 300,
+        factories: [
+          { id: 1, partDisposal: { IronIngot: { sinks: 1, depots: 0 } }, checklistEnabled: true },
+          { id: 2, partDisposal: { Copper: { sinks: 2, depots: 0 } }, notes: 'x', inSync: false },
+          { id: 3, inSync: null },
+        ],
+      })
+      await rooms().create({
+        roomId: randomUUID(),
+        name: 'Clocked',
+        createdBy: 'someone',
+        depotExpansionTier: 4,
+        factories: [
+          { id: 1, products: [{ id: 'IronIngot', buildingGroups: [{ id: 1, overclockPercent: 200, somersloops: 1 }] }] },
+          { id: 2, powerProducers: [{ id: 'g', buildingGroups: [{ id: 1, overclockPercent: 100 }, { id: 2 }] }] },
+        ],
+      })
+      await rooms().create({ roomId: randomUUID(), name: 'Gone', createdBy: 'someone', deletedAt: new Date(), factories: [{ id: 1, notes: 'deleted' }] })
+
+      const body = await scrape()
+
+      expect(plans(body, 'sink')).toBe(1)
+      expect(factories(body, 'sink')).toBe(2)
+      expect(plans(body, 'power_target')).toBe(1)
+      expect(factories(body, 'power_target')).toBe(0)
+      expect(plans(body, 'checklist')).toBe(1)
+      expect(plans(body, 'notes')).toBe(1)
+      expect(factories(body, 'notes')).toBe(1)
+      expect(plans(body, 'overclocking')).toBe(1)
+      expect(factories(body, 'overclocking')).toBe(1)
+      expect(plans(body, 'somersloops')).toBe(1)
+      expect(plans(body, 'power_producers')).toBe(1)
+      expect(plans(body, 'depot')).toBe(0)
+      expect(plans(body, 'depot_settings')).toBe(1)
+      expect(plans(body, 'building_groups')).toBe(1)
+      expect(plans(body, 'game_sync')).toBe(1)
+      expect(factories(body, 'game_sync')).toBe(1)
+      expect(factories(body, 'building_groups')).toBe(1)
+      expect(sample(body, 'sf_rooms_total', 'shared="false"')).toBe(2)
+    })
+
+    // `factories` is Mixed, so nothing in Mongo checks what an old document holds inside it.
+    it('survives a room whose factories are not what the type says', async () => {
+      await rooms().collection.insertOne({
+        roomId: randomUUID(),
+        name: 'Worse',
+        createdBy: 'someone',
+        deletedAt: null,
+        powerTarget: 'lots',
+        factories: [null, 5, { id: 1, partDisposal: [1, 2], tasks: 'none', notes: 'kept' }],
+      })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_metrics_database_up')).toBe(1)
+      expect(plans(body, 'notes')).toBe(1)
+      expect(plans(body, 'sink')).toBe(0)
+      expect(plans(body, 'power_target')).toBe(0)
+    })
+  })
+
+  describe('sf_user_rooms, the accounts with the most plans', () => {
+    it('counts the live rooms each account created', async () => {
+      const prolific = await seedUser('prolific')
+      const once = await seedUser('once')
+      await seedRoom(1, { createdBy: String(prolific._id) })
+      await seedRoom(1, { createdBy: String(prolific._id) })
+      await seedRoom(30, { createdBy: String(prolific._id), deletedAt: new Date() })
+      await seedRoom(50, { createdBy: String(once._id) })
+
+      const body = await scrape()
+
+      expect(sample(body, 'sf_user_rooms', 'username="prolific"')).toBe(2)
+      expect(sample(body, 'sf_user_rooms', 'username="once"')).toBe(1)
+    })
+
+    it(`caps at ${METRICS_TOP_N} and drops an owner who has fallen out`, async () => {
+      const early = await seedUser('early')
+      await seedRoom(1, { createdBy: String(early._id) })
+      expect(sample(await scrape(), 'sf_user_rooms', 'username="early"')).toBe(1)
+
+      for (let index = 0; index < METRICS_TOP_N; index++) {
+        const owner = await seedUser(`owner-${index}`)
+        await seedRoom(1, { createdBy: String(owner._id) })
+        await seedRoom(1, { createdBy: String(owner._id) })
+      }
+
+      const body = await scrape()
+      expect(labelValues(body, 'sf_user_rooms', 'username').length).toBe(METRICS_TOP_N)
+      expect(sample(body, 'sf_user_rooms', 'username="early"')).toBeUndefined()
     })
   })
 
@@ -623,6 +860,7 @@ describe('UserActivityService', () => {
 
       const stored = await reload(user._id)
       expect(stored?.lastActiveAt?.toISOString()).toBe(at.toISOString())
+      expect(stored?.lastSignInAt?.toISOString()).toBe(at.toISOString())
       expect(stored?.editCount).toBe(1)
     })
 
@@ -646,6 +884,19 @@ describe('UserActivityService', () => {
 
     it('ignores anonymous visitors, who have no account to stamp', async () => {
       await expect(service().recordEdit(ANONYMOUS_ACTOR, new Date())).resolves.toBeUndefined()
+    })
+  })
+
+  describe('recordSessionResumed', () => {
+    it('moves the sign-in window forward without counting a sign-in', async () => {
+      const user = await seedUser('resumed', { lastSignInAt: new Date('2026-09-01T00:00:00Z'), signInCount: 4 })
+      const at = new Date('2026-09-02T10:00:00Z')
+
+      await service().recordSessionResumed(String(user._id), at)
+
+      const stored = await reload(user._id)
+      expect(stored?.lastSignInAt?.toISOString()).toBe(at.toISOString())
+      expect(stored?.signInCount).toBe(4)
     })
   })
 

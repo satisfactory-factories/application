@@ -36,9 +36,14 @@
     </div>
 
     <p class="mt-4 text-body-2 text-grey">
-      {{ landed
-        ? 'Say no and it simply stays local. You can send it up any time from tab settings.'
-        : 'Say no and they simply stay local. You can sync them any time from the plus button.' }}
+      <template v-if="landed">
+        Say no and it simply stays local. You can send it up any time from tab settings
+        (<i class="fas fa-pen" />, on the tab).
+      </template>
+      <template v-else>
+        Say no and they simply stay local. You can sync them any time from tab settings
+        (<i class="fas fa-pen" />, on the tab).
+      </template>
     </p>
 
     <template #actions>

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { APP_VERSION_HEADER, EVENT_CAPS, EVENT_REASONS } from 'common'
+import { APP_VERSION_HEADER, APP_VERSION_HEADER_FALLBACK, EVENT_CAPS, EVENT_REASONS } from 'common'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -8,7 +8,7 @@ import { EVENTS_THROTTLE } from '../src/config/throttling'
 import { TELEMETRY_MIN_INTERVAL_MS } from '../src/metrics/metrics.constants'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { FakeClock, resetRooms } from './utils/rooms'
-import { clearMetricsToken, sample, scrapeMetrics, useMetricsToken } from './utils/metrics'
+import { clearMetricsToken, sample, sampleWhere, scrapeMetrics, useMetricsToken } from './utils/metrics'
 
 const report = (overrides: Record<string, unknown> = {}) => ({
   instanceId: randomUUID(),
@@ -101,6 +101,42 @@ describe('POST /events', () => {
     })
   })
 
+  describe('usage', () => {
+    const usage = (body: string, action: string) => sample(body, 'sf_usage_total', `action="${action}"`)
+
+    it('starts every action at zero rather than absent', async () => {
+      expect(usage(await scrape(), 'search_jump')).toBe(0)
+    })
+
+    it('counts a usage-only report, with no fault in it', async () => {
+      const body = report({ usage: [{ action: 'search_jump', count: 4 }] })
+      delete (body as Record<string, unknown>).events
+
+      expect((await post(body)).status).toBe(204)
+      expect(usage(await scrape(), 'search_jump')).toBe(4)
+    })
+
+    it('counts usage beside faults from the same batch, and never mixes them', async () => {
+      const before = await scrape()
+      await post(report({
+        events: [{ reason: 'api_network_error', count: 2 }],
+        usage: [{ action: 'search_jump', count: 3 }],
+      }))
+
+      const body = await scrape()
+      expect(usage(body, 'search_jump')).toBe((usage(before, 'search_jump') ?? 0) + 3)
+      expect(events(body, 'api_network_error')).toBe((events(before, 'api_network_error') ?? 0) + 2)
+      expect(sample(body, 'sf_events_total', 'source="client",reason="search_jump"')).toBeUndefined()
+    })
+
+    it('refuses an action it does not know', async () => {
+      const body = report({ usage: [{ action: 'search_typed', count: 1 }] })
+      delete (body as Record<string, unknown>).events
+
+      expect((await post(body)).status).toBe(400)
+    })
+  })
+
   describe('what it refuses', () => {
     // The whole cardinality design: a client cannot invent a label.
     it.each(['not_a_reason', 'plan_repair_made_up', '../../etc', ''])(
@@ -148,11 +184,20 @@ describe('POST /events', () => {
   })
 
   describe('the per-instance floor', () => {
-    it('refuses a second batch from the same instance too soon', async () => {
+    // 429 and not 204: the client keeps its batch on any non-2xx and a 204 would erase it.
+    it('refuses a second batch from the same instance too soon, as a back-off rather than an error', async () => {
       const instanceId = randomUUID()
+      const before = sample(await scrape(), 'sf_backoffs_total', 'endpoint="events",reason="too_soon"') ?? 0
+
+      const counted = events(await scrape(), 'plan_repair_duplicate_factory_id') ?? 0
 
       expect((await post(report({ instanceId }))).status).toBe(204)
       expect((await post(report({ instanceId }))).status).toBe(429)
+
+      const body = await scrape()
+      expect(events(body, 'plan_repair_duplicate_factory_id')).toBe(counted + 1)
+      expect(sample(body, 'sf_backoffs_total', 'endpoint="events",reason="too_soon"')).toBe(before + 1)
+      expect(sampleWhere(body, 'sf_http_errors_total', 'status="429"')).toBeUndefined()
     })
 
     it('lets it back in once the floor has passed', async () => {
@@ -236,8 +281,7 @@ describe('the HTTP error filter', () => {
     return response.text
   }
 
-  const httpErrors = (body: string, status: number) =>
-    sample(body, 'sf_http_errors_total', `status="${status}"`)
+  const httpErrors = (body: string, labels: string) => sampleWhere(body, 'sf_http_errors_total', labels)
 
   beforeAll(async () => {
     context = await createTestApp({ unthrottled: true })
@@ -250,23 +294,72 @@ describe('the HTTP error filter', () => {
     clearMetricsToken()
   })
 
-  it('counts a 4xx', async () => {
-    const before = httpErrors(await scrape(), 400) ?? 0
+  it('counts a 4xx as versioned, on the route the router matched', async () => {
+    const labels = 'status="400",client="versioned",route="POST /login"'
+    const before = httpErrors(await scrape(), labels) ?? 0
 
     await request(context.app.getHttpServer())
       .post('/login')
       .set(APP_VERSION_HEADER, '7.0')
       .send({ username: 'nobody', password: 'nobody' })
 
-    expect(httpErrors(await scrape(), 400)).toBe(before + 1)
+    expect(httpErrors(await scrape(), labels)).toBe(before + 1)
   })
 
-  it('counts a 426 from the version gate', async () => {
-    const before = httpErrors(await scrape(), 426) ?? 0
+  // The guard throws before the handler runs, so this proves req.route is already set by then.
+  it('counts a 426 from the version gate, with the route populated', async () => {
+    const labels = 'status="426",client="versioned",route="GET /rooms"'
+    const before = httpErrors(await scrape(), labels) ?? 0
 
     await request(context.app.getHttpServer()).get('/rooms').set(APP_VERSION_HEADER, 'ancient')
 
-    expect(httpErrors(await scrape(), 426)).toBe(before + 1)
+    expect(httpErrors(await scrape(), labels)).toBe(before + 1)
+  })
+
+  it('counts the fallback header name as versioned too', async () => {
+    const labels = 'status="426",client="versioned",route="GET /rooms"'
+    const before = httpErrors(await scrape(), labels) ?? 0
+
+    await request(context.app.getHttpServer()).get('/rooms').set(APP_VERSION_HEADER_FALLBACK, 'ancient')
+
+    expect(httpErrors(await scrape(), labels)).toBe(before + 1)
+  })
+
+  it('counts a headerless hit on a gated route as unversioned', async () => {
+    const labels = 'status="426",client="unversioned",route="GET /rooms"'
+    const before = httpErrors(await scrape(), labels) ?? 0
+
+    await request(context.app.getHttpServer()).get('/rooms')
+
+    expect(httpErrors(await scrape(), labels)).toBe(before + 1)
+  })
+
+  // A scanner sweep starts and finishes inside one scrape; an unseeded series would be born
+  // at its final count and never move on the board.
+  it('exposes the scanner series at zero before any probe arrives', async () => {
+    expect(sample(await scrape(), 'sf_http_errors_total', 'status="404",client="unversioned",route="unmatched"')).toBeDefined()
+  })
+
+  it('counts a path the router does not know as unmatched, never by its raw path', async () => {
+    const labels = 'status="404",client="unversioned",route="unmatched"'
+    const before = httpErrors(await scrape(), labels) ?? 0
+
+    await request(context.app.getHttpServer()).get('/wp-admin/setup-config.php')
+    await request(context.app.getHttpServer()).get('/.env')
+
+    const body = await scrape()
+    expect(httpErrors(body, labels)).toBe(before + 2)
+    expect(body).not.toContain('wp-admin')
+    expect(body).not.toContain('.env')
+  })
+
+  it('counts a headerless refusal on the event beacon as the planner, not a stranger', async () => {
+    const labels = 'status="400",client="beacon",route="POST /events"'
+    const before = httpErrors(await scrape(), labels) ?? 0
+
+    await request(context.app.getHttpServer()).post('/events').send({ nonsense: true })
+
+    expect(httpErrors(await scrape(), labels)).toBe(before + 1)
   })
 
   /**
@@ -296,10 +389,10 @@ describe('the HTTP error filter', () => {
   })
 
   it('does not count a success', async () => {
-    const before = httpErrors(await scrape(), 200) ?? 0
+    const before = httpErrors(await scrape(), 'status="200"') ?? 0
 
     await request(context.app.getHttpServer()).get('/health')
 
-    expect(httpErrors(await scrape(), 200) ?? 0).toBe(before)
+    expect(httpErrors(await scrape(), 'status="200"') ?? 0).toBe(before)
   })
 })

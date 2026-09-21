@@ -8,9 +8,10 @@ name: Backend Checks
 # Backend Deploy instead, so keeping one would run the same checks twice on the
 # same commit.
 #
-# The pull_request trigger is deliberately not path-filtered. A required status
-# check that never triggers sits pending forever rather than passing, so a filter
-# here would block every PR that does not touch the backend.
+# The pull_request trigger cannot be path-filtered: this is a required status check
+# and one that never triggers sits pending forever. It always triggers and the
+# `changes` gate decides whether the real job runs (see changed-paths.yml). Under
+# workflow_call the gate does not run at all, so a deploy is never gated.
 on:
   pull_request:
     branches:
@@ -18,13 +19,35 @@ on:
       # The v0.7.0 integration line: sync work lands here for beta testing first.
       - beta7
   workflow_call:
+    inputs:
+      # Absent on a plain pull_request trigger, which is how the gate below tells a
+      # PR run from a deploy calling it. A deploy must never be gated out.
+      called:
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    if: ${{ !inputs.called }}
+    uses: ./.github/workflows/changed-paths.yml
+    with:
+      patterns: |
+        backend/*
+        common/*
+        package.json
+        pnpm-workspace.yaml
+        pnpm-lock.yaml
+        .github/workflows/build-backend.yml
+        .github/workflows/changed-paths.yml
+
   build-backend:
     name: Build Backend
+    needs: changes
+    # `!cancelled()` because a skipped gate would otherwise skip this too.
+    if: ${{ !cancelled() && (inputs.called || needs.changes.outputs.matched == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:

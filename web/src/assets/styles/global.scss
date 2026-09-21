@@ -915,8 +915,23 @@ tr.sf-nav-flash {
     margin: 0 0 0 4px !important;
   }
 
+  // Square-rounded when it is clickable, because that is what a clickable thing looks like
+  // everywhere else in the planner. A pill that navigates somewhere reads as a label. The 4px is
+  // `sf-chip-clickable`'s, so a factory chip in the statistics table and one in the search results
+  // are the same shape.
+  &.clickable {
+    border-radius: 4px;
+  }
+
   &.clickable:hover {
     cursor: pointer;
     background-color: #323232;
+  }
+
+  // The group's colour on the left edge, handed in as a custom property so the rule that reads
+  // it can carry its own !important; a plain inline style loses to the border rule above.
+  &.grouped {
+    border-left-color: var(--group-color) !important;
+    border-left-width: 5px !important;
   }
 }

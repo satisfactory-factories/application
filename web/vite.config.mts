@@ -41,6 +41,39 @@ process.env.VITE_APP_VERSION = JSON.parse(
 process.env.VITE_GIT_SHA =
   (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_SHA || '').slice(0, 12)
 
+// The Vitest API URL must never reach a bundle. `config.ts` only picks it when `MODE` is
+// `test`, and only Vitest sets that, so today it cannot happen by accident — but "cannot
+// happen" is what every shipped mistake was, and this one ships an app that talks to a port
+// on the user's own machine. `vite build --mode test`, or an edit that inverts the condition,
+// is all it would take.
+//
+// It is asserted here rather than as a CI step because CI is not on the path of the build
+// that ships: Vercel builds the web app itself, from the repository, and never runs the
+// workflow. A plugin runs wherever `vite build` does — Vercel, CI and a laptop alike.
+//
+// The literal is repeated from `config.ts` on purpose: a guard that imports the value it
+// guards agrees with itself no matter what that value becomes. `setup-vitest.spec.ts` asserts
+// the same string from the other side, so changing it in `config.ts` alone fails the suite.
+const TEST_API_URL = 'http://127.0.0.1:1'
+
+const refuseTestApiUrl = () => ({
+  name: 'refuse-test-api-url',
+  apply: 'build' as const,
+  generateBundle (_options: unknown, bundle: Record<string, { type: string, code?: string, source?: unknown }>) {
+    for (const [fileName, emitted] of Object.entries(bundle)) {
+      const contents = emitted.type === 'chunk' ? emitted.code ?? '' : String(emitted.source ?? '')
+      if (!contents.includes(TEST_API_URL)) continue
+
+      throw new Error(
+        `${fileName} carries the Vitest API URL (${TEST_API_URL}). That is the address a unit ` +
+        'run points at so nothing can reach a real server, and a build that ships it is a ' +
+        'planner that talks to the reader\'s own machine. Check the `MODE` branch in ' +
+        'src/config/config.ts, and the mode this build ran in.',
+      )
+    }
+  },
+})
+
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   build: {
@@ -52,6 +85,7 @@ export default defineConfig(() => ({
     },
   },
   plugins: [
+    refuseTestApiUrl(),
     VueRouter({
       dts: 'src/typed-router.d.ts',
     }),

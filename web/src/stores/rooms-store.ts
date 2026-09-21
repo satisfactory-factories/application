@@ -94,6 +94,40 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   /**
+   * The offer dialogs sit on top of the loading overlay, and the overlay is what
+   * stands between a user and a plan still mid-calculation — a dialog answered while
+   * it is up can act on a partial plan. Resolves at once if the app is already
+   * loaded; otherwise waits for whichever load is currently in progress to finish.
+   */
+  const whenAppLoaded = (): Promise<void> => {
+    if (appStore.isLoaded) return Promise.resolve()
+    return new Promise(resolve => {
+      const onLoaded = () => {
+        eventBus.off('loadingCompleted', onLoaded)
+        resolve()
+      }
+      eventBus.on('loadingCompleted', onLoaded)
+    })
+  }
+
+  /** One dialog at a time. The chooser fronts an interactive login and the rest are
+   * parked; every answer releases the next offer that is still due. */
+  const openDueOffers = (
+    rooms: RoomListEntry[],
+    offerChooser: boolean,
+    offerAdoption: boolean,
+    legacy: number | null,
+  ) => {
+    if (offerChooser && openPlanChooser(rooms)) {
+      parked = { adoption: offerAdoption ? rooms : null, legacy }
+    } else if (offerAdoption && openAdoptionOffer(rooms)) {
+      parked = { adoption: null, legacy }
+    } else if (legacy !== null) {
+      openLegacyOffer(legacy)
+    }
+  }
+
+  /**
    * Overlapping callers join the request already in flight instead of being turned
    * away: opening the account tray refreshes the list, and it opens straight after a
    * login, which is the same moment the login sequence asks for the list plus the
@@ -117,14 +151,11 @@ export const useRoomsStore = defineStore('rooms', () => {
       ? await findLegacyPlan()
       : null
 
-    // One dialog at a time. The chooser fronts an interactive login and the rest
-    // are parked; every answer releases the next offer that is still due.
-    if (offerChooser && openPlanChooser(rooms)) {
-      parked = { adoption: offerAdoption ? rooms : null, legacy }
-    } else if (offerAdoption && openAdoptionOffer(rooms)) {
-      parked = { adoption: null, legacy }
-    } else if (legacy !== null) {
-      openLegacyOffer(legacy)
+    // Deliberately not awaited: the list itself, and everything else refresh does,
+    // is due now, regardless of whether the plan is still loading. Only the dialogs
+    // wait.
+    if (offerChooser || offerAdoption || legacy !== null) {
+      void whenAppLoaded().then(() => openDueOffers(rooms, offerChooser, offerAdoption, legacy))
     }
     return true
   }
@@ -468,12 +499,16 @@ export const useRoomsStore = defineStore('rooms', () => {
     // many were left behind is the difference between a partial recovery and a
     // silent one.
     const dropped = result.dropped ?? 0
+    // Permanent regardless of whether anything was dropped: this fires straight off a
+    // sign-in, the exact moment another dialog (the sync offer, a release splash) is
+    // likely to be sat on top of it, and a timed toast that nobody saw is the same as
+    // one that never fired.
     eventBus.emit('toast', {
       message: dropped > 0
         ? `Recovered the plan previously saved to your account. It was too big for a cloud plan, so the last ${dropped} ${dropped === 1 ? 'factory' : 'factories'} could not be brought over.`
         : 'Recovered the plan previously saved to your account.',
       type: dropped > 0 ? 'warning' : 'success',
-      variant: dropped > 0 ? 'permanent' : 'timed',
+      variant: 'permanent',
       timeout: NOTICE_MS,
     })
     await refresh()
