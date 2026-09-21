@@ -46,8 +46,18 @@ interface GatedPair {
 
 interface OpFrame extends Record<string, unknown> {
   type: string
+  opId: string
   baseRevision: number
 }
+
+/** The two ops a race held and released together, one per device. */
+interface RacedOps {
+  first: OpFrame
+  second: OpFrame
+}
+
+/** What the server said to one specific op, or undefined while it has not answered. */
+type Verdict = 'accepted' | 'refused' | `rejected: ${string}` | undefined
 
 /** `syncedPair`, with a gate on each device's socket so its ops can be held. */
 const gatedPair = async (
@@ -95,8 +105,13 @@ const settledRevision = async ({ roomId, first, second }: GatedPair): Promise<nu
 const opsSent = (gate: WsGate): OpFrame[] =>
   gate.sent().filter(frame => frame.type === 'op') as OpFrame[]
 
-const staleRejects = (gate: WsGate): Record<string, unknown>[] =>
-  gate.received().filter(frame => frame.type === 'op_reject' && frame.reason === 'stale_base')
+const verdictFor = (gate: WsGate, opId: string): Verdict => {
+  const answer = gate.received()
+    .find(frame => (frame.type === 'op_ack' || frame.type === 'op_reject') && frame.opId === opId)
+  if (answer === undefined) return undefined
+  if (answer.type === 'op_ack') return 'accepted'
+  return answer.reason === 'stale_base' ? 'refused' : `rejected: ${String(answer.reason)}`
+}
 
 /**
  * Holds both devices' next op, checks they were built against the same revision, and releases
@@ -106,7 +121,7 @@ const raceOneOpEach = async (
   pair: GatedPair,
   edits: () => Promise<unknown>,
   baseRevision: number,
-): Promise<void> => {
+): Promise<RacedOps> => {
   const firstOp = pair.firstGate.stallOps()
   const secondOp = pair.secondGate.stallOps()
 
@@ -123,16 +138,34 @@ const raceOneOpEach = async (
 
   pair.firstGate.releaseOps()
   pair.secondGate.releaseOps()
+
+  return { first: fromFirst, second: fromSecond }
 }
 
-/** Which device the server refused, once exactly one of them has been refused. */
-const rejectedDevice = async (pair: GatedPair): Promise<'first' | 'second'> => {
-  await expect.poll(
-    () => staleRejects(pair.firstGate).length + staleRejects(pair.secondGate).length,
-    { timeout: 30_000, message: 'neither op was refused, so the two never actually collided' },
-  ).toBe(1)
+/**
+ * Which device the server refused. Judged on the two raced ops by id, not on a count
+ * of every refusal the devices ever see: a multi-action edit can straddle the sync
+ * debounce and go out as two ops, and the follow-on op then collides with the loser's
+ * rebase for a second `stale_base` that has nothing to do with the race being proved.
+ */
+const rejectedDevice = async (pair: GatedPair, raced: RacedOps): Promise<'first' | 'second'> => {
+  const verdicts = (): [Verdict, Verdict] => [
+    verdictFor(pair.firstGate, raced.first.opId),
+    verdictFor(pair.secondGate, raced.second.opId),
+  ]
 
-  return staleRejects(pair.firstGate).length === 1 ? 'first' : 'second'
+  await expect.poll(
+    () => verdicts().filter(verdict => verdict !== undefined).length,
+    { timeout: 30_000, message: 'the server never answered both raced ops' },
+  ).toBe(2)
+
+  const [first, second] = verdicts()
+  expect(
+    [first, second].sort(),
+    `one raced op should be accepted and the other refused stale_base; first=${first} second=${second}`,
+  ).toEqual(['accepted', 'refused'])
+
+  return first === 'refused' ? 'first' : 'second'
 }
 
 /** The refused device rebased and sent again, which is the path the contract rests on. */
@@ -157,12 +190,12 @@ test('two clients editing the same factory land on the later write', async ({ cl
 
   const notes = { first: 'the first device got there', second: 'the second device got there' }
 
-  await raceOneOpEach(pair, () => Promise.all([
+  const raced = await raceOneOpEach(pair, () => Promise.all([
     setFactoryNote(first, 0, notes.first),
     setFactoryNote(second, 0, notes.second),
   ]), base)
 
-  const refused = await rejectedDevice(pair)
+  const refused = await rejectedDevice(pair, raced)
   await expectRebaseResend(refused === 'first' ? firstGate : secondGate, base)
 
   // Last write wins, and with the collision forced the winner is not a coin toss: the op the
@@ -190,12 +223,12 @@ test('two clients adding a factory each keep both of them', async ({ client, req
   const { roomId, first, second, firstGate, secondGate } = pair
   const base = await settledRevision(pair)
 
-  await raceOneOpEach(pair, () => Promise.all([
+  const raced = await raceOneOpEach(pair, () => Promise.all([
     addFactory(first, { name: 'Alpha', note: 'added on the first device' }),
     addFactory(second, { name: 'Bravo', note: 'added on the second device' }),
   ]), base)
 
-  const refused = await rejectedDevice(pair)
+  const refused = await rejectedDevice(pair, raced)
   await expectRebaseResend(refused === 'first' ? firstGate : secondGate, base)
 
   // Different records, so both ops have to be committed; neither may be swallowed.
@@ -221,12 +254,12 @@ test('two clients annotating different factories keep both notes', async ({ clie
   const { roomId, first, second, firstGate, secondGate } = pair
   const base = await settledRevision(pair)
 
-  await raceOneOpEach(pair, () => Promise.all([
+  const raced = await raceOneOpEach(pair, () => Promise.all([
     setFactoryNote(first, 0, 'the first device wrote this'),
     setFactoryNote(second, 1, 'the second device wrote this'),
   ]), base)
 
-  const refused = await rejectedDevice(pair)
+  const refused = await rejectedDevice(pair, raced)
   await expectRebaseResend(refused === 'first' ? firstGate : secondGate, base)
 
   for (const page of [first, second]) await waitForRevision(page, roomId, base + 2)
@@ -248,12 +281,12 @@ test('only the second op is refused, and only for its revision', async ({ client
   const { roomId, first, second, firstGate, secondGate } = pair
   const base = await settledRevision(pair)
 
-  await raceOneOpEach(pair, () => Promise.all([
+  const raced = await raceOneOpEach(pair, () => Promise.all([
     setFactoryNote(first, 0, 'one'),
     setFactoryNote(second, 0, 'two'),
   ]), base)
 
-  const refused = await rejectedDevice(pair)
+  const refused = await rejectedDevice(pair, raced)
   const accepted = refused === 'first' ? secondGate : firstGate
 
   for (const page of [first, second]) await waitForRevision(page, roomId, base + 2)
