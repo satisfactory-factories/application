@@ -1,27 +1,35 @@
 ---
 name: nest-12-blocked-on-throttler
-description: The Nest monorepo v12 bump fails on @nestjs/throttler, which only peers on Nest <= 11; @nestjs/mongoose and @nestjs/jwt v12 are fine on Nest 11
+description: Nest 12 landed once @nestjs/throttler 6.6+ peered on it; the leftover traps are Nest 12's exports map hiding `@nestjs/common/interfaces` under nodenext, and @nestjs/config jumping 4.x to 12.x
 metadata:
   type: project
-  volatility: hot
-  lastVerified: 2026-09-12
+  volatility: normal
+  lastVerified: 2026-09-21
 ---
 
-Renovate's `fix(deps): update nest monorepo to v12` PR (#687) fails the backend build with
-`TS2345 ... not assignable to parameter of type 'ThrottlerAsyncOptions'` at the
-`ThrottlerModule.forRootAsync` call in `app.module.ts`. The cause is `@nestjs/throttler`
-6.5.0 peering on `@nestjs/common` 7 to 11 only, so pnpm resolves a second Nest for it and
-the `ExecutionContext` types diverge. Upstream tracks it as nestjs/throttler#2669 with the
-fix in nestjs/throttler#2672.
+Renovate's `fix(deps): update nest monorepo to v12` (#687) sat red from 2026-09-11 because
+`@nestjs/throttler` 6.5.0 peered on Nest 7 to 11 only, so pnpm resolved a second Nest for it
+and the types diverged. 6.6.0 (2026-09-16) added `^12.0.0` to its peers and the bump went in
+on the 2026-09-21 sweep branch.
 
-`@nestjs/mongoose` 12 and `@nestjs/jwt` 12 both peer on `^11 || ^12` and moved to 12 on
-Nest 11 in PR #694 with the backend suite green.
+**What it took beyond the version numbers:**
 
-**Why:** the type error looks like a Nest 12 API change and it is not; casting past it
-would run the guard against a duplicated Nest core.
+- `@nestjs/config` 4.x peers on Nest 10/11; it renumbered to 12.0.0 to match core, so the
+  bump reads as eight majors and is nothing of the sort.
+- Nest 12's `@nestjs/common` gained an `exports` map (`./*` to `./*.js`). Throttler's typings
+  import `ModuleMetadata` from `@nestjs/common/interfaces`, a directory, which that map cannot
+  resolve under `moduleResolution: nodenext`. `ModuleMetadata` silently becomes `any`, and
+  `Pick<any, 'imports'>` makes `imports` a required key on `ThrottlerAsyncOptions`. The
+  `TS2345 ... Property 'imports' is missing` error at `ThrottlerModule.forRootAsync` is that,
+  not an API change; `imports: []` satisfies it. Still unfixed upstream at the time of writing.
+- Throttler 6.6.0 also fixed the cross-client decrement cancellation
+  [[clock-step-freezes-rate-limits]] describes; the canary in
+  `backend/test/throttler-storage.spec.ts` went red as designed and now pins the fix.
+- `@nestjs/platform-express` 12 pins multer 2.4.0, past the advisory fix the
+  `pnpm-workspace.yaml` override existed for, so the override is gone.
 
-**How to apply:** merge #687 once a throttler release lists `^12.0.0` in its peers
-(`pnpm view @nestjs/throttler peerDependencies`), and re-check the multer override in
-`pnpm-workspace.yaml` then, since `@nestjs/platform-express` pins multer exactly and a
-newer platform-express may carry a fixed one. Nest 12 also needs Node 20.19+/22.12+,
-which `.nvmrc` (24) already satisfies.
+**Why:** three of the four surprises look like Nest 12 API changes and none of them is.
+Casting past the `imports` error would hide a typing degradation, not fix one.
+
+**How to apply:** when a Nest package's types go `any` after a bump, `tsc --traceResolution`
+and look for "was not resolved" against the `exports` subpath before touching the call site.

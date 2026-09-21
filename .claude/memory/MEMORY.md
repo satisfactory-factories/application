@@ -50,5 +50,5 @@
 - [Clock step freezes rate limits](clock-step-freezes-rate-limits.md) — a backwards clock step at boot 429'd the API container unhealthy under express-rate-limit; why @nestjs/throttler closed it, why we run our own throttler storage instead of its, and why it looks exactly like prod drift
 - [Grafana dashboard via API](grafana-dashboard-via-api.md) — `docs/grafana/generate.py` is the source of truth; regenerate and PUT the v2 JSON from the Grafana box with the on-box token, never hand-edit live; ask for SSH first
 - [Renovate automerge is dead](renovate-automerge-blocked-by-ruleset.md) — the "Human review required" ruleset needs one approval, so green Renovate PRs never merge themselves; sweep them in one branch
-- [Nest 12 blocked on throttler](nest-12-blocked-on-throttler.md) — @nestjs/throttler peers on Nest <= 11; merge #687 once its Nest 12 support ships; mongoose/jwt 12 already in
+- [Nest 12 landed](nest-12-blocked-on-throttler.md) — in since 2026-09-21; the traps are the exports map hiding `@nestjs/common/interfaces` under nodenext and @nestjs/config jumping 4.x to 12.x
 - [E2E concurrency flake](e2e-concurrency-flake.md) — the debounce straddle behind weeks of Playwright failures, why collisions are judged by op id, and why retries are CI-only

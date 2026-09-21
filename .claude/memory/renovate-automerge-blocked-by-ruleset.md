@@ -4,7 +4,7 @@ description: renovate.json says patch/minor automerge, but the "Human review req
 metadata:
   type: project
   volatility: normal
-  lastVerified: 2026-09-12
+  lastVerified: 2026-09-21
 ---
 
 `renovate.json` configures automerge for patch and minor updates, and its comments say
