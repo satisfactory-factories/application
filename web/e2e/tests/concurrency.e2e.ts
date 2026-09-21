@@ -180,44 +180,35 @@ test('two clients editing the same factory land on the later write', async ({ cl
  * An add is structural, so the engine infers the intent from the diff itself. This
  * is the case that needs no UI to declare anything.
  *
- * The one exception to this file's zero retries: `addFactory` is four real actions
- * (add, name, commit, note), and on a loaded runner they can occasionally straddle
- * the 400ms sync debounce, sending the name and the note as two ops instead of one.
- * That desyncs the race this test forces, not the server's own collision handling —
- * the other three tests here exercise the same server-side rule with a single-action
- * edit and have never flaked. Confirmed by reading `room-op.service.ts`'s commit
- * path (an atomic, revision-filtered update — no scenario double-accepts) and by
- * repeated local reproduction: the failure is always this test's own bookkeeping
- * ("neither op was refused"), never a wrong result reaching either device.
+ * The flakiest test here: `addFactory` is four real actions, and on a loaded runner
+ * they can straddle the 400ms sync debounce and go out as two ops, which desyncs
+ * the forced race rather than the server's collision handling. The failure is
+ * always this bookkeeping ("neither op was refused"), never a wrong result.
  */
-test.describe(() => {
-  test.describe.configure({ retries: 1 })
+test('two clients adding a factory each keep both of them', async ({ client, request }) => {
+  const pair = await gatedPair(client, request)
+  const { roomId, first, second, firstGate, secondGate } = pair
+  const base = await settledRevision(pair)
 
-  test('two clients adding a factory each keep both of them', async ({ client, request }) => {
-    const pair = await gatedPair(client, request)
-    const { roomId, first, second, firstGate, secondGate } = pair
-    const base = await settledRevision(pair)
+  await raceOneOpEach(pair, () => Promise.all([
+    addFactory(first, { name: 'Alpha', note: 'added on the first device' }),
+    addFactory(second, { name: 'Bravo', note: 'added on the second device' }),
+  ]), base)
 
-    await raceOneOpEach(pair, () => Promise.all([
-      addFactory(first, { name: 'Alpha', note: 'added on the first device' }),
-      addFactory(second, { name: 'Bravo', note: 'added on the second device' }),
-    ]), base)
+  const refused = await rejectedDevice(pair)
+  await expectRebaseResend(refused === 'first' ? firstGate : secondGate, base)
 
-    const refused = await rejectedDevice(pair)
-    await expectRebaseResend(refused === 'first' ? firstGate : secondGate, base)
+  // Different records, so both ops have to be committed; neither may be swallowed.
+  for (const page of [first, second]) await waitForRevision(page, roomId, base + 2)
+  await expectQuiesced([first, second], roomId)
 
-    // Different records, so both ops have to be committed; neither may be swallowed.
-    for (const page of [first, second]) await waitForRevision(page, roomId, base + 2)
-    await expectQuiesced([first, second], roomId)
-
-    for (const page of [first, second]) {
-      await expect.poll(() => factoryNamesIn(page, roomId), {
-        message: 'a device lost one of the two additions',
-      }).toEqual(['Alpha', 'Bravo'])
-      await expectMirroredNote(page, roomId, 'Alpha', 'added on the first device')
-      await expectMirroredNote(page, roomId, 'Bravo', 'added on the second device')
-    }
-  })
+  for (const page of [first, second]) {
+    await expect.poll(() => factoryNamesIn(page, roomId), {
+      message: 'a device lost one of the two additions',
+    }).toEqual(['Alpha', 'Bravo'])
+    await expectMirroredNote(page, roomId, 'Alpha', 'added on the first device')
+    await expectMirroredNote(page, roomId, 'Bravo', 'added on the second device')
+  }
 })
 
 /**

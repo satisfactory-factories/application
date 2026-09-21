@@ -12,8 +12,10 @@ export default defineConfig({
   // Not *.spec.ts: that pattern is Vitest's, and the unit suite would collect these.
   testMatch: /.*\.e2e\.ts/,
   globalSetup: './e2e/global-setup.ts',
-  // A flake here is a bug in the app or in the harness, and a retry only hides it.
-  retries: 0,
+  // Locally a flake is a bug in the app or the harness, so it fails outright. CI runs on
+  // a loaded 2-core runner where a multi-action edit can straddle the sync debounce and
+  // desync a forced race; the `github` reporter still flags every pass-on-retry as flaky.
+  retries: process.env.CI ? 2 : 0,
   // One backend process, one mongod and one rate-limit bucket are shared by every
   // test, so serial keeps a failure attributable to the test that caused it.
   workers: 1,

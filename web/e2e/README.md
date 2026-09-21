@@ -78,7 +78,8 @@ per address.
   a test can hold an op in flight or kill the connection at an exact moment.
 - **No fixed sleeps** — wait on a condition: an element, a stored revision, a poll over
   the two mirrors. The one exception is the quiet period the offline test needs to claim
-  nothing was sent, and it is named as such. `retries` is 0 on purpose.
+  nothing was sent, and it is named as such. `retries` is 0 locally on purpose; CI gets two,
+  and the `github` reporter flags every pass-on-retry as flaky rather than hiding it.
 - `expectQuiesced` is the strongest "it settled" check there is: every client has no
   unsent intent left and they all hold the same bytes at the same revision.
 
