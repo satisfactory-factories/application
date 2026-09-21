@@ -4,13 +4,11 @@ import { BaseExceptionFilter } from '@nestjs/core'
 import type { Request } from 'express'
 
 import { BackoffException } from './backoff.exception'
-import { EventCountersService } from './event-counters.service'
+import { EventCountersService, UNMATCHED_ROUTE } from './event-counters.service'
 import type { HttpErrorClient, HttpErrorLabels } from './event-counters.service'
 
 /** Routes the planner calls without a version header, so a headerless hit is still the planner. */
 const BEACON_ROUTES = new Set(['POST /events', 'POST /telemetry'])
-
-export const UNMATCHED_ROUTE = 'unmatched'
 
 /**
  * Express sets `req.route` when a route layer dispatches, so it is present for anything thrown

@@ -4614,6 +4614,87 @@
           }
         }
       },
+      "panel-117": {
+        "kind": "Panel",
+        "spec": {
+          "id": 117,
+          "title": "Unversioned 404s Since Restart",
+          "description": "Probes for paths the API does not have, counted since the API last started. A level rather than a rate: a sweep is over inside one scrape, so this is the figure that survives whatever the timing was.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(sf_http_errors_total{job=\"satisfactory-factories-preview\",status=\"404\",client=\"unversioned\",route=\"unmatched\"})",
+                        "legendFormat": "Probes",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.0.2",
+            "spec": {
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "#6a6a6a"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-106": {
         "kind": "Panel",
         "spec": {
@@ -10619,7 +10700,20 @@
                       "spec": {
                         "x": 0,
                         "y": 30,
-                        "width": 24,
+                        "width": 6,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-117"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 6,
+                        "y": 30,
+                        "width": 18,
                         "height": 4,
                         "element": {
                           "kind": "ElementReference",

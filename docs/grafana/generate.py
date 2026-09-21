@@ -489,6 +489,14 @@ add(99, "Planner Errors by Route, Last 24h",
     [query('sort_desc(round(sum by (route, status) (increase(sf_http_errors_total%s[24h]))) > 0)' % sel('client=~"versioned|beacon"'), "{{status}} · {{route}}", instant=True)],
     bargauge(display_name="${__field.labels.status} · ${__field.labels.route}"))
 
+# A level, not an increase, on purpose: a sweep is a burst inside one scrape, and increase()
+# only sees movement between samples. Since the scanner series is seeded at zero it now moves
+# on the panel above too, but the level is the number that cannot be missed.
+add(117, "Unversioned 404s Since Restart",
+    "Probes for paths the API does not have, counted since the API last started. A level rather than a rate: a sweep is over inside one scrape, so this is the figure that survives whatever the timing was.",
+    [query('sum(sf_http_errors_total%s)' % sel('status="404",client="unversioned",route="unmatched"'), "Probes")],
+    stat([{"value": 0, "color": "#6a6a6a"}], color_mode="value", graph="area"))
+
 add(106, "Unversioned Responses by Status",
     "Error responses to requests with no planner version header: scanners, uptime monitors, curl, and planner builds too old to send one. A 404 on \"unmatched\" is a probe for a path that does not exist. Kept visible so a change in the probing is still noticed, and kept apart so it cannot be mistaken for users.",
     [query('round(sum by (status, route) (increase(sf_http_errors_total%s[24h]))) > 0' % sel('client="unversioned"'), "{{status}} · {{route}}")],
@@ -832,7 +840,7 @@ rows = [
         item(0, 4, 12, 10, 93), item(12, 4, 12, 10, 94),
         item(0, 14, 12, 8, 95), item(12, 14, 12, 8, 96),
         item(0, 22, 12, 8, 99), item(12, 22, 12, 8, 106),
-        item(0, 30, 24, 4, 98),
+        item(0, 30, 6, 4, 117), item(6, 30, 18, 4, 98),
     ]),
     row("🌱 Growth · from the database", [
         item(0, 0, 5, 4, 81), item(5, 0, 5, 4, 82), item(10, 0, 4, 4, 87),
