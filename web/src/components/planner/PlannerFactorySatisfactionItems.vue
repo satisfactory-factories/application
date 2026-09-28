@@ -631,7 +631,7 @@
     isChecklistExportDesynced,
     toggleChecklistExport,
   } from '@/utils/factory-management/checklist'
-  import { formatNumber, formatNumberFully } from '@/utils/numberFormatter'
+  import { formatNumber } from '@/utils/numberFormatter'
   import { AsBuiltSource, getAsBuiltDifferences } from '@/utils/factory-management/building-groups/as-built'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { useAppStore } from '@/stores/app-store'
@@ -914,7 +914,7 @@
   }
 
   const asBuiltRemaining = (part: PartMetrics, partId: string): number =>
-    formatNumberFully(part.amountRemaining + (asBuilt.value[partId]?.surplusDelta ?? 0), 3)
+    asBuilt.value[partId]?.remaining ?? part.amountRemaining
 
   const asBuiltSourceName = (source: AsBuiltSource): string =>
     source.type === ItemType.Product

@@ -15,6 +15,7 @@
  */
 import { Factory, FactoryItem, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { formatNumberFully } from '@/utils/numberFormatter'
+import { isSunk } from '@/utils/factory-management/disposal'
 
 export type AsBuiltRole = 'output' | 'ingredient'
 
@@ -33,6 +34,9 @@ export interface AsBuiltPartDifference {
   // What the groups change about the part's surplus: negative is less of it than the plan says.
   // An output made short lowers it; an ingredient consumed short raises it.
   surplusDelta: number
+  // The part's surplus (negative: shortage) once the groups are counted, after any AWESOME Sink
+  // on it has taken its share. Compare with the part's amountRemaining.
+  remaining: number
   sources: AsBuiltSource[]
 }
 
@@ -105,6 +109,20 @@ export const getAsBuiltOutput = (product: FactoryItem): number | null => {
   return source ? source.source.asBuilt : null
 }
 
+// A sink only ever takes what nothing else claimed, so it absorbs the groups' difference too: a
+// sunk byproduct made 60/min short as built is sunk 60/min less, not 60/min short. Mirrors
+// calculateParts, starting from the surplus before the sink had its share.
+const asBuiltRemaining = (factory: Factory, partId: string, surplusDelta: number): number => {
+  const part = factory.parts[partId]
+  if (!part) return formatNumberFully(surplusDelta, 3)
+
+  const preSink = part.amountRemainingPreSink ?? part.amountRemaining + (part.amountRequiredSink ?? 0)
+  const asBuilt = preSink + surplusDelta
+  const sunk = part.isSinkable && isSunk(factory, partId) ? Math.max(0, asBuilt) : 0
+
+  return formatNumberFully(asBuilt - sunk, 3)
+}
+
 // Every part in the factory the groups would leave at a different surplus than the plan shows.
 export const getAsBuiltDifferences = (factory: Factory): Record<string, AsBuiltPartDifference> => {
   const result: Record<string, AsBuiltPartDifference> = {}
@@ -116,16 +134,19 @@ export const getAsBuiltDifferences = (factory: Factory): Record<string, AsBuiltP
 
   for (const { part, source } of entries) {
     const difference = source.asBuilt - source.planned
-    const entry = result[part] ??= { surplusDelta: 0, sources: [] }
+    const entry = result[part] ??= { surplusDelta: 0, remaining: 0, sources: [] }
     entry.surplusDelta += source.role === 'output' ? difference : -difference
     entry.sources.push(source)
   }
 
-  // Two items can cancel each other out: one group set over and another under on the same part.
-  // The part then balances as built, so it has nothing to say.
+  // A part whose surplus comes out the same as built has nothing to say: two items cancelling each
+  // other out (one group set over and another under), or a sink absorbing the difference.
   for (const part of Object.keys(result)) {
-    result[part].surplusDelta = formatNumberFully(result[part].surplusDelta, 3)
-    if (result[part].surplusDelta === 0) delete result[part]
+    const entry = result[part]
+    entry.surplusDelta = formatNumberFully(entry.surplusDelta, 3)
+    entry.remaining = asBuiltRemaining(factory, part, entry.surplusDelta)
+    const planned = formatNumberFully(factory.parts[part]?.amountRemaining ?? 0, 3)
+    if (entry.surplusDelta === 0 || entry.remaining === planned) delete result[part]
   }
 
   return result
