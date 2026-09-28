@@ -328,6 +328,22 @@
                   <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
                 </b>
               </v-chip>
+              <!-- What the factory really does with this part once the building groups are counted
+                   instead of the quantities. Every figure above comes from the quantities, which
+                   Sync off leaves free to disagree with the groups, so without this a product
+                   raised past its groups reads as exactly satisfied while it runs short in game. -->
+              <tooltip v-if="asBuilt[partId]" :text="asBuiltTooltip(partId.toString())">
+                <v-chip
+                  class="sf-chip small"
+                  :class="asBuiltRemaining(part, partId.toString()) < 0 ? 'red' : 'status-warning'"
+                >
+                  <i class="fas fa-layer-group mr-2" />
+                  <b>
+                    <span :id="`${factory.id}-satisfaction-${partId.toString()}-as-built`">{{ formatNumber(asBuiltRemaining(part, partId.toString())) }}</span>/min {{ getSatisfactionLabel(asBuiltRemaining(part, partId.toString())) }} as built
+                  </b>
+                  <i class="fas fa-info-circle ml-2" />
+                </v-chip>
+              </tooltip>
               <!-- The number sinking removed is never hidden. Without this the row would read a
                    flat zero and there would be no way to tell a factory that produces exactly what
                    it needs from one throwing 100/min into a sink. -->
@@ -595,6 +611,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import {
     Factory, FactoryItem, FactoryPowerChangeType,
+    ItemType,
     PartMetrics,
   } from '@/interfaces/planner/FactoryInterface'
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
@@ -614,7 +631,9 @@
     isChecklistExportDesynced,
     toggleChecklistExport,
   } from '@/utils/factory-management/checklist'
-  import { formatNumber } from '@/utils/numberFormatter'
+  import { formatNumber, formatNumberFully } from '@/utils/numberFormatter'
+  import { AsBuiltSource, getAsBuiltDifferences } from '@/utils/factory-management/building-groups/as-built'
+  import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { useAppStore } from '@/stores/app-store'
   import {
     addShortageToFactory,
@@ -690,6 +709,10 @@
     showSurplusOutputs?: boolean;
   }>()
 
+  // What each part's surplus becomes once out-of-balance building groups are counted instead of
+  // the quantities. Keyed by part; absent means the groups agree with the plan.
+  const asBuilt = computed(() => getAsBuiltDifferences(props.factory))
+
   const filteredParts = computed(() => {
     if (!props.showSurplusOutputs) return props.factory.parts
     const result: Record<string, PartMetrics> = {}
@@ -697,7 +720,7 @@
       // Surplus: amountRemaining > 0
       // Output: exported to another factory
       // Shortage: amountRemaining < 0
-      const hasSurplusOrShortage = part.amountRemaining !== 0
+      const hasSurplusOrShortage = part.amountRemaining !== 0 || !!asBuilt.value[partId]
       const isExported = getPartExportRequests(props.factory, partId).length > 0
       if (hasSurplusOrShortage || isExported) {
         result[partId] = part
@@ -714,9 +737,11 @@
   }
 
   const satisfactionShading = (part: PartMetrics, partId: string) => {
+    // Short once the building groups are counted is short in game, whatever the quantities say.
+    const shortAsBuilt = !!asBuilt.value[partId] && asBuiltRemaining(part, partId) < 0
     return {
-      'border-green': part.satisfied,
-      'border-red': !part.satisfied,
+      'border-green': part.satisfied && !shortAsBuilt,
+      'border-red': !part.satisfied || shortAsBuilt,
       // A byproduct with nowhere to go is satisfied by the numbers and still stops the line, so
       // it takes the row the same way a shortage does, one tier down.
       'border-amber': isUnhandledByproduct(props.factory, partId),
@@ -886,6 +911,31 @@
 
   const getSatisfactionLabel = (total: number) => {
     return total >= 0 ? 'surplus' : 'shortage'
+  }
+
+  const asBuiltRemaining = (part: PartMetrics, partId: string): number =>
+    formatNumberFully(part.amountRemaining + (asBuilt.value[partId]?.surplusDelta ?? 0), 3)
+
+  const asBuiltSourceName = (source: AsBuiltSource): string =>
+    source.type === ItemType.Product
+      ? `the ${getPartDisplayName(source.subject)} product`
+      : `the ${getBuildingDisplayName(source.subject)} power producer`
+
+  const asBuiltTooltip = (partId: string): string => {
+    const difference = asBuilt.value[partId]
+    if (!difference) return ''
+
+    const lines = difference.sources.map(source => {
+      const verb = source.role === 'output' ? 'make' : 'use'
+      return `The Building Groups on ${asBuiltSourceName(source)} ${verb} <b>${formatNumber(source.asBuilt)}/min</b>, ` +
+        `against the ${formatNumber(source.planned)}/min planned.`
+    })
+
+    return [
+      ...lines,
+      'The figures above are worked out from the planned quantities, so this is what the factory will really have once built.',
+      'Balance the Building Groups on the product, or change its Qty to match them.',
+    ].join('<br>')
   }
 
   const doFixProduct = (partId: string, factory: Factory) => {

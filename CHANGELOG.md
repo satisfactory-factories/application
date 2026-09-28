@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Unreleased
+
+- **Building groups that don't match their quantity now show what they really make.** With Sync off, a product's Qty/min and its building groups can disagree, and satisfaction, exports and fuel are all worked out from the Qty. A product raised to 950/min on groups built for 720/min therefore read as exactly satisfied while the factory ran 230/min short in game. Three things now make that visible:
+  - The product row carries a red **Groups make 720/min** chip beside the Qty.
+  - The satisfaction table adds an **as built** chip to every part the groups affect (for example, **-230/min shortage as built**), with the responsible item and both figures on hover. A part that is short as built is shaded red, whatever the planned figure says.
+  - The Building Groups bar says **under producing** or **over producing** instead of "have a problem".
+  The calculation itself is unchanged: plans still balance on their quantities.
+
 ## Beta v0.7.2
 
 Housekeeping under the hood, and a nudge to reload so everyone is on the same build.

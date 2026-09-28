@@ -112,6 +112,20 @@
         />
         <debounce-spinner :active="debouncingProduct === product.id && debouncing === 'amount'" />
       </div>
+      <!-- Right beside the Qty it contradicts. With Sync off the planner works everything out from
+           the Qty, so this is the only figure on the row that says what the factory really makes. -->
+      <tooltip
+        v-if="asBuiltOutput(product) !== null"
+        classes="align-self-center"
+        :text="asBuiltTooltip(product)"
+      >
+        <v-chip
+          :id="`${factory.id}-${product.id}-as-built`"
+          class="sf-chip small red"
+        >
+          <i class="fas fa-layer-group mr-1" />Groups make {{ formatNumber(asBuiltOutput(product) ?? 0) }}/min
+        </v-chip>
+      </tooltip>
       <v-btn
         v-show="shouldShowFix(product, factory) == 'deficit'"
         class="rounded align-self-center"
@@ -328,7 +342,8 @@
     toggleChecklistProduct,
   } from '@/utils/factory-management/checklist'
   import { getPartDisplayName } from '@/utils/helpers'
-  import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
+  import { fixTargetSuffix, formatMw, formatNumber, formatNumberFully } from '@/utils/numberFormatter'
+  import { getAsBuiltOutput } from '@/utils/factory-management/building-groups/as-built'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { useDisplay } from 'vuetify'
@@ -575,6 +590,21 @@
   // before the press rather than only after it.
   const fixTargetLabel = (product: FactoryItem, factory: Factory): string =>
     fixTargetSuffix(fixProductTarget(product, factory))
+
+  const asBuiltOutput = (product: FactoryItem): number | null => getAsBuiltOutput(product)
+
+  const asBuiltTooltip = (product: FactoryItem): string => {
+    const asBuilt = asBuiltOutput(product) ?? 0
+    const gap = formatNumber(Math.abs(product.amount - asBuilt))
+    const short = asBuilt < product.amount
+    const direction = short ? `${gap}/min short of` : `${gap}/min more than`
+    const remedy = short
+      ? 'Use Remainder to last or Remainder to new group in the Building Groups below to build the difference, or lower the Qty to match.'
+      : 'Remove buildings or lower clocks in the Building Groups below, or raise the Qty to match.'
+    return `This product's Building Groups make <b>${formatNumber(asBuilt)}/min</b>, ${direction} the Qty.<br>` +
+      'Satisfaction, exports and every other figure in the planner are worked out from the Qty, so none of them show this.<br>' +
+      remedy
+  }
 
   // Named apart from a plain Trim when imports are what makes the target smaller.
   const trimLabel = (product: FactoryItem, factory: Factory): string =>

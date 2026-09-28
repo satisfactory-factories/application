@@ -268,7 +268,9 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     icon: 'fas fa-layer-group',
     chip: true,
     section: 'products',
-    detail: 'The building groups on these items do not add up to the buildings the item needs.',
+    // The second sentence is the part that catches people out: with Sync off, satisfaction keeps
+    // balancing on the quantity while the groups built in game make something else.
+    detail: 'The building groups on these items do not add up to the buildings the item needs. Satisfaction is worked out from the quantity, so its "as built" chip shows what the groups really make.',
     // Power producers are included deliberately: calculateBuildingGroupProblems has always run for
     // them, but the old hasProblem rollup only ever looked at factory.products, so a broken power
     // producer never reddened its factory.
