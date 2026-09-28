@@ -122,6 +122,7 @@
 <script setup lang="ts">
   import { computed, onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
   import { useDisplay } from 'vuetify'
+  import { useRouter } from 'vue-router'
 
   import {
     Factory,
@@ -145,6 +146,7 @@
   import { usePlannerOptions } from '@/composables/usePlannerOptions'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
+  import { useJumpHistory } from '@/composables/useJumpHistory'
   import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
   import eventBus from '@/utils/eventBus'
   import { captureOrder, markFactoryEdited, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
@@ -455,6 +457,25 @@
   // motion at all, so this doesn't fight the user's own scrolling of the sidebar.
   // `flush: 'post'` so the row's `.active-view` class has already been painted by the
   // time this queries for it.
+  // Back and forward return to where a jump was made from. Anchored on the scroll-spy's entry,
+  // refreshed first because the last scroll event's scan may still be waiting on its frame.
+  const router = useRouter()
+  const jumpHistory = useJumpHistory({
+    container: () => document.querySelector<HTMLElement>('.main-content'),
+    anchorId: () => {
+      updateActiveFactory()
+      return activeFactoryId.value === null ? null : String(activeFactoryId.value)
+    },
+    // Through the router, forced because the location is unchanged, so its record of where the
+    // user is in history stays true for the next real page change.
+    push: state => {
+      const { path, query, hash } = router.currentRoute.value
+      return router.push({ path, query, hash, state, force: true })
+    },
+  })
+  onMounted(jumpHistory.start)
+  onUnmounted(jumpHistory.stop)
+
   watch(activeFactoryId, () => {
     document.querySelectorAll('.sidebar-content .factory-card.active-view, #navigationDrawer .factory-card.active-view')
       .forEach(el => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
@@ -471,7 +492,9 @@
     const pendingNav = sessionStorage.getItem('navigateToFactory')
     if (pendingNav) {
       sessionStorage.removeItem('navigateToFactory')
-      setTimeout(() => navigateToFactory(pendingNav), 250)
+      // Not a jump point: back from here should return to the page the jump was asked from, not
+      // to the top of a plan the user never saw.
+      setTimeout(() => goToFactory(pendingNav, undefined, undefined, false), 250)
     }
   }
 
@@ -676,13 +699,24 @@
   // owns the problem), so callers pass the section as a fallback rather than the jump silently
   // doing nothing. Several rows can be named at once — a chip reading "3 shortages" is about
   // three of them — in which case the jump lands on the topmost and lights all three.
-  const navigateToFactory = (factoryId: number | string, subsection?: string | string[], fallback?: string) => {
+  const navigateToFactory = (factoryId: number | string, subsection?: string | string[], fallback?: string) =>
+    goToFactory(factoryId, subsection, fallback, true)
+
+  // `jumpPoint` leaves the place being left in the browser's history, so back returns to it.
+  const goToFactory = (
+    factoryId: number | string,
+    subsection: string | string[] | undefined,
+    fallback: string | undefined,
+    jumpPoint: boolean
+  ) => {
     const facId = Number.parseInt(factoryId.toString(), 10)
     const factory = findFac(facId, getFactories())
     if (!factory) {
       console.error(`navigateToFactory: Factory ${factoryId} not found!`)
       return
     }
+    // Before the unhide and group reveal below, which move the content the place is measured in.
+    if (jumpPoint) jumpHistory.record()
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
     // Payload, never intent: jumping to a card is moving around the app rather than editing it,
     // and a navigation restored from session storage on load must not claim the user's authorship.
@@ -789,6 +823,7 @@
   // Right after page load the section components may not be mounted yet, so a single
   // emit can vanish into the void — keep re-emitting until the element exists (bounded).
   const navigateToSection = (sectionId: string, attempt = 0) => {
+    if (attempt === 0) jumpHistory.record()
     eventBus.emit('openSection', sectionId)
     if (!document.getElementById(sectionId)) {
       if (attempt < 20) {

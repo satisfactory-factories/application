@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file. It mirrors the structure of the in-app [Change Log](https://satisfactory-factories.app/changelog) — same sections, full technical detail. For the release history prior to Alpha v0.4 (the 0.1.x–0.3.x scaffolding releases), see the [GitHub commit history](https://github.com/satisfactory-factories/application/commits/main).
 
+## Unreleased
+
+- **Back and forward now undo a jump.** Every jump around the plan (an import's **View** button, the eye on an export, a sidebar row, a status chip) leaves a browser history entry behind, so the mouse's back button, Alt+Left, or a trackpad swipe returns to where the jump was made from, and forward goes to the jump's destination again. The place is remembered as the card being read and how far into it, so it still lines up when the jump unhid a factory or opened a group above it. Backing past the first jump leaves the page as before.
+
 ## Beta v0.7.2
 
 Housekeeping under the hood, and a nudge to reload so everyone is on the same build.
