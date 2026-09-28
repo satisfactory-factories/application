@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## Unreleased
 
-- **Back and forward now undo a jump.** Every jump around the plan (an import's **View** button, the eye on an export, a sidebar row, a status chip) leaves a browser history entry behind, so the mouse's back button, Alt+Left, or a trackpad swipe returns to where the jump was made from, and forward goes to the jump's destination again. The place is remembered as the card being read and how far into it, so it still lines up when the jump unhid a factory or opened a group above it. Backing past the first jump leaves the page as before.
+- **Back and forward now undo a jump.** Every jump around the plan (an import's **View** button, the eye on an export, a sidebar row, a status chip) leaves a browser history entry behind, so the mouse's back button, Alt+Left, or a trackpad swipe returns to where the jump was made from, and forward goes to the jump's destination again. The place is remembered as the card being read and how far into it, so it still lines up when the jump unhid a factory or opened a group above it. Arriving pulses a row, as the jump itself does: back lights the row you clicked from (or the one at eye level when the jump came from the sidebar), and forward lights the row the jump landed on. Backing past the first jump leaves the page as before.
 
 ## Beta v0.7.2
 

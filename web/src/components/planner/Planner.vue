@@ -716,7 +716,8 @@
       return
     }
     // Before the unhide and group reveal below, which move the content the place is measured in.
-    if (jumpPoint) jumpHistory.record()
+    // The row named first is what forward will light up again; the card when none is named.
+    if (jumpPoint) jumpHistory.record([subsection ?? []].flat()[0] ?? `${factoryId}`)
     // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
     // Payload, never intent: jumping to a card is moving around the app rather than editing it,
     // and a navigation restored from session storage on load must not claim the user's authorship.
@@ -823,7 +824,7 @@
   // Right after page load the section components may not be mounted yet, so a single
   // emit can vanish into the void — keep re-emitting until the element exists (bounded).
   const navigateToSection = (sectionId: string, attempt = 0) => {
-    if (attempt === 0) jumpHistory.record()
+    if (attempt === 0) jumpHistory.record(sectionId)
     eventBus.emit('openSection', sectionId)
     if (!document.getElementById(sectionId)) {
       if (attempt < 20) {

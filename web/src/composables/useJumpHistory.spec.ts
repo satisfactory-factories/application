@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { JUMP_STATE_KEY, useJumpHistory } from '@/composables/useJumpHistory'
 
 // jsdom does no layout, so the container and its cards report whatever these say: the container
-// sits at the top of the viewport, and a card's top moves up as the container scrolls.
+// is an 800px window at the top of the viewport, and a card's top moves up as the container
+// scrolls. Every element is 100px tall.
 const cardTops: Record<string, number> = {}
+const VIEWPORT = 800
 
 const makeContainer = () => {
   const main = document.createElement('div')
-  main.getBoundingClientRect = () => ({ top: 0 }) as DOMRect
+  main.getBoundingClientRect = () => ({ top: 0, bottom: VIEWPORT }) as DOMRect
   main.scrollTo = vi.fn(({ top }: ScrollToOptions) => {
     main.scrollTop = top ?? 0
   }) as unknown as HTMLElement['scrollTo']
@@ -15,14 +17,26 @@ const makeContainer = () => {
   return main
 }
 
-const addCard = (main: HTMLElement, id: string, top: number) => {
+const addCard = (main: HTMLElement, id: string, top: number, parent: HTMLElement = main) => {
   cardTops[id] = top
   const card = document.createElement('div')
   card.id = id
-  card.getBoundingClientRect = () => ({ top: cardTops[id] - main.scrollTop }) as DOMRect
+  // Something to show: an empty element is a byproduct's jump marker, which the flash passes over.
+  card.textContent = id
+  card.getBoundingClientRect = () => {
+    const at = cardTops[id] - main.scrollTop
+    return { top: at, bottom: at + 100 } as DOMRect
+  }
   card.getClientRects = () => [{}] as unknown as DOMRectList
-  main.append(card)
+  parent.append(card)
   return card
+}
+
+// A jump is recorded from inside the click handler of the control that asked for it.
+const clickToJump = (control: HTMLElement, jumps: { record: (destination?: string) => void }, destination?: string) => {
+  control.addEventListener('click', () => jumps.record(destination), { once: true })
+  control.click()
+  vi.advanceTimersByTime(0)
 }
 
 // popstate is what the browser fires on back/forward; jsdom's history does not fire it itself.
@@ -33,6 +47,7 @@ describe('useJumpHistory', () => {
   let anchor: string | null
   let pushed: Record<string, string>[]
   let jumps: ReturnType<typeof useJumpHistory>
+  let flash: ReturnType<typeof vi.fn<(element: HTMLElement) => void>>
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -43,7 +58,9 @@ describe('useJumpHistory', () => {
     addCard(main, 'c', 3000)
     anchor = 'a'
     pushed = []
+    flash = vi.fn<(element: HTMLElement) => void>()
     jumps = useJumpHistory({
+      flash,
       container: () => main,
       anchorId: () => anchor,
       push: state => {
@@ -153,6 +170,144 @@ describe('useJumpHistory', () => {
     main.scrollTop = 3000
     pop({ [JUMP_STATE_KEY]: originId })
     expect(main.scrollTop).toBe(3000)
+  })
+
+  describe('the pulse on arrival', () => {
+    const flashedIds = () => flash.mock.calls.map(([el]) => (el as HTMLElement).id)
+
+    it('lights the row the jump was clicked from once the scroll has had a beat', () => {
+      const card = document.getElementById('b')!
+      const row = addCard(main, 'b-import-row', 1300, card)
+      const button = document.createElement('button')
+      row.append(button)
+      main.scrollTop = 1200
+      anchor = 'b'
+      const replace = vi.spyOn(history, 'replaceState')
+      clickToJump(button, jumps, 'c')
+      const originId = (replace.mock.calls[0][0] as Record<string, string>)[JUMP_STATE_KEY]
+      replace.mockRestore()
+      main.scrollTop = 3000
+      anchor = 'c'
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      expect(flash).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(350)
+      expect(flashedIds()).toEqual(['b-import-row'])
+    })
+
+    it('walks past the ids Vuetify generates to the row that owns the control', () => {
+      const row = addCard(main, 'a-row', 50, document.getElementById('a')!)
+      const input = document.createElement('input')
+      input.id = 'input-v-12'
+      row.append(input)
+      const replace = vi.spyOn(history, 'replaceState')
+      clickToJump(input, jumps)
+      const originId = (replace.mock.calls[0][0] as Record<string, string>)[JUMP_STATE_KEY]
+      replace.mockRestore()
+      main.scrollTop = 3000
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      vi.advanceTimersByTime(350)
+      expect(flashedIds()).toEqual(['a-row'])
+    })
+
+    it('lights the row the jump landed on when forward returns to it', () => {
+      jumps.record('c')
+      const destination = history.state
+      main.scrollTop = 3000
+      anchor = 'c'
+
+      pop({ [JUMP_STATE_KEY]: 'the-entry-before' })
+      main.scrollTop = 0
+      anchor = 'a'
+      flash.mockClear()
+
+      pop(destination)
+      vi.advanceTimersByTime(350)
+      expect(flashedIds()).toEqual(['c'])
+    })
+
+    it('lights the card being read when the row is no longer on screen', () => {
+      const button = document.createElement('button')
+      const row = addCard(main, 'far-row', 1300, document.getElementById('b')!)
+      row.append(button)
+      main.scrollTop = 1000
+      anchor = 'b'
+      const replace = vi.spyOn(history, 'replaceState')
+      clickToJump(button, jumps)
+      const originId = (replace.mock.calls[0][0] as Record<string, string>)[JUMP_STATE_KEY]
+      replace.mockRestore()
+      // The row grew out of view while the user was away.
+      cardTops['far-row'] = 2500
+      main.scrollTop = 3000
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      vi.advanceTimersByTime(350)
+      expect(flashedIds()).toEqual(['b'])
+    })
+
+    it('lights the card being read for a jump that was not clicked from the plan', () => {
+      main.scrollTop = 1000
+      anchor = 'b'
+      const originId = captureOriginId()
+      main.scrollTop = 3000
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      vi.advanceTimersByTime(350)
+      expect(flashedIds()).toEqual(['b'])
+    })
+
+    it('does not leave a stale click behind for a later jump', () => {
+      const row = addCard(main, 'a-row', 50, document.getElementById('a')!)
+      row.click()
+      vi.advanceTimersByTime(0)
+      const originId = captureOriginId()
+      main.scrollTop = 3000
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      vi.advanceTimersByTime(350)
+      expect(flashedIds()).toEqual(['a'])
+    })
+
+    it('lights the row the scroll is carrying into view, though it has not arrived yet', () => {
+      const row = addCard(main, 'b-row', 1300, document.getElementById('b')!)
+      main.scrollTop = 1200
+      anchor = 'b'
+      const replace = vi.spyOn(history, 'replaceState')
+      clickToJump(row, jumps)
+      const originId = (replace.mock.calls[0][0] as Record<string, string>)[JUMP_STATE_KEY]
+      replace.mockRestore()
+      main.scrollTop = 3000
+      // A smooth scroll a long way: 350ms in, it has barely started.
+      main.scrollTo = vi.fn() as unknown as HTMLElement['scrollTo']
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      vi.advanceTimersByTime(350)
+      expect(flashedIds()).toEqual(['b-row'])
+    })
+
+    it('pulses nothing when neither the row nor the card heading will be on screen', () => {
+      // Deep inside a tall card: its top, where the heading is, sits 500px above the view.
+      main.scrollTop = 1500
+      anchor = 'b'
+      const originId = captureOriginId()
+      main.scrollTop = 3000
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      vi.advanceTimersByTime(350)
+      expect(main.scrollTop).toBe(1500)
+      expect(flash).not.toHaveBeenCalled()
+    })
+
+    it('pulses straight away when back needs no scrolling', () => {
+      main.scrollTop = 1000
+      anchor = 'b'
+      const originId = captureOriginId()
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      vi.advanceTimersByTime(0)
+      expect(flashedIds()).toEqual(['b'])
+    })
   })
 
   // Records a jump and returns the id the entry it left was stamped with.
