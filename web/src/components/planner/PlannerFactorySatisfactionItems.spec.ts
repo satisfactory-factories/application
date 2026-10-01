@@ -55,7 +55,7 @@ describe('PlannerFactorySatisfactionItems backlog ignore', () => {
     updateFactory = vi.fn()
   })
 
-  it('shows the warning with an unticked Ignore checkbox on its own line beneath the chip', () => {
+  it('shows the warning with an unticked Ignore checkbox inside the chip, beneath its title', () => {
     const wrapper = mountItems(buildBacklogFactory())
     const row = plateRow(wrapper)
 
@@ -67,8 +67,8 @@ describe('PlannerFactorySatisfactionItems backlog ignore', () => {
     const tick = row.find(IGNORE_TICK)
     expect(tick.exists()).toBe(true)
     expect((tick.element as HTMLInputElement).checked).toBe(false)
-    // Outside the chip, or the chip's own click handling would swallow the click (#592).
-    expect(tick.element.closest('.v-chip')).toBeNull()
+    // Part of the warning rather than beside it, so the chip itself is what holds it.
+    expect(tick.element.closest('.v-chip')?.textContent).toContain('Will cause backlog')
   })
 
   it('ticking it records the choice, recalculates, and retitles the chip as ignored', async () => {
@@ -83,8 +83,9 @@ describe('PlannerFactorySatisfactionItems backlog ignore', () => {
     const row = plateRow(wrapper)
     expect(row.text()).toContain('Backlog ignored')
     expect(row.text()).not.toContain('Will cause backlog')
-    // Stood down, not removed: the dashed no-fill chip, and the checkbox stays to undo it.
+    // Stood down, not removed: the dashed no-fill chip, and the checkbox stays inside it to undo it.
     expect(row.find('.status-warning-ignored').exists()).toBe(true)
+    expect(row.find('.status-warning-ignored').find(IGNORE_TICK).exists()).toBe(true)
     expect(row.find('.status-warning').exists()).toBe(false)
     expect((row.find(IGNORE_TICK).element as HTMLInputElement).checked).toBe(true)
   })

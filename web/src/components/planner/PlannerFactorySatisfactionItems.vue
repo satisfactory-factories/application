@@ -407,36 +407,39 @@
               <!-- Ignoring keeps the chip, stood down (no fill, dashed) and retitled, rather than
                    removing it: the choice stays visible and the checkbox stays to undo it. The
                    factory stops turning amber, because only the live advisory is a status. The
-                   checkbox is a native input outside the chip, for the same reason as the export
-                   ticks below: a click inside a v-chip is swallowed by the chip's own handlers. -->
+                   checkbox sits inside the chip so it reads as part of the warning. That is safe
+                   here, unlike on the export chips below (#592), because this chip has no click
+                   handler of its own for the checkbox's clicks to be swallowed by. -->
               <template v-if="hasBacklogAdvisory(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip
                       v-bind="activatorProps"
-                      class="sf-chip small"
+                      class="sf-chip small backlog-chip"
                       :class="showBacklogIgnored(factory, partId.toString()) ? 'status-warning-ignored' : 'status-warning'"
                     >
-                      <i class="fas fa-traffic-cone mr-2" />
-                      <span class="mr-2">{{ showBacklogIgnored(factory, partId.toString()) ? 'Backlog ignored' : 'Will cause backlog' }}</span>
-                      <i class="fas fa-info-circle" />
+                      <div class="d-flex flex-column align-center">
+                        <div class="d-flex align-center">
+                          <i class="fas fa-traffic-cone mr-2" />
+                          <span class="mr-2">{{ showBacklogIgnored(factory, partId.toString()) ? 'Backlog ignored' : 'Will cause backlog' }}</span>
+                          <i class="fas fa-info-circle" />
+                        </div>
+                        <label class="backlog-ignore d-inline-flex align-center text-caption">
+                          <input
+                            :id="`${factory.id}-satisfaction-${partId.toString()}-ignore-backlog`"
+                            :checked="isBacklogIgnored(factory, partId.toString())"
+                            class="backlog-ignore-tick"
+                            type="checkbox"
+                            @change="updateBacklogIgnored(partId.toString(), ($event.target as HTMLInputElement).checked)"
+                          >
+                          <span>Ignore</span>
+                        </label>
+                      </div>
                     </v-chip>
                   </template>
                   <span v-if="showBacklogIgnored(factory, partId.toString())">You have chosen to ignore this warning, so it no longer counts against the factory.<br>The surplus is still there and will still back up the belt. Untick Ignore to bring the warning back.</span>
                   <span v-else>This item has a surplus that is not fully used up: it is not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking it.<br>The belt will fill up and block the buildings making it, stalling them. You are recommended to add AWESOME Sinks in the Storage column to dispose of the excess.<br>A Dimensional Depot only defers this, because its storage is finite.<br>If this is deliberate, tick Ignore to stop the warning counting against the factory.</span>
                 </v-tooltip>
-                <div>
-                  <label class="backlog-ignore d-inline-flex align-center text-caption">
-                    <input
-                      :id="`${factory.id}-satisfaction-${partId.toString()}-ignore-backlog`"
-                      :checked="isBacklogIgnored(factory, partId.toString())"
-                      class="backlog-ignore-tick"
-                      type="checkbox"
-                      @change="updateBacklogIgnored(partId.toString(), ($event.target as HTMLInputElement).checked)"
-                    >
-                    <span>Ignore</span>
-                  </label>
-                </div>
               </template>
               <!-- The balance only needs annotating where the number isn't earned, which is now
                    only ever the resources the game gives you no way to extract. -->
@@ -1128,13 +1131,39 @@ table {
   }
 }
 
-// The Ignore checkbox under the backlog chip. The tick shares `.checklist-tick`'s drawing below but
-// not its class, which belongs to the checklist feature and which its specs select on; this only
-// lays the label out and makes the whole word clickable.
+// The backlog chip grows a second row for the Ignore checkbox. Vuetify fixes a chip's height and
+// the pill radius would turn a two-row chip into a stadium, so both are released; the padding is
+// uneven on purpose, so the two rows sit snugly rather than floating in a chip sized for one.
+.sf-chip.backlog-chip {
+  height: auto !important;
+  padding: 6px 12px 4px !important;
+  border-radius: 14px !important;
+}
+
+// The Ignore row inside the chip. The tick shares `.checklist-tick`'s drawing below but not its
+// class, which belongs to the checklist feature and which its specs select on. No top margin: the
+// chip's own padding and the title's line height are all the gap this row wants.
 .backlog-ignore {
   cursor: pointer;
-  margin-top: 4px;
+  line-height: 1;
+  margin-top: 2px;
   user-select: none;
+}
+
+// Smaller than the checklist's tick, since it sits in a chip rather than beside a row of buttons.
+// The check mark is redrawn for the smaller box. Scoped under the chip so it outranks the shared
+// tick rule further down, which would otherwise win on source order.
+.backlog-chip .backlog-ignore-tick {
+  height: 14px;
+  margin-right: 6px;
+  width: 14px;
+
+  &:checked::after {
+    height: 7px;
+    left: 2px;
+    top: 0;
+    width: 4px;
+  }
 }
 
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
