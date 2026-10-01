@@ -701,6 +701,20 @@ export const syncBuildingGroups = (
   }
 }
 
+// Spreads the buildings the item needs across the existing groups in whole buildings at 100%
+// clock, as evenly as the count allows (earlier groups take the extra buildings). A fractional
+// requirement leaves its fractional part on the last group, as distributeWholeBuildings does.
+export const spreadBuildingGroups = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  factory: Factory
+) => {
+  if (!item.buildingGroups || item.buildingGroups.length === 0) return
+
+  distributeWholeBuildings(item.buildingGroups, getBuildingCount(item, groupType))
+  recalculateGroupMetrics(item, groupType, factory)
+}
+
 // Scenario:
 // 1. The user has a product with a single building group.
 // 2. We are trying to calculate the number of buildings and clock speed required.

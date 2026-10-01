@@ -14,6 +14,18 @@
       <span class="ml-2">Evenly balance <tooltip-info :is-caption="false" text="Attempts to evenly balance all groups for their buildings and clock speeds." /></span>
     </v-btn>
     <v-btn
+      :id="`${factory.id}-${item.id}-spread`"
+      class="ml-2"
+      color="secondary"
+      :disabled="item.buildingGroups.length === 1 || isSpread"
+      size="small"
+      :variant="item.buildingGroups.length === 1 || isSpread ? 'outlined' : 'flat'"
+      @click="spread()"
+    >
+      <i class="fas fa-expand-arrows-alt" />
+      <span class="ml-2">Spread <tooltip-info :is-caption="false" text="Spreads the required buildings across all groups in whole buildings at 100% clock." /></span>
+    </v-btn>
+    <v-btn
       class="ml-2"
       color="success"
       :disabled="correct || over"
@@ -214,6 +226,7 @@
     getBuildingCount,
     remainderToLast,
     remainderToNewGroup,
+    spreadBuildingGroups,
     syncBuildingGroups,
   } from '@/utils/factory-management/building-groups/common'
   import { isWithinBalanceTolerance } from '@/utils/factory-management/building-groups/tolerance'
@@ -351,6 +364,20 @@
     )
     edited()
   }
+
+  const spread = () => {
+    spreadBuildingGroups(props.item, props.type, props.factory)
+    edited()
+    updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
+  }
+
+  const isSpread = computed(() => {
+    const groups = props.item.buildingGroups
+    if (groups.length <= 1) return true
+    const min = Math.floor(requiredBuildings.value / groups.length)
+    return groups.every(g => g.overclockPercent === 100 && g.buildingCount >= min && g.buildingCount <= min + 1) &&
+      isWithinBalanceTolerance(buildingsRemaining.value, requiredBuildings.value)
+  })
 
   const applyRemainderToLast = () => {
     remainderToLast(props.item, props.type, props.factory)

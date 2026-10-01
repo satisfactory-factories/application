@@ -380,6 +380,23 @@ describe('Component: BuildingGroups', () => {
           edited()
         })
 
+        it('spreads the required buildings across groups in whole buildings', async () => {
+          product.amount = 210 // 7 buildings
+          calculateFactories([factory], gameData)
+          await addGroupButton.trigger('click')
+          product.buildingGroups[0].buildingCount = 6
+          product.buildingGroups[0].overclockPercent = 80
+          product.buildingGroups[1].buildingCount = 1
+          subject = mountProduct(factory)
+          vi.mocked(eventBus.emit).mockClear()
+
+          await subject.find(`[id="${factory.id}-${product.id}-spread"]`).trigger('click')
+
+          expect(product.buildingGroups.map(g => g.buildingCount)).toEqual([4, 3])
+          expect(product.buildingGroups.every(g => g.overclockPercent === 100)).toBe(true)
+          edited()
+        })
+
         it('records an even rebalance', async () => {
           await addGroupButton.trigger('click')
           product.buildingGroups[1].buildingCount = 7
