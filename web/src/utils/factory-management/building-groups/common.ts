@@ -6,6 +6,7 @@ import {
   FactoryPowerProducer,
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
+import { toRaw } from 'vue'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
@@ -701,18 +702,106 @@ export const syncBuildingGroups = (
   }
 }
 
-// Spreads the buildings the item needs across the existing groups in whole buildings at 100%
-// clock, as evenly as the count allows (earlier groups take the extra buildings). A fractional
-// requirement leaves its fractional part on the last group, as distributeWholeBuildings does.
+export interface SpreadPlan {
+  groupCount: number
+  buildingCount: number
+  overclockPercent: number
+}
+
+// Works out the one group every group becomes when spread: the same building count and the same
+// clock in every group, together meeting the item's requirement. Each group gets the fewest
+// buildings that can carry its share, underclocked to fit. The clock is rounded UP to one decimal
+// place so the groups read as clean figures and never fall short of demand (e.g. 197.547
+// buildings over 10 groups is 20 buildings @ 98.8% each, 197.6 effective). The first group's
+// somersloops, extractor and purity are what every group inherits.
+// Returns null when there is nothing to spread over.
+export const planSpread = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType
+): SpreadPlan | null => {
+  const groups = item.buildingGroups
+  if (!groups || groups.length === 0) return null
+
+  const target = getBuildingCount(item, groupType)
+  if (!(target > 0)) return null
+
+  const building = getItemBuilding(item, groupType)
+  const outputMultiplier = getGroupOutputMultiplier(groups[0], building, item.recipe)
+  if (!outputMultiplier || !Number.isFinite(outputMultiplier)) return null
+
+  // Physical buildings each group must carry at 100%. The epsilon keeps float noise on an
+  // exact share (20.0000000001) from costing a whole extra building.
+  const perGroup = target / groups.length / outputMultiplier
+  const buildingCount = Math.max(1, Math.ceil(perGroup - 1e-9))
+
+  // Buildings with no clock can only be spread in whole buildings.
+  if (!canBuildingOverclock(building)) {
+    return { groupCount: groups.length, buildingCount, overclockPercent: 100 }
+  }
+
+  const overclockPercent = Math.min(100, Math.ceil((perGroup / buildingCount) * 1000 - 1e-6) / 10)
+
+  return { groupCount: groups.length, buildingCount, overclockPercent }
+}
+
+// Destructively rewrites every group to the plan: each becomes a copy of the first group's
+// settings at the planned building count and clock.
+export const applySpread = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  plan: SpreadPlan
+) => {
+  const [first] = item.buildingGroups
+  item.buildingGroups.forEach(group => {
+    group.buildingCount = plan.buildingCount
+    group.overclockPercent = plan.overclockPercent
+    group.clockSetByUser = false
+    group.somersloops = first.somersloops
+    group.extractorBuilding = first.extractorBuilding
+    group.purity = first.purity
+    if (first.satellites) {
+      group.satellites = { ...first.satellites }
+    }
+    group.supplyMatrixes = first.supplyMatrixes
+    group.type = groupType
+  })
+}
+
 export const spreadBuildingGroups = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: ItemType,
   factory: Factory
 ) => {
-  if (!item.buildingGroups || item.buildingGroups.length === 0) return
+  const plan = planSpread(item, groupType)
+  if (!plan) return
 
-  distributeWholeBuildings(item.buildingGroups, getBuildingCount(item, groupType))
+  applySpread(item, groupType, plan)
   recalculateGroupMetrics(item, groupType, factory)
+}
+
+// What one group looks like after a spread, without touching the real item: a clone with the
+// plan applied and its parts and power worked out, for the confirmation dialog to render.
+export const previewSpread = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  factory: Factory
+): { plan: SpreadPlan, item: FactoryItem | FactoryPowerProducer } | null => {
+  const plan = planSpread(item, groupType)
+  if (!plan) return null
+
+  // A plain copy, so nothing the preview computes leaks back into the plan.
+  const clone = structuredClone(toRaw(item))
+  applySpread(clone, groupType, plan)
+  calculateBuildingGroupParts([clone], groupType, factory)
+  if (groupType === ItemType.Product) {
+    const subject = clone as FactoryItem
+    calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name, subject.recipe)
+  } else {
+    const subject = clone as FactoryPowerProducer
+    calculatePowerProducerBuildingGroupPower(subject.buildingGroups, subject.recipe)
+  }
+
+  return { plan, item: clone }
 }
 
 // Scenario:

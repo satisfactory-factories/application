@@ -20,10 +20,10 @@
       :disabled="item.buildingGroups.length === 1 || isSpread"
       size="small"
       :variant="item.buildingGroups.length === 1 || isSpread ? 'outlined' : 'flat'"
-      @click="spread()"
+      @click="openSpread()"
     >
       <i class="fas fa-expand-arrows-alt" />
-      <span class="ml-2">Spread <tooltip-info :is-caption="false" text="Spreads the required buildings across all groups in whole buildings at 100% clock." /></span>
+      <span class="ml-2">Spread <tooltip-info :is-caption="false" text="Makes every group identical: the same building count and clock, together meeting the requirement. Asks before changing anything." /></span>
     </v-btn>
     <v-btn
       class="ml-2"
@@ -188,6 +188,42 @@
       :type="type"
     />
   </div>
+  <app-dialog
+    v-model="spreadOpen"
+    close-id="spread-dialog-close"
+    icon="fas fa-expand-arrows-alt"
+    max-width="1300"
+    title="Spread building groups"
+  >
+    <template v-if="spreadPreview">
+      <p class="mb-2">
+        This is a destructive change. It will overwrite all <b>{{ spreadPreview.plan.groupCount }}</b> building groups,
+        wiping their current settings, so that each one looks like the group below.
+      </p>
+      <p class="mb-4">
+        There will be <b :id="`${factory.id}-${item.id}-spread-count`">{{ spreadPreview.plan.groupCount }}&times;</b> of this group:
+      </p>
+      <BuildingGroupComponent
+        :building="building"
+        :factory="factory"
+        :group="spreadPreview.item.buildingGroups[0]"
+        :item="spreadPreview.item"
+        preview
+        :type="type"
+      />
+    </template>
+    <template #actions>
+      <v-btn :id="`${factory.id}-${item.id}-spread-cancel`" variant="text" @click="spreadOpen = false">Cancel</v-btn>
+      <v-btn
+        :id="`${factory.id}-${item.id}-spread-apply`"
+        color="secondary"
+        variant="flat"
+        @click="confirmSpread()"
+      >
+        Apply
+      </v-btn>
+    </template>
+  </app-dialog>
   <div class="d-flex justify-center mb-2">
     <v-btn
       :id="`${factory.id}-add-building-group`"
@@ -224,6 +260,8 @@
     calculateEffectiveBuildingCount,
     calculateRemainingBuildingCount,
     getBuildingCount,
+    planSpread,
+    previewSpread,
     remainderToLast,
     remainderToNewGroup,
     spreadBuildingGroups,
@@ -365,18 +403,34 @@
     edited()
   }
 
-  const spread = () => {
+  const spreadOpen = ref(false)
+  const spreadPreview = ref<ReturnType<typeof previewSpread>>(null)
+
+  const openSpread = () => {
+    spreadPreview.value = previewSpread(props.item, props.type, props.factory)
+    if (!spreadPreview.value) return
+    // The preview group must not share DOM ids with the real first group.
+    spreadPreview.value.item.buildingGroups[0].id = -1
+    spreadOpen.value = true
+  }
+
+  const confirmSpread = () => {
     spreadBuildingGroups(props.item, props.type, props.factory)
     edited()
     updateFactory(props.factory, { useBuildingGroupBuildings: true, forceRebalance: false, origin: 'buildingGroup' })
+    spreadOpen.value = false
   }
 
+  // Already spread: every group matches what Spread would make them.
   const isSpread = computed(() => {
     const groups = props.item.buildingGroups
     if (groups.length <= 1) return true
-    const min = Math.floor(requiredBuildings.value / groups.length)
-    return groups.every(g => g.overclockPercent === 100 && g.buildingCount >= min && g.buildingCount <= min + 1) &&
-      isWithinBalanceTolerance(buildingsRemaining.value, requiredBuildings.value)
+    const plan = planSpread(props.item, props.type)
+    if (!plan) return true
+    return groups.every(g =>
+      g.buildingCount === plan.buildingCount &&
+      g.overclockPercent === plan.overclockPercent &&
+      (g.somersloops ?? 0) === (groups[0].somersloops ?? 0))
   })
 
   const applyRemainderToLast = () => {
