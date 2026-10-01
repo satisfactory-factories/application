@@ -259,6 +259,119 @@ describe('buildingGroupsCommon', async () => {
             expect(group2.parts.OreIron).toBe(60)
             expect(group2.parts.IronIngot).toBe(60)
           })
+
+          describe('even balance across capacity states', () => {
+            const effectiveTotal = () =>
+              product.buildingGroups.reduce((acc, group) => acc + group.buildingCount * group.overclockPercent / 100, 0)
+
+            it('should shrink over-capacity groups down to the requirement', () => {
+              group1.buildingCount = 8
+              group2.buildingCount = 6
+              product.buildingRequirements.amount = 4
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(2)
+              expect(group2.buildingCount).toBe(2)
+              expect(group1.overclockPercent).toBe(100)
+              expect(group2.overclockPercent).toBe(100)
+            })
+
+            it('should reset overclocked over-capacity groups back to 100%', () => {
+              group1.buildingCount = 4
+              group1.overclockPercent = 150
+              group2.buildingCount = 4
+              group2.overclockPercent = 150
+              product.buildingRequirements.amount = 4
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(2)
+              expect(group2.buildingCount).toBe(2)
+              expect(group1.overclockPercent).toBe(100)
+              expect(group2.overclockPercent).toBe(100)
+              expect(effectiveTotal()).toBeCloseTo(4, 4)
+            })
+
+            it('should grow under-capacity groups up to the requirement', () => {
+              group1.buildingCount = 1
+              group2.buildingCount = 1
+              product.buildingRequirements.amount = 10
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(5)
+              expect(group2.buildingCount).toBe(5)
+              expect(group1.overclockPercent).toBe(100)
+              expect(group2.overclockPercent).toBe(100)
+            })
+
+            it('should even out lopsided groups regardless of their starting clocks', () => {
+              group1.buildingCount = 1
+              group1.overclockPercent = 250
+              group2.buildingCount = 9
+              group2.overclockPercent = 20
+              product.buildingRequirements.amount = 6
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(group2.buildingCount)
+              expect(group1.overclockPercent).toBe(group2.overclockPercent)
+              expect(effectiveTotal()).toBeCloseTo(6, 4)
+            })
+
+            it('should clear the user-set clock flag on rebalanced groups', () => {
+              group1.clockSetByUser = true
+              group2.clockSetByUser = true
+              product.buildingRequirements.amount = 4
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.clockSetByUser).toBe(false)
+              expect(group2.clockSetByUser).toBe(false)
+            })
+
+            it('should underclock to a fractional clock when the share is not whole', () => {
+              product.buildingRequirements.amount = 5.5
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              // 5.5 / 2 groups = 2.75 each, so 3 buildings at 91.6667%
+              expect(group1.buildingCount).toBe(3)
+              expect(group2.buildingCount).toBe(3)
+              expect(group1.overclockPercent).toBe(91.6667)
+              expect(group2.overclockPercent).toBe(91.6667)
+              expect(effectiveTotal()).toBeCloseTo(5.5, 3)
+            })
+
+            it('should keep a fractional clock within 4 decimal places', () => {
+              addBuildingGroup(product, ItemType.Product, mockFactory)
+              const group3 = product.buildingGroups[2]
+              product.buildingRequirements.amount = 5
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              // 5 / 3 groups = 1.6667 each, so 2 buildings at 83.3333%
+              for (const group of [group1, group2, group3]) {
+                expect(group.buildingCount).toBe(2)
+                expect(group.overclockPercent).toBe(83.3333)
+              }
+              expect(effectiveTotal()).toBeCloseTo(5, 3)
+            })
+
+            it('should give every group the same share when the groups split into whole numbers', () => {
+              addBuildingGroup(product, ItemType.Product, mockFactory)
+              const group3 = product.buildingGroups[2]
+              product.buildingRequirements.amount = 9
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              for (const group of [group1, group2, group3]) {
+                expect(group.buildingCount).toBe(3)
+                expect(group.overclockPercent).toBe(100)
+              }
+            })
+          })
         })
       })
     })
