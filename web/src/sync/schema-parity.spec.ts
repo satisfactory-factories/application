@@ -16,7 +16,7 @@ import {
   toggleChecklistPowerProducer,
   toggleChecklistProduct,
 } from '@/utils/factory-management/checklist'
-import { setDepotCount, setSinkCount } from '@/utils/factory-management/disposal'
+import { setBacklogIgnored, setDepotCount, setSinkCount } from '@/utils/factory-management/disposal'
 import { setSyncState } from '@/utils/factory-management/syncState'
 import {
   addTransportGroup,
@@ -88,6 +88,7 @@ const buildPlan = (): { factories: Factory[], tab: FactoryTab, mine: Factory, co
   // Every user-set field the merge from main introduced, set the way the UI sets it.
   setSinkCount(mine, 'IronIngot', 3)
   setDepotCount(mine, 'IronIngot', 2)
+  setBacklogIgnored(mine, 'IronIngot', true)
 
   const extraction = mine.products[1].buildingGroups[0]
   extraction.extractorBuilding = 'minermk2'
@@ -186,7 +187,7 @@ describe('schema parity with what the planner actually stores', () => {
 
   /** Guards the guard: a spec that stopped exercising a field would still pass deep-equal. */
   it('builds a factory that actually carries the new fields', () => {
-    expect(mine.partDisposal?.IronIngot).toEqual({ sinks: 3, depots: 2 })
+    expect(mine.partDisposal?.IronIngot).toEqual({ sinks: 3, depots: 2, ignoreBacklog: true })
     expect(mine.customBuildings).toHaveLength(1)
     expect(mine.checklistEnabled).toBe(true)
     expect(mine.products[0].completed).toBe(true)
