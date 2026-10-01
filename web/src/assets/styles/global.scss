@@ -261,6 +261,16 @@
     border-color: var(--sf-status-warning-border) !important;
   }
 
+  // A warning the user has chosen to live with: the amber outline of `status-warning-outlined`,
+  // with the fill gone and the border dashed, so it reads as present but stood down. Dashed rather
+  // than merely dimmer because colour alone is the thing the amber tier already spends.
+  &.status-warning-ignored {
+    color: var(--sf-status-warning) !important;
+    border-color: var(--sf-status-warning-border) !important;
+    border-style: dashed !important;
+    background-color: transparent !important;
+  }
+
   &.node-setting {
     color: var(--sf-node-setting) !important;
     border-color: var(--sf-node-setting-border) !important;

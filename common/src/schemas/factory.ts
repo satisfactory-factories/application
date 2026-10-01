@@ -286,13 +286,15 @@ export const factoryGroupSchema = z.object({
 })
 
 /**
- * Sinks and depot uploaders placed on one part's surplus. Both counts default so a record
- * that only ever named one of them still parses; the client floors negatives and non-finite
- * values on the way in (`cleanDisposalCount`), and `num` refuses NaN here regardless.
+ * Sinks and depot uploaders placed on one part's surplus, plus whether the user has chosen to
+ * ignore its backlog warning. Both counts default so a record that only ever named one of them
+ * still parses; the client floors negatives and non-finite values on the way in
+ * (`cleanDisposalCount`), and `num` refuses NaN here regardless.
  */
 export const factoryPartDisposalSchema = z.object({
   sinks: num.default(0),
   depots: num.default(0),
+  ignoreBacklog: z.boolean().optional(),
 })
 
 export const factorySchema = z.object({

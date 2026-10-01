@@ -404,15 +404,39 @@
                    it there is a one-click answer, which makes an unanswered surplus a real
                    omission rather than an observation. Still switchable off entirely, for a plan
                    mid-build where loose ends are everywhere. -->
-              <template v-if="showBacklogAdvisory(factory, partId.toString())">
+              <!-- Ignoring keeps the chip, stood down (no fill, dashed) and retitled, rather than
+                   removing it: the choice stays visible and the checkbox stays to undo it. The
+                   factory stops turning amber, because only the live advisory is a status. The
+                   checkbox is a native input outside the chip, for the same reason as the export
+                   ticks below: a click inside a v-chip is swallowed by the chip's own handlers. -->
+              <template v-if="hasBacklogAdvisory(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
-                    <v-chip v-bind="activatorProps" class="sf-chip status-warning small">
-                      <i class="fas fa-traffic-cone mr-2" /><span class="mr-2">Will cause backlog</span> <i class="fas fa-info-circle" />
+                    <v-chip
+                      v-bind="activatorProps"
+                      class="sf-chip small"
+                      :class="showBacklogIgnored(factory, partId.toString()) ? 'status-warning-ignored' : 'status-warning'"
+                    >
+                      <i class="fas fa-traffic-cone mr-2" />
+                      <span class="mr-2">{{ showBacklogIgnored(factory, partId.toString()) ? 'Backlog ignored' : 'Will cause backlog' }}</span>
+                      <i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
-                  <span>This item has a surplus that is not fully used up: it is not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking it.<br>The belt will fill up and block the buildings making it, stalling them. You are recommended to add AWESOME Sinks in the Storage column to dispose of the excess.<br>A Dimensional Depot only defers this, because its storage is finite.</span>
+                  <span v-if="showBacklogIgnored(factory, partId.toString())">You have chosen to ignore this warning, so it no longer counts against the factory.<br>The surplus is still there and will still back up the belt. Untick Ignore to bring the warning back.</span>
+                  <span v-else>This item has a surplus that is not fully used up: it is not fully consumed here, not exported in sufficient quantity, and no AWESOME Sink is sinking it.<br>The belt will fill up and block the buildings making it, stalling them. You are recommended to add AWESOME Sinks in the Storage column to dispose of the excess.<br>A Dimensional Depot only defers this, because its storage is finite.<br>If this is deliberate, tick Ignore to stop the warning counting against the factory.</span>
                 </v-tooltip>
+                <div>
+                  <label class="backlog-ignore d-inline-flex align-center text-caption">
+                    <input
+                      :id="`${factory.id}-satisfaction-${partId.toString()}-ignore-backlog`"
+                      :checked="isBacklogIgnored(factory, partId.toString())"
+                      class="backlog-ignore-tick"
+                      type="checkbox"
+                      @change="updateBacklogIgnored(partId.toString(), ($event.target as HTMLInputElement).checked)"
+                    >
+                    <span>Ignore</span>
+                  </label>
+                </div>
               </template>
               <!-- The balance only needs annotating where the number isn't earned, which is now
                    only ever the resources the game gives you no way to extract. -->
@@ -601,11 +625,12 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
   import {
+    hasBacklogAdvisory,
     hasNoDemand,
     isEndProduct,
     isPotentialBlockage,
     isUnhandledByproduct,
-    showBacklogAdvisory,
+    showBacklogIgnored,
   } from '@/utils/factory-management/status'
   import {
     checklistExportDesync,
@@ -637,8 +662,10 @@
   import {
     getDepotCount,
     getSinkCount,
+    isBacklogIgnored,
     notifyDepotTutorial,
     notifySinkTutorial,
+    setBacklogIgnored,
     setDepotCount,
     setSinkCount,
     SINK_POWER_MW,
@@ -948,6 +975,13 @@
     markFactoryEdited(props.factory)
   }
 
+  // Goes through updateFactory rather than just saving: it is a user edit that has to reach the
+  // sync layer, and the statuses and the factory's colour are read off the same recalculated state.
+  const updateBacklogIgnored = (partId: string, ignored: boolean) => {
+    setBacklogIgnored(props.factory, partId, ignored)
+    updateFactory(props.factory)
+  }
+
   // Only for the wording of the disabled sink chip's tooltip — the guard itself is showSinkControl.
   const isFluidPart = (partId: string) => !!getGameData()?.items?.parts?.[partId]?.isFluid
 
@@ -1094,10 +1128,20 @@ table {
   }
 }
 
+// The Ignore checkbox under the backlog chip. The tick shares `.checklist-tick`'s drawing below but
+// not its class, which belongs to the checklist feature and which its specs select on; this only
+// lays the label out and makes the whole word clickable.
+.backlog-ignore {
+  cursor: pointer;
+  margin-top: 4px;
+  user-select: none;
+}
+
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
 // icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
 // nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
-.checklist-tick {
+.checklist-tick,
+.backlog-ignore-tick {
   appearance: none;
   border: 2px solid rgba(255, 255, 255, 0.45);
   border-radius: 3px;

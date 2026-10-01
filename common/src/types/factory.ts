@@ -342,6 +342,10 @@ export interface FactoryPartDisposal {
   sinks: number;
   // Dimensional Depot Uploaders on this part. One Mercer Sphere each.
   depots: number;
+  // The user has seen the "will cause backlog" warning for this part and decided to live with it.
+  // The row keeps the warning, dimmed, and the factory stops turning amber for it. Optional and
+  // only ever written as `true`, so a plan that never ignored anything saves exactly as before.
+  ignoreBacklog?: boolean;
 }
 
 export interface Factory {

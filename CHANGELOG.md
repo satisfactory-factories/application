@@ -4,6 +4,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## Unreleased
 
+- **"Will cause backlog" can now be ignored.** Under the chip in the Satisfaction column there is an **Ignore** checkbox. Ticking it retitles the chip to **Backlog ignored** and stands it down, with no fill and a dashed outline, so the warning stays visible and the choice is easy to undo. An ignored backlog no longer turns the factory amber or counts in the sidebar, section headers, or Factories Summary. The surplus is unchanged, so the belt will still back up in game. The choice is saved with the plan (inside `partDisposal`, as `ignoreBacklog`) and syncs like a sink or Depot count. It is remembered if the surplus is later sunk and comes back, and the chip and checkbox disappear while nothing is backing up.
 - **Back and forward now undo a jump.** Every jump around the plan (an import's **View** button, the eye on an export, a sidebar row, a status chip) leaves a browser history entry behind, so the mouse's back button, Alt+Left, or a trackpad swipe returns to where the jump was made from, and forward goes to the jump's destination again. The place is remembered as the card being read and how far into it, so it still lines up when the jump unhid a factory or opened a group above it. Arriving pulses a row, as the jump itself does: back lights the row you clicked from (or the one at eye level when the jump came from the sidebar), and forward lights the row the jump landed on. Backing past the first jump leaves the page as before.
 
 ## Beta v0.7.2
