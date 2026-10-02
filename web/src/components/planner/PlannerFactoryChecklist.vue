@@ -266,7 +266,7 @@
                         :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount) }"
                         title="Mark as built"
                         type="checkbox"
-                        @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, request.part, request.amount)"
+                        @click.prevent="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, request.part, request.amount, findFactory(request.requestingFactoryId))"
                       >
                       <v-chip
                         class="sf-chip sf-chip-clickable small factory"
@@ -307,6 +307,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
+  import { toggleChecklistExportWithOffer } from '@/composables/useLinkedImportTick'
   import {
     acknowledgeChecklistDesyncs,
     checklistChipClass,

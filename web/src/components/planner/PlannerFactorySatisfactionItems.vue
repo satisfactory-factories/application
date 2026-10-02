@@ -532,7 +532,7 @@
                     :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
                     :title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
                     type="checkbox"
-                    @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
+                    @click.prevent="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
                   >
                   <v-chip
                     class="sf-chip sf-chip-clickable small factory"
@@ -640,8 +640,8 @@
     checklistTickTitle,
     isChecklistExportComplete,
     isChecklistExportDesynced,
-    toggleChecklistExport,
   } from '@/utils/factory-management/checklist'
+  import { toggleChecklistExportWithOffer } from '@/composables/useLinkedImportTick'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {

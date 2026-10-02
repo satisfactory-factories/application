@@ -7,6 +7,7 @@ import { mockPowerProducer } from '@/utils/factory-management/status-fixtures'
 import eventBus from '@/utils/eventBus'
 import {
   acknowledgeChecklistDesyncs,
+  applyLinkedImportTick,
   checklistDesyncChange,
   checklistDesyncReason,
   checklistExportDesync,
@@ -24,6 +25,8 @@ import {
   isInputChecklistDesynced,
   isPowerProducerChecklistDesynced,
   isProductChecklistDesynced,
+  linkedImportsForExport,
+  linkedImportTickOffer,
   listChecklistDesyncs,
   powerProducerChecklistDesync,
   productChecklistDesync,
@@ -57,6 +60,120 @@ describe('checklist', () => {
 
       toggleChecklistExport(factory, 2, 'IronPlate', 60)
       expect(isChecklistExportComplete(factory, 2, 'IronPlate')).toBe(false)
+    })
+  })
+
+  describe('linked import ticks', () => {
+    const buildDestination = () => {
+      const destination = newFactory('Phase Three', 0, 2)
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 120 })
+      destination.inputs.push({ factoryId: 1, outputPart: 'Wire', amount: 60 })
+      destination.inputs.push({ factoryId: 7, outputPart: 'Cable', amount: 30 })
+      return destination
+    }
+
+    it('matches only the imports of that part from that source', () => {
+      const destination = buildDestination()
+
+      expect(linkedImportsForExport(destination, 1, 'Cable')).toEqual([destination.inputs[0]])
+      // Ids arrive as strings from some call sites; the match must not care.
+      expect(linkedImportsForExport(destination, '1', 'Cable')).toEqual([destination.inputs[0]])
+      expect(linkedImportsForExport(destination, 1, 'IronPlate')).toEqual([])
+    })
+
+    it('matches every row when the same import is split across several', () => {
+      const destination = buildDestination()
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 40 })
+
+      expect(linkedImportsForExport(destination, 1, 'Cable')).toHaveLength(2)
+    })
+
+    it('ignores half-configured imports with no source yet', () => {
+      const destination = newFactory('Phase Three', 0, 2)
+      destination.inputs.push({ factoryId: null, outputPart: 'Cable', amount: 0 })
+
+      expect(linkedImportsForExport(destination, 1, 'Cable')).toEqual([])
+    })
+
+    it('offers to tick the import, and to turn the checklist on when it is off', () => {
+      const destination = buildDestination()
+
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)).toEqual({
+        completed: true,
+        importCount: 1,
+        offerEnableChecklist: true,
+      })
+
+      destination.checklistEnabled = true
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)?.offerEnableChecklist).toBe(false)
+    })
+
+    it('offers nothing when there is no matching import, or it already agrees', () => {
+      const destination = buildDestination()
+
+      expect(linkedImportTickOffer(destination, 1, 'IronPlate', true)).toBeNull()
+      // Unticking an export whose import was never ticked has nothing to clear.
+      expect(linkedImportTickOffer(destination, 1, 'Cable', false)).toBeNull()
+
+      destination.inputs[0].completed = true
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)).toBeNull()
+    })
+
+    it('offers to untick a ticked import, without offering to turn the checklist on', () => {
+      const destination = buildDestination()
+      destination.inputs[0].completed = true
+
+      expect(linkedImportTickOffer(destination, 1, 'Cable', false)).toEqual({
+        completed: false,
+        importCount: 1,
+        offerEnableChecklist: false,
+      })
+    })
+
+    it('stores the tick and its baseline even when the checklist stays off', () => {
+      const destination = buildDestination()
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, false)
+
+      expect(destination.checklistEnabled).toBe(false)
+      expect(destination.inputs[0].completed).toBe(true)
+      expect(destination.inputs[0].checklistSyncedAmount).toBe(120)
+      expect(isInputChecklistDesynced(destination.inputs[0])).toBe(false)
+      // Neighbouring imports are untouched.
+      expect(destination.inputs[1].completed).toBeUndefined()
+      expect(destination.inputs[2].completed).toBeUndefined()
+      // Turning the checklist on later finds it already ticked.
+      setChecklistEnabled(destination, true)
+      expect(countChecklistCompleted(destination)).toBe(1)
+    })
+
+    it('turns the checklist on when asked', () => {
+      const destination = buildDestination()
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, true)
+
+      expect(destination.checklistEnabled).toBe(true)
+      expect(destination.inputs[0].completed).toBe(true)
+    })
+
+    it('unticks the import', () => {
+      const destination = buildDestination()
+      destination.inputs[0].completed = true
+
+      applyLinkedImportTick(destination, 1, 'Cable', false, false)
+
+      expect(destination.inputs[0].completed).toBe(false)
+    })
+
+    it('leaves the baseline of an import that already agrees alone', () => {
+      const destination = buildDestination()
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 40, completed: true, checklistSyncedAmount: 30 })
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, false)
+
+      // Re-stamping it would silently acknowledge a desync the player has not looked at.
+      expect(destination.inputs[3].checklistSyncedAmount).toBe(30)
+      expect(destination.inputs[0].checklistSyncedAmount).toBe(120)
     })
   })
 
@@ -360,6 +477,21 @@ describe('checklist', () => {
 
       expect(factory.products[0].checklistSyncedAmount).toBe(120)
       expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
+    })
+
+    it('a linked import tick declares the destination edited', () => {
+      const destination = newFactory('Phase Three', 0, 2)
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 120 })
+      const declared: unknown[] = []
+      vi.spyOn(eventBus, 'emit').mockImplementation(((event: any, payload: any) => {
+        emitted.push(event)
+        declared.push(payload)
+      }) as any)
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, false)
+
+      expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
+      expect(declared).toEqual([destination, destination])
     })
 
     it('unticking dirties the plan too, not only ticking', () => {
