@@ -67,7 +67,7 @@
               width="28px"
             />
             <span v-if="input.outputPart && input.factoryId" class="text-left text-truncate">
-              <span class="d-block text-body-2">{{ getPartDisplayName(input.outputPart) }}</span>
+              <span class="d-block text-body-2" data-testid="import-item-name">{{ getPartDisplayName(input.outputPart) }}</span>
               <span class="d-block text-caption text-medium-emphasis">
                 from {{ findFactory(input.factoryId)?.name }}<template v-if="sourceVia(input).length"> (via {{ sourceVia(input).join(', ') }})</template>
               </span>

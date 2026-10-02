@@ -14,6 +14,7 @@
         <v-autocomplete
           v-model="selectedPart"
           auto-select-first
+          data-testid="import-item-picker"
           hide-details
           :items="partItems"
           label="Item to import"
@@ -47,6 +48,7 @@
           v-model="anySurplus"
           class="mt-2"
           color="primary"
+          data-testid="import-any-surplus"
           density="compact"
           hide-details
           label="Show any available surplus, including items this factory doesn't use"
@@ -65,6 +67,8 @@
         v-for="source in sources"
         :key="source.factory.id"
         :class="`import-source-${source.factory.id}`"
+        :data-source-name="source.factory.name"
+        data-testid="import-source"
         :disabled="source.alreadyImported && source.factory.id !== currentFactoryId"
       >
         <template #prepend>
