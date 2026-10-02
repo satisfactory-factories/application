@@ -407,9 +407,9 @@
               <!-- Ignoring keeps the chip, stood down (no fill, dashed) and retitled, rather than
                    removing it: the choice stays visible and the checkbox stays to undo it. The
                    factory stops turning amber, because only the live advisory is a status. The
-                   checkbox sits inside the chip so it reads as part of the warning. That is safe
-                   here, unlike on the export chips below (#592), because this chip has no click
-                   handler of its own for the checkbox's clicks to be swallowed by. -->
+                   checkbox sits inside the chip so it reads as part of the warning. This chip has
+                   no click handler of its own, so unlike the export chips below the checkbox
+                   needs no `.stop`. -->
               <template v-if="hasBacklogAdvisory(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
@@ -509,47 +509,36 @@
             </p>
             <div v-else>
               <div>
-                <!-- The checkbox sits outside the v-chip rather than inside it: nested inside a
-                     clickable chip, its clicks were swallowed by the chip's own click handler and
-                     ripple/overlay layer before ever reaching the input (#592). Mirrors the
-                     sibling layout PlannerFactoryChecklist.vue uses for the same checkbox — that
-                     file's own per-value `:key` on the input is mirrored below too: without it,
-                     a `preventDefault()`-cancelled checkbox click can lose a race against the
-                     browser's own revert-to-pre-click-state step, leaving the tick visually
-                     unchanged even though the underlying state did flip. Keying the input on the
-                     checked value forces Vue to mount a fresh element at the new value instead of
-                     patching the (possibly just-reverted) old one. -->
                 <div
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
-                  class="export-entry d-inline-flex align-center"
-                  :class="{
-                    'with-tick': factory.checklistEnabled,
-                    selected: isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()),
-                  }"
+                  class="d-inline-flex align-center"
                 >
-                  <!-- The tick and the chip read as one chip: the label draws the left end
-                       (border, corners) and the chip drops its own left border to meet it, so the
-                       tick is plainly part of this export rather than floating between two. The
-                       label also makes the whole end a click target for the tick. -->
-                  <label v-if="factory.checklistEnabled" class="export-tick-cap">
+                  <v-chip
+                    class="sf-chip sf-chip-clickable small factory"
+                    :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
+                    :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
+                    @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
+                  >
+                    <!-- Inside the chip so it plainly belongs to this export. `.stop` keeps the
+                         click from reaching the chip's own handler (which opens the calculator), the
+                         same way the jump button at the other end does; `.prevent` leaves the
+                         checked state to Vue. Without `.stop` the chip swallowed the click (#592).
+                         The `:key` on the checked value forces a fresh element on each toggle: a
+                         `preventDefault()`-cancelled checkbox click can lose a race against the
+                         browser's own revert-to-pre-click-state step, leaving the tick visually
+                         unchanged even though the state flipped. -->
                     <input
+                      v-if="factory.checklistEnabled"
                       :key="`${request.requestingFactoryId}-${partId}-${isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())}`"
                       :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
                       class="checklist-tick"
                       :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
                       :title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
                       type="checkbox"
-                      @click.prevent="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
+                      @click.stop.prevent="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
+                      @mousedown.stop
                     >
-                  </label>
-                  <v-chip
-                    class="sf-chip sf-chip-clickable small factory"
-                    :class="{ attached: factory.checklistEnabled }"
-                    :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
-                    :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
-                    @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
-                  >
                     <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
                     <span class="ml-2">
                       <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
@@ -1117,40 +1106,6 @@ table {
   :deep(input) {
     font-weight: 700;
   }
-}
-
-// An export's tick and chip drawn as one chip (see the template). With the tick attached, the
-// space between exports is what separates them, so it is wider than a chip's own 8px margin.
-.export-entry.with-tick {
-  align-items: stretch !important;
-  margin: 4px 16px 4px 0;
-}
-
-.export-tick-cap {
-  align-items: center;
-  border: 2px solid #7f7f7f;
-  border-radius: 4px 0 0 4px;
-  border-right: 0;
-  cursor: pointer;
-  display: flex;
-  padding-left: 8px;
-
-  .checklist-tick {
-    margin: 0;
-  }
-}
-
-// Follows the chip's own selected look, so the two halves never disagree about the border.
-.export-entry.selected .export-tick-cap {
-  background-color: rgba(var(--v-theme-primary), 0.12);
-  border-color: rgb(0, 123, 255);
-}
-
-.sf-chip.attached {
-  border-bottom-left-radius: 0 !important;
-  border-left-width: 0 !important;
-  border-top-left-radius: 0 !important;
-  margin: 0 !important;
 }
 
 // Sits inside the export chip, so it has to shed the icon button's circle and
