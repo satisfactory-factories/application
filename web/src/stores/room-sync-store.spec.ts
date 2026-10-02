@@ -7,10 +7,10 @@ import { SyncSocket } from '@/sync/ws-client'
 import type { WebSocketLike } from '@/sync/ws-client'
 import {
   FIELD_LOCK_RENEW_MS,
-  NOTES_DEBOUNCE_MS,
   OFFLINE_NOTICE_MS,
   OP_DEBOUNCE_MS,
   REVISION_PROBE_MS,
+  TYPING_DEBOUNCE_MS,
   useRoomSyncStore,
 } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
@@ -708,11 +708,11 @@ describe('room-sync-store', () => {
     })
   })
 
-  describe('notes edits', () => {
-    /** One keystroke, as the notes field emits it. */
+  describe('typing into a free-text field', () => {
+    /** One keystroke, as the notes field and a task's title emit it. */
     const keystroke = (factory: Factory, notes: string) => {
       factory.notes = notes
-      eventBus.emit('notesEdited', factory)
+      eventBus.emit('textTyped', factory)
       eventBus.emit('factoryEdited', factory)
       eventBus.emit('factoryUpdated', factory)
     }
@@ -728,7 +728,7 @@ describe('room-sync-store', () => {
       }
       expect(opsOf()).toHaveLength(0)
 
-      vi.advanceTimersByTime(NOTES_DEBOUNCE_MS - OP_DEBOUNCE_MS - 101)
+      vi.advanceTimersByTime(TYPING_DEBOUNCE_MS - OP_DEBOUNCE_MS - 101)
       expect(opsOf()).toHaveLength(0)
 
       vi.advanceTimersByTime(1)
@@ -747,16 +747,16 @@ describe('room-sync-store', () => {
       expect(opsOf()).toHaveLength(1)
     })
 
-    it('sends a held note straight away when asked, as the field\'s blur does', () => {
+    it('sends a held note straight away when the field is left', () => {
       const tab = syncAt(fixture, 4)
       vi.useFakeTimers()
       keystroke(tab.factories[0], 'Feeds the line')
 
-      store.flushPending()
+      eventBus.emit('textTypingDone')
 
       expect(opsOf()).toHaveLength(1)
       // Nothing is left on the timer to send it twice.
-      vi.advanceTimersByTime(NOTES_DEBOUNCE_MS)
+      vi.advanceTimersByTime(TYPING_DEBOUNCE_MS)
       expect(opsOf()).toHaveLength(1)
     })
 

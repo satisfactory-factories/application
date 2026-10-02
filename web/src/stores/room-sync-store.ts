@@ -56,11 +56,12 @@ import eventBus from '@/utils/eventBus'
 export const OP_DEBOUNCE_MS = 400
 
 /**
- * The longer quiet a notes edit asks for. Typing is a burst that pauses between words, and
- * at the plan debounce every pause sent the whole note again. The field's blur and the page
- * being hidden both send what is owed straight away, so the wait never costs a lost edit.
+ * The longer quiet typing into a free-text field (notes, a task's title) asks for. Typing is a
+ * burst that pauses between words, and at the plan debounce every pause sent the whole field
+ * again. The field's blur and the page being hidden both send what is owed straight away, so
+ * the wait never costs a lost edit.
  */
-export const NOTES_DEBOUNCE_MS = 2_000
+export const TYPING_DEBOUNCE_MS = 2_000
 export const REVISION_PROBE_MS = 10_000
 
 /**
@@ -298,7 +299,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   let unsubscribeMessage: (() => void) | null = null
   let unsubscribeStatus: (() => void) | null = null
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
-  /** Until when a notes edit holds the next flush back. Any edit inside it waits too. */
+  /** Until when typing holds the next flush back. Any edit inside it waits too. */
   let holdUntil = 0
   /** Guards the post-4403 reconnect against looping when nothing was actually dropped. */
   let revokedSinceConnect = false
@@ -724,16 +725,17 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     }, delay)
   }
 
-  /** A notes keystroke: the next flush waits for the typing to stop, not just pause. */
-  const onNotesEdited = () => {
-    holdUntil = Date.now() + NOTES_DEBOUNCE_MS
+  /** A keystroke in a free-text field: the next flush waits for the typing to stop, not just pause. */
+  const onTextTyped = () => {
+    holdUntil = Date.now() + TYPING_DEBOUNCE_MS
     scheduleFlush()
   }
 
   /**
    * Sends whatever the debounce is still holding, now. For the moments waiting would lose
-   * or misorder an edit: the notes field's blur, whose unlock must not reach peers ahead
-   * of the text it guarded, and the page being hidden or closed.
+   * or misorder an edit: a free-text field's blur (`textTypingDone`) — for notes, the unlock
+   * that follows must not reach peers ahead of the text it guarded — and the page being
+   * hidden or closed.
    */
   const flushPending = () => {
     if (debounceTimer === undefined) return
@@ -2063,7 +2065,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const stopTabWatch = watch(() => appStore.getCurrentTab()?.id, () => releaseAllFields())
 
   eventBus.on('factoryEdited', onFactoryEdited)
-  eventBus.on('notesEdited', onNotesEdited)
+  eventBus.on('textTyped', onTextTyped)
+  eventBus.on('textTypingDone', flushPending)
   eventBus.on('tabEdited', onTabEdited)
   eventBus.on('planReplaced', onPlanReplaced)
   eventBus.on('factoryUpdated', scheduleFlush)
@@ -2099,7 +2102,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     stopTabWatch()
     forgetFieldLocks()
     eventBus.off('factoryEdited', onFactoryEdited)
-    eventBus.off('notesEdited', onNotesEdited)
+    eventBus.off('textTyped', onTextTyped)
+    eventBus.off('textTypingDone', flushPending)
     eventBus.off('tabEdited', onTabEdited)
     eventBus.off('planReplaced', onPlanReplaced)
     eventBus.off('factoryUpdated', scheduleFlush)

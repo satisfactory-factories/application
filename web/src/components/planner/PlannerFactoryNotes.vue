@@ -36,7 +36,6 @@
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { useFieldLock } from '@/composables/useFieldLock'
   import { useAppStore } from '@/stores/app-store'
-  import { useRoomSyncStore } from '@/stores/room-sync-store'
   import eventBus from '@/utils/eventBus'
 
   const props = defineProps <{
@@ -58,7 +57,6 @@
   const charLimit = 1000
 
   const appStore = useAppStore()
-  const roomSync = useRoomSyncStore()
 
   // The first field on the advisory lock protocol. The key is opaque to the server,
   // so another field is a second call to this and nothing else.
@@ -82,17 +80,17 @@
    */
   const noteEdited = () => {
     renew()
-    eventBus.emit('notesEdited', props.factory)
+    eventBus.emit('textTyped', props.factory)
     eventBus.emit('factoryEdited', props.factory)
   }
 
   /**
-   * Leaving the field sends the note now rather than when the notes debounce runs out. The
+   * Leaving the field sends the note now rather than when the typing debounce runs out. The
    * unlock that follows re-enables the field for everyone else, and it must not reach them
    * ahead of the text it was guarding.
    */
   const finishEditing = () => {
-    roomSync.flushPending()
+    eventBus.emit('textTypingDone')
     release()
   }
 

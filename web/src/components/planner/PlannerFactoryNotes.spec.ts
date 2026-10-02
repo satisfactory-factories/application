@@ -66,13 +66,13 @@ describe('PlannerFactoryNotes', () => {
     expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', factory)
   })
 
-  // Sync holds a notes edit longer than any other before sending it.
-  it('marks the edit as a notes edit', async () => {
+  // Sync holds typing longer than any other edit before sending it.
+  it('marks the edit as typing', async () => {
     const factory = render()
 
     await type('Feeds the aluminium line')
 
-    expect(eventBus.emit).toHaveBeenCalledWith('notesEdited', factory)
+    expect(eventBus.emit).toHaveBeenCalledWith('textTyped', factory)
   })
 
   // What a collaborator's op looks like from here: the field changes underneath us.
@@ -162,11 +162,12 @@ describe('PlannerFactoryNotes', () => {
     })
 
     // Leaving the field re-enables it for everyone else, so the note it guarded has to
-    // reach them first rather than when the notes debounce runs out.
+    // reach them first rather than when the typing debounce runs out.
     it('sends the held note before giving the field up', async () => {
       vi.spyOn(roomSync, 'claimField').mockReturnValue(true)
       const order: string[] = []
-      vi.spyOn(roomSync, 'flushPending').mockImplementation(() => { order.push('flush') })
+      const flushed = () => { order.push('flush') }
+      eventBus.on('textTypingDone', flushed)
       vi.spyOn(roomSync, 'releaseField').mockImplementation(() => {
         order.push('release')
         return true
@@ -175,6 +176,7 @@ describe('PlannerFactoryNotes', () => {
       await fireEvent.focus(textarea())
       await fireEvent.blur(textarea())
 
+      eventBus.off('textTypingDone', flushed)
       expect(order).toEqual(['flush', 'release'])
     })
 

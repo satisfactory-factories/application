@@ -12,9 +12,11 @@ type Events = {
   // The same statement for a field the tab owns rather than a factory, so a
   // power target or a group list edited on its own still saves and still syncs.
   tabEdited: TabField;
-  // A keystroke in a factory's notes. Sync waits longer after one of these before sending,
-  // so a paragraph goes out once the typing stops rather than at every pause.
-  notesEdited: Factory;
+  // A keystroke in a free-text field (notes, a task's title). Sync waits longer after one of
+  // these before sending, so a paragraph goes out once the typing stops rather than at every pause.
+  textTyped: Factory;
+  // The user left that field: whatever the longer wait is holding is sent now.
+  textTypingDone: undefined;
   // The user replaced the whole plan (clear, paste, template, demo). `removedIds` are the
   // records that went, and they are the only removals the server accepts in bulk.
   planReplaced: { removedIds: number[] };

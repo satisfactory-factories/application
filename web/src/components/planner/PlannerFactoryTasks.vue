@@ -53,9 +53,10 @@
                   hide-details
                   rows="1"
                   variant="plain"
+                  @blur="titleDone"
                   @change="validateTaskLength(task)"
                   @keydown.enter.exact.prevent="commitTaskEdit"
-                  @update:model-value="taskEdited"
+                  @update:model-value="titleTyped"
                 />
                 <p v-if="task.completed" class="text-done">{{ task.title }}</p>
               </td>
@@ -83,6 +84,7 @@
   import draggable from 'vuedraggable'
   import { Factory, FactoryTask } from '@/interfaces/planner/FactoryInterface'
   import { markFactoryEdited } from '@/utils/sync-intent'
+  import eventBus from '@/utils/eventBus'
 
   const props = defineProps <{
     factory: Factory;
@@ -97,6 +99,18 @@
    * handlers rather than a watcher on `factory.tasks`, which also fires on inbound ops.
    */
   const taskEdited = () => markFactoryEdited(props.factory)
+
+  /**
+   * A keystroke in a title. Sync holds typing for longer than any other edit, so a title goes
+   * out once the typing stops rather than at every pause; leaving the field (blur, or enter,
+   * which blurs) sends it straight away.
+   */
+  const titleTyped = () => {
+    eventBus.emit('textTyped', props.factory)
+    taskEdited()
+  }
+
+  const titleDone = () => eventBus.emit('textTypingDone')
 
   // Tasks are persisted as bare {title, completed} and carry no id, so key the rows by object
   // identity — an index key reuses the wrong row after a drop, and titles can be duplicated.
