@@ -74,6 +74,7 @@
                 />
                 <planner-group-band
                   v-if="arrivingGroup"
+                  :current-id="currentFactory.id"
                   :factories="arrivingGroup.factories"
                   :group="arrivingGroup.group"
                   :position="arrivingGroup.position"
@@ -96,9 +97,11 @@
                  groups. Ungrouped says nothing worth a band. -->
             <planner-group-band
               v-if="currentGroup"
+              :current-id="shownFactory.id"
               :factories="currentGroup.factories"
               :group="currentGroup.group"
               :position="currentGroup.position"
+              @go="goToNeighbour"
             />
             <planner-factory
               :key="shownFactory.id"

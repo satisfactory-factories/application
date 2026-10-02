@@ -21,19 +21,20 @@
         </template>
         <template v-else>
           <factory-icon-display :icon="target.icon" size="24" />
+          <!-- Between the icon and the name, where the factory's own header carries it. -->
+          <v-chip
+            v-if="targetGroup"
+            class="sf-chip small no-margin group-chip"
+            data-testid="factory-pager-group"
+            variant="tonal"
+          >
+            <i class="fas fa-folder" />
+            <span class="ml-2">{{ targetGroup.name }}</span>
+          </v-chip>
           <span class="text-truncate">{{ target.name || 'Unnamed factory' }}</span>
         </template>
       </div>
     </div>
-    <v-chip
-      v-if="targetGroup"
-      class="sf-chip small no-margin group-chip"
-      data-testid="factory-pager-group"
-      variant="tonal"
-    >
-      <i class="fas fa-folder" />
-      <span class="ml-2">{{ targetGroup.name }}</span>
-    </v-chip>
   </v-card>
 </template>
 
@@ -102,5 +103,12 @@
 .pager-title {
   font-weight: 500;
   min-width: 0;
+}
+
+// The group's colour, as on the group chip in a factory's header.
+.group-chip {
+  flex: none;
+  border-color: var(--sf-group) !important;
+  background-color: var(--sf-group-muted) !important;
 }
 </style>

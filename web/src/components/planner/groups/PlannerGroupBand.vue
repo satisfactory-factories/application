@@ -3,7 +3,7 @@
      belongs to, where in it you are, and how the group as a whole is doing. -->
 <template>
   <div :id="bandId" class="group-band" data-testid="group-band" :style="colorVars">
-    <div class="d-flex align-center ga-2 px-3 py-2">
+    <div class="d-flex align-center flex-wrap ga-2 px-3 py-2">
       <!-- The same swatch the sidebar header carries, and it does the same thing: the band is
            where you are looking when a group's colour turns out to be wrong. -->
       <factory-group-color-menu
@@ -69,11 +69,32 @@
         </v-chip>
       </tooltip>
     </div>
+    <!-- Every factory in the group, so a jump to any of them is one click rather than a walk
+         through the pagers. The one on screen is marked rather than left out, so the row reads as
+         the group's running order. -->
+    <div
+      ref="factoryRow"
+      class="d-flex align-center flex-wrap ga-2 px-3 pb-2 band-factories"
+      data-testid="group-band-factories"
+    >
+      <v-chip
+        v-for="factory in factories"
+        :key="factory.id"
+        class="sf-chip small no-margin band-factory flex-shrink-0"
+        :class="factory.id === currentId ? 'band-factory-current' : 'sf-chip-clickable'"
+        :data-testid="`group-band-factory-${factory.id}`"
+        variant="tonal"
+        v-bind="factory.id === currentId ? {} : { onClick: () => emit('go', factory) }"
+      >
+        <factory-icon-display :icon="factory.icon" size="18" />
+        <span class="ml-2">{{ factory.name || 'Unnamed factory' }}</span>
+      </v-chip>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, nextTick, ref, watch } from 'vue'
   import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
   import { groupColorVars } from '@/utils/colors'
   import { calculateTotalPower } from '@/utils/statistics'
@@ -90,7 +111,11 @@
     // 1-based place of the factory on screen among the group's factories.
     position: number
     factories: Factory[]
+    // The factory on screen, marked in the row of the group's factories.
+    currentId: number
   }>()
+
+  const emit = defineEmits<{ (event: 'go', factory: Factory): void }>()
 
   // Only one of the group's factories is on screen, so the band carries the group's own power
   // balance rather than making you visit each member to find out what it costs.
@@ -111,6 +136,17 @@
 
   const { setGroupColor } = useFactoryGroups()
 
+  // Where the row scrolls sideways (phones), bring the factory on screen into it. Set directly
+  // rather than with scrollIntoView, which would scroll the page as well.
+  const factoryRow = ref<HTMLElement | null>(null)
+  watch(() => props.currentId, async () => {
+    await nextTick()
+    const row = factoryRow.value
+    const chip = row?.querySelector<HTMLElement>('.band-factory-current')
+    if (!row || !chip || row.scrollWidth <= row.clientWidth) return
+    row.scrollLeft = chip.offsetLeft - row.offsetLeft - 12
+  }, { immediate: true })
+
   const bandId = computed(() => `group-${props.group.id}`)
 
   const colorVars = computed(() => groupColorVars(props.group.color))
@@ -119,6 +155,7 @@
 <style lang="scss" scoped>
 .group-band {
   position: relative;
+  overflow: hidden;
   border-radius: 4px;
   margin-bottom: 8px;
   background-color: var(--sf-group-muted, rgba(255, 255, 255, 0.05));
@@ -128,5 +165,24 @@
 
 .band-title {
   font-weight: 500;
+}
+
+// Squared like any pressable chip; the factory on screen keeps the pill and a bright border,
+// since clicking it would go nowhere.
+.band-factory-current {
+  border-color: white !important;
+  font-weight: 500;
+  cursor: default;
+}
+
+// A phone would spend most of the screen on a big group's chips, so they scroll sideways in one
+// line there instead of wrapping.
+@media (max-width: 600px) {
+  .band-factories {
+    flex-wrap: nowrap !important;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
 }
 </style>
