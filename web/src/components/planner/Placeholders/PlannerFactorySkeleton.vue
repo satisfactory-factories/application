@@ -14,7 +14,7 @@
   <v-card
     class="factory-card ghost-card"
     :class="cardClass"
-    data-testid="planner-page-skeleton"
+    data-testid="planner-factory-skeleton"
     :style="groupStyle"
   >
     <v-row class="header">

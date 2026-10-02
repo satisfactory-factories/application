@@ -80,7 +80,7 @@
                   :position="arrivingGroup.position"
                 />
               </template>
-              <planner-page-skeleton :factory="currentFactory" />
+              <planner-factory-skeleton :factory="currentFactory" />
             </div>
           </div>
         </div>

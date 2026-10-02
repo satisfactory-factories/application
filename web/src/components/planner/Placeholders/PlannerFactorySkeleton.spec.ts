@@ -2,11 +2,11 @@ import vuetify from '@/plugins/vuetify'
 import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import { describe, expect, it } from 'vitest'
-import PlannerPageSkeleton from './PlannerPageSkeleton.vue'
+import PlannerFactorySkeleton from './PlannerFactorySkeleton.vue'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 
-const mountSkeleton = (factory: Factory | null) => mount(PlannerPageSkeleton, {
+const mountSkeleton = (factory: Factory | null) => mount(PlannerFactorySkeleton, {
   props: { factory },
   global: { plugins: [vuetify, createTestingPinia()] },
 })
@@ -15,7 +15,7 @@ const mountSkeleton = (factory: Factory | null) => mount(PlannerPageSkeleton, {
 const chipLabels = (subject: ReturnType<typeof mountSkeleton>) =>
   subject.findAll('.flex-wrap .ghost-chip .ghost-text').map(label => label.text().replace(/\s/g, ' '))
 
-describe('Component: PlannerPageSkeleton', () => {
+describe('Component: PlannerFactorySkeleton', () => {
   it('ghosts the chips the factory header will show, in its order', () => {
     const factory = newFactory('Copper Works', 1, 1)
     factory.notes = 'Remember the belts'
