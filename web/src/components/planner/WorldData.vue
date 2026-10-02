@@ -75,11 +75,12 @@
 
 <script setup lang="ts">
   import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
   import { ref } from 'vue'
 
   const buildings = ref<any[]>([])
 
-  eventBus.on('worldData', (data: { buildings: any[] }) => {
+  useEventBusListener('worldData', (data: { buildings: any[] }) => {
     buildings.value = data.buildings.map(getRecipeAssets)
   })
 
