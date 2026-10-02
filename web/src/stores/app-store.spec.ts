@@ -13,6 +13,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
+import { MAX_FACTORIES_PER_PLAN } from '@/utils/plan-size'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { config } from '@/config/config'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
@@ -1149,6 +1150,18 @@ describe('app-store', () => {
         const factory = newFactory('Foobarbaz')
         appStore.addFactory(factory)
         expect(appStore.getFactories()).toEqual([factory])
+      })
+
+      // Every single-factory add goes through here, so this is where the cap holds.
+      it('refuses a factory past the plan cap, and says so', () => {
+        appStore.getFactories().push(
+          ...Array.from({ length: MAX_FACTORIES_PER_PLAN }, (_unused, index) => newFactory(`F${index}`, index, index + 1)),
+        )
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(appStore.addFactory(newFactory('One too many', 0, 9999))).toBe(false)
+        expect(appStore.getFactories()).toHaveLength(MAX_FACTORIES_PER_PLAN)
+        expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({ type: 'warning' }))
       })
 
       // A getter announces nothing: hiding the planner here would leave nothing to show it again.

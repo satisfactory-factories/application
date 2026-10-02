@@ -20,10 +20,12 @@ export const CAPS = {
   /** Hex or a named colour; long enough for `rgba(...)` and nothing more. */
   groupColor: 32,
   /**
-   * Measured: the client crashes opening a plan of 175-250 factories, so the server must
-   * not accept a room no client can open. Raising it later is painless.
+   * Was 150 while the planner mounted every factory at once and crashed opening a plan of
+   * 175-250. Since it shows one factory at a time a plan's size no longer costs the page, so
+   * this is a ceiling on reasonable use rather than on what a client can open. The planner
+   * reads the same number to stop adding factories at the cap.
    */
-  factoriesPerRoom: 150,
+  factoriesPerRoom: 300,
   ownedRoomsPerUser: 10,
   /** Owned plus joined. */
   membershipsPerUser: 25,

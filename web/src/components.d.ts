@@ -91,6 +91,7 @@ declare module 'vue' {
     PlannerSidebarFactoryRow: typeof import('./components/planner/groups/PlannerSidebarFactoryRow.vue')['default']
     PlannerSidebarGroup: typeof import('./components/planner/groups/PlannerSidebarGroup.vue')['default']
     PlanRepairDialog: typeof import('./components/PlanRepairDialog.vue')['default']
+    PlanSizeNotice: typeof import('./components/planner/PlanSizeNotice.vue')['default']
     PowerProducer: typeof import('./components/planner/products/PowerProducer.vue')['default']
     Product: typeof import('./components/planner/products/Product.vue')['default']
     ProductsAndPower: typeof import('./components/planner/products/ProductsAndPower.vue')['default']
