@@ -7,6 +7,7 @@
   <awesome-sink-tutorial />
   <dimensional-depot-tutorial />
   <checklist-tutorial />
+  <linked-import-tick-dialog />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
     <!-- Navigation Drawer for Mobile -->
     <Teleport v-if="navigationReady" defer to="#navigationDrawer">
@@ -174,6 +175,7 @@
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
   import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
   import ChecklistTutorial from '@/components/planner/ChecklistTutorial.vue'
+  import LinkedImportTickDialog from '@/components/planner/LinkedImportTickDialog.vue'
   import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
   import PlannerFactoryPager from '@/components/planner/PlannerFactoryPager.vue'
   import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'

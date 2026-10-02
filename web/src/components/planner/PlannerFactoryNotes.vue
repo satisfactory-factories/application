@@ -17,7 +17,7 @@
         placeholder="Add some notes!"
         rows="1"
         :rules="[rules.length]"
-        @blur="release"
+        @blur="finishEditing"
         @focus="claim"
         @update:model-value="noteEdited"
       />
@@ -80,14 +80,25 @@
    */
   const noteEdited = () => {
     renew()
+    eventBus.emit('textTyped', props.factory)
     eventBus.emit('factoryEdited', props.factory)
+  }
+
+  /**
+   * Leaving the field sends the note now rather than when the typing debounce runs out. The
+   * unlock that follows re-enables the field for everyone else, and it must not reach them
+   * ahead of the text it was guarding.
+   */
+  const finishEditing = () => {
+    eventBus.emit('textTypingDone')
+    release()
   }
 
   const clearNotes = () => {
     props.factory.notes = ''
     noteEdited()
     // Cleared means done: whoever held the field is finished with it.
-    release()
+    finishEditing()
   }
 </script>
 
