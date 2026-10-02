@@ -223,33 +223,43 @@
             :factory="factory"
             :statuses="statuses"
           />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <factory-imports
-            :id="`${factory.id}-imports`"
-            :factory="factory"
-            :statuses="statuses"
-          />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <planner-factory-satisfaction
-            :id="`${factory.id}-satisfaction`"
-            :factory="factory"
-            :statuses="statuses"
-          />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <v-row>
-            <v-col cols="12" md="6">
-              <planner-factory-tasks
-                :id="`${factory.id}-tasks`"
-                :factory="factory"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <planner-factory-notes
-                :id="`${factory.id}-notes`"
-                :factory="factory"
-              />
-            </v-col>
-          </v-row>
+          <!-- Everything below the first few products waits for `revealRest` when the planner asks
+               it to: mounting a big factory in one go is a long task, and the part on screen first
+               is what the fade-in is waiting on. Each later stage mounts on its own frame (see
+               factory-render-stage.ts). -->
+          <template v-if="stage >= 2">
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+            <factory-imports
+              :id="`${factory.id}-imports`"
+              :factory="factory"
+              :statuses="statuses"
+            />
+          </template>
+          <template v-if="stage >= 3">
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+            <planner-factory-satisfaction
+              :id="`${factory.id}-satisfaction`"
+              :factory="factory"
+              :statuses="statuses"
+            />
+          </template>
+          <template v-if="stage >= 4">
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+            <v-row>
+              <v-col cols="12" md="6">
+                <planner-factory-tasks
+                  :id="`${factory.id}-tasks`"
+                  :factory="factory"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <planner-factory-notes
+                  :id="`${factory.id}-notes`"
+                  :factory="factory"
+                />
+              </v-col>
+            </v-row>
+          </template>
         </v-card-text>
 
       </v-card>
@@ -258,7 +268,8 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref, watch } from 'vue'
+  import { computed, inject, nextTick, onMounted, provide, ref, watch } from 'vue'
+  import { FACTORY_RENDER_STAGE, LAST_FACTORY_RENDER_STAGE } from '@/components/planner/factory-render-stage'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
   import {
@@ -302,10 +313,36 @@
     navigateToFactory(props.factory.id, targets, fallback)
   }
 
-  const props = defineProps<{
+  const props = withDefaults(defineProps<{
     factory: Factory
     totalFactories: number;
+    // False holds back everything below the first few products until it turns true, then mounts
+    // the rest a stage per frame. The planner uses it to fade a factory in before all of it has rendered.
+    revealRest?: boolean
+  }>(), { revealRest: true })
+
+  const emit = defineEmits<{
+    // Every section is in the DOM, so a row anywhere in the card can be scrolled to.
+    rendered: []
   }>()
+
+  const LAST_STAGE = LAST_FACTORY_RENDER_STAGE
+  const stage = ref(props.revealRest ? LAST_STAGE : 0)
+  provide(FACTORY_RENDER_STAGE, stage)
+
+  onMounted(() => {
+    if (stage.value === LAST_STAGE) emit('rendered')
+  })
+
+  watch(() => props.revealRest, async reveal => {
+    if (!reveal || stage.value === LAST_STAGE) return
+    while (stage.value < LAST_STAGE) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      stage.value++
+    }
+    await nextTick()
+    emit('rendered')
+  })
 
   const { getFactories } = useAppStore()
 

@@ -59,6 +59,11 @@
         <!-- Switching page fades the old one out, renders the new one while the pane is invisible,
              and only then fades it in (see swapPage). Mounting a factory is a long task, and run
              during either fade it stalls the animation. -->
+        <v-fade-transition>
+          <div v-if="pageLoading" class="planner-page-loading" data-testid="planner-page-loading">
+            <v-progress-circular color="primary" indeterminate size="48" />
+          </div>
+        </v-fade-transition>
         <div class="planner-page" :class="{ 'planner-page-hidden': !pageVisible }">
           <template v-if="shownFactory">
             <planner-factory-pager
@@ -79,7 +84,9 @@
             <planner-factory
               :key="shownFactory.id"
               :factory="shownFactory"
+              :reveal-rest="revealRest"
               :total-factories="getFactories().length"
+              @rendered="onFactoryRendered"
             />
             <planner-factory-pager
               v-if="neighbours?.next"
@@ -246,7 +253,9 @@
   // Matches the opacity transition on .planner-page.
   const PAGE_FADE_MS = 150
   // The longest a new page waits for the browser to go quiet before fading in anyway.
-  const PAGE_SETTLE_MS = 250
+  const PAGE_SETTLE_MS = 150
+  // The longest a jump waits for the whole factory to render before positioning on what is there.
+  const PAGE_RENDER_LIMIT_MS = 2000
 
   const pageVisible = ref(true)
   let swapToken = 0
@@ -260,8 +269,21 @@
     else setTimeout(resolve, 50)
   })
 
-  // Fade the old page out, swap the content while nothing is visible, let the new page finish
-  // rendering, position it, then fade it in. Each stage checks it is still the latest switch, so
+  // Whether the factory on screen may mount the sections below Products. Held back while it fades
+  // in, so the long task of mounting them does not land inside the fade.
+  const revealRest = ref(true)
+  // A spinner for a page that is taking a while to render while the pane is blank.
+  const pageLoading = ref(false)
+  let resolveRendered: (() => void) | null = null
+  const onFactoryRendered = () => {
+    resolveRendered?.()
+    resolveRendered = null
+  }
+
+  // Fade the old page out, swap the content while nothing is visible, let the new page render,
+  // position it, then fade it in. A plain switch fades in once the top of the factory is ready and
+  // mounts the rest afterwards, below the fold; a jump aiming at a row waits for the whole card,
+  // since the row may be anywhere in it. Each stage checks it is still the latest switch, so
   // clicking through several factories quickly lands on the last one without replaying the rest.
   const swapPage = async () => {
     const token = ++swapToken
@@ -270,18 +292,34 @@
       await wait(PAGE_FADE_MS)
       if (token !== swapToken) return
     }
-    document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
-    shownView.value = currentFactory.value?.id ?? OVERVIEW
-    await nextTick()
-    await nextFrame()
-    await settled()
-    if (token !== swapToken) return
-    const arrive = pendingArrival
-    pendingArrival = null
-    arrive?.()
-    await nextFrame()
-    if (token !== swapToken) return
+    const spinner = setTimeout(() => { if (token === swapToken) pageLoading.value = true }, PAGE_FADE_MS)
+    try {
+      document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
+      const target = currentFactory.value?.id ?? OVERVIEW
+      // A page already on screen keeps what it has rendered, so only a fresh one is waited on.
+      const needsWholeCard = pendingArrival !== null && target !== OVERVIEW && target !== shownView.value
+      const rendered = needsWholeCard
+        ? new Promise<void>(resolve => { resolveRendered = resolve })
+        : null
+      revealRest.value = needsWholeCard || target === OVERVIEW
+      shownView.value = target
+      await nextTick()
+      if (rendered) await Promise.race([rendered, wait(PAGE_RENDER_LIMIT_MS)])
+      await nextFrame()
+      await settled()
+      if (token !== swapToken) return
+      const arrive = pendingArrival
+      pendingArrival = null
+      arrive?.()
+      await nextFrame()
+      if (token !== swapToken) return
+    } finally {
+      clearTimeout(spinner)
+      if (token === swapToken) pageLoading.value = false
+    }
     pageVisible.value = true
+    await wait(PAGE_FADE_MS)
+    if (token === swapToken) revealRest.value = true
   }
 
   watch(() => currentFactory.value?.id ?? OVERVIEW, target => {
@@ -1034,6 +1072,15 @@ $chrome-height: $header-height + $tab-bar-height; // 117px
   opacity: 0;
 }
 
+// Over the blank pane while a slow page renders. The pane is scrolled to the top by then.
+.planner-page-loading {
+  position: absolute;
+  top: 160px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .planner-container {
   width: 100%;
   height: calc(100vh - #{$chrome-height});
@@ -1097,6 +1144,7 @@ $chrome-height: $header-height + $tab-bar-height; // 117px
   }
 
   .main-content {
+    position: relative; // Anchors the page-loading spinner
     width: 100%;
     max-height: calc(100vh - #{$chrome-height});
     overflow-y: auto;
