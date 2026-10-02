@@ -16,6 +16,7 @@
         <v-chip
           class="sf-chip no-margin"
           :class="[size, `status-${status.severity}`, isNavigable(status) ? 'sf-chip-clickable' : 'sf-chip-info']"
+          :ripple="ripple"
           v-bind="navigateProps(status)"
         >
           <!-- Subjects get their own icons; the label carries the total, so an overflow count is
@@ -64,12 +65,15 @@
     // cannot see the listener — and a chip that looks pressable and isn't is worse than a plain
     // one. Section headers leave it off: you are already in the section it would jump to.
     navigable?: boolean
+    // Off in the sidebar, where a click opens a factory and a ripple would stall while it mounts.
+    ripple?: boolean
   }>(), {
     statuses: () => [],
     size: 'x-small',
     detailed: false,
     animated: false,
     navigable: false,
+    ripple: true,
   })
 
   // The subjects ride along so the jump can land on the rows that own the problem rather than on

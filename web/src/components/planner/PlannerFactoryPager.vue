@@ -7,6 +7,7 @@
     class="factory-pager d-flex align-center ga-3 px-4 py-3"
     :class="[direction, { grouped: !!targetGroup }]"
     :data-testid="`factory-pager-${direction}`"
+    :ripple="false"
     :style="targetGroup ? groupColorVars(targetGroup.color) : undefined"
     variant="tonal"
     @click="emit('go', target)"

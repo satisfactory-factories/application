@@ -62,22 +62,14 @@
              swapPage). Sticky, so it covers the pane wherever it is scrolled. -->
         <div class="page-curtain-anchor">
           <div class="page-curtain" :class="{ 'page-curtain-shown': curtainShown }">
-            <!-- Laid out like the page it stands in for: the real pager and group band, which
-                 cost next to nothing, then a ghost of the card, so nothing moves when the page
-                 replaces it. -->
+            <!-- Laid out like the page it stands in for: the real pager, which costs next to
+                 nothing, then a ghost of the card, so nothing moves when the page replaces it. -->
             <div v-if="skeletonOn" class="pa-3">
               <template v-if="currentFactory">
                 <planner-factory-pager
                   direction="previous"
                   :from="currentFactory"
                   :target="neighboursOf(factoryOrder, currentFactory.id).previous"
-                />
-                <planner-group-band
-                  v-if="arrivingGroup"
-                  :current-id="currentFactory.id"
-                  :factories="arrivingGroup.factories"
-                  :group="arrivingGroup.group"
-                  :position="arrivingGroup.position"
                 />
               </template>
               <planner-factory-skeleton :factory="currentFactory" />
@@ -91,16 +83,6 @@
               direction="previous"
               :from="shownFactory"
               :target="neighbours.previous"
-              @go="goToNeighbour"
-            />
-            <!-- Which group the factory belongs to and where in it this is, for a plan that uses
-                 groups. Ungrouped says nothing worth a band. -->
-            <planner-group-band
-              v-if="currentGroup"
-              :current-id="shownFactory.id"
-              :factories="currentGroup.factories"
-              :group="currentGroup.group"
-              :position="currentGroup.position"
               @go="goToNeighbour"
             />
             <planner-factory
@@ -198,7 +180,6 @@
   import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
   import ChecklistTutorial from '@/components/planner/ChecklistTutorial.vue'
   import LinkedImportTickDialog from '@/components/planner/LinkedImportTickDialog.vue'
-  import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
   import PlannerFactoryPager from '@/components/planner/PlannerFactoryPager.vue'
   import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
   import { flashElement } from '@/utils/navigation-highlight'
@@ -255,22 +236,6 @@
     shownFactory.value ? neighboursOf(factoryOrder.value, shownFactory.value.id) : null
   )
 
-  // Which group a factory belongs to and where in it, for the band above its card.
-  const groupOf = (factory: Factory | null) => {
-    if (!factory?.group) return null
-    const section = groupSections.value.find(entry => entry.group?.id === factory.group?.id)
-    if (!section?.group) return null
-    return {
-      group: section.group,
-      factories: section.factories,
-      position: section.factories.indexOf(factory) + 1,
-    }
-  }
-
-  const currentGroup = computed(() => groupOf(shownFactory.value))
-  // The same for the page being switched to, which the skeleton draws ahead of it.
-  const arrivingGroup = computed(() => groupOf(currentFactory.value))
-
   // Work that has to wait for the page being switched to: positioning it on the row a jump is
   // aiming at. Run once the page has rendered and before it fades in, so it arrives already in
   // place rather than scrolling there in front of the user.
@@ -280,10 +245,6 @@
   const PAGE_FADE_MS = 150
   // The longest a new page waits for the browser to go quiet before fading in anyway.
   const PAGE_SETTLE_MS = 150
-  // How long after a click the page swap keeps the main thread free, with the skeleton showing. A clicked button's ripple
-  // grows for 250ms and then needs the main thread once more to start fading out; mounting a
-  // factory before then freezes it mid-ripple. After that its fade runs on the compositor.
-  const SWAP_HOLD_MS = 300
   // The longest a jump waits for the whole factory to render before positioning on what is there.
   const PAGE_RENDER_LIMIT_MS = 2000
 
@@ -318,11 +279,13 @@
   // clicking through several factories quickly lands on the last one without replaying the rest.
   const swapPage = async () => {
     const token = ++swapToken
-    const started = performance.now()
     // At once rather than faded in: the skeleton is what says the click landed.
     curtainShown.value = true
     skeletonOn.value = true
-    await wait(Math.max(0, SWAP_HOLD_MS - (performance.now() - started)))
+    // Two frames, so the skeleton (and the clicked row's flash) is painted before the mount that
+    // follows holds the main thread.
+    await nextFrame()
+    await nextFrame()
     if (token !== swapToken) return
     document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
     const target = currentFactory.value?.id ?? OVERVIEW
