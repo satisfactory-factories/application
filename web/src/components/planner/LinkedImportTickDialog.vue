@@ -1,7 +1,8 @@
 <!-- The other end of a ticked export. An export and the import it feeds are the same link seen
      from either factory, so after one is ticked (or unticked) this offers to do the same to the
-     other, and to turn the destination's checklist on if it is off. Only an offer: nothing on the
-     destination changes until Apply. See linkedImportTickOffer in checklist.ts. -->
+     other, and to turn the destination's checklist on if it is off. Marking the import needs the
+     checklist on, so declining the checklist locks the import switch off. Only an offer: nothing on
+     the destination changes until Apply. See linkedImportTickOffer in checklist.ts. -->
 <template>
   <app-dialog
     v-model="isOpen"
@@ -52,6 +53,7 @@
         :class="{ 'mt-3': !current.offer.offerEnableChecklist }"
         color="primary"
         density="compact"
+        :disabled="importLocked"
         hide-details
         :label="completed ? 'Also mark as imported' : 'Also unmark as imported'"
       />
@@ -81,14 +83,20 @@
 
   const { pending: current, confirm, dismiss } = useLinkedImportTick()
 
-  // Both on by default, the import tick even when the destination's checklist is off and stays
-  // off: the point is to steer players towards tracking both ends. Declining the checklist still
-  // stores the import's tick, so it is already ticked whenever the checklist goes on.
+  // Both on by default, to steer players towards tracking both ends. Marking the import depends
+  // on the checklist: while the destination's checklist is off and the player declines to turn it
+  // on, the import switch is switched off and locked, so nothing is ticked out of sight.
   const tickImports = ref(true)
   const enableChecklist = ref(true)
   watch(current, () => {
     tickImports.value = true
     enableChecklist.value = true
+  })
+
+  const importLocked = computed(() =>
+    !!current.value?.offer.offerEnableChecklist && !enableChecklist.value)
+  watch(importLocked, locked => {
+    tickImports.value = !locked
   })
 
   const isOpen = computed({
@@ -110,7 +118,7 @@
 
   const accept = () => {
     confirm(destination.value ?? undefined, {
-      tickImports: tickImports.value,
+      tickImports: tickImports.value && !importLocked.value,
       enableChecklist: enableChecklist.value,
     })
   }

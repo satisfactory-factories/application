@@ -91,7 +91,7 @@ describe('LinkedImportTickDialog', () => {
     expect(useLinkedImportTick().pending.value).toBeNull()
   })
 
-  it('stores the tick without turning the checklist on when the switch is turned off', async () => {
+  it('switches off and locks the import switch when the checklist switch is turned off', async () => {
     const { producer, consumer } = buildFactories()
     const { satisfaction } = mountAll(producer, consumer)
 
@@ -99,11 +99,32 @@ describe('LinkedImportTickDialog', () => {
     await flushPromises()
     document.body.querySelector<HTMLInputElement>('#linked-import-enable-checklist')!.click()
     await flushPromises()
+
+    const importSwitch = document.body.querySelector<HTMLInputElement>('#linked-import-tick')!
+    expect(importSwitch.checked).toBe(false)
+    expect(importSwitch.disabled).toBe(true)
+
     button('linked-import-apply')!.click()
     await flushPromises()
 
-    expect(consumer.inputs[0].completed).toBe(true)
+    expect(consumer.inputs[0].completed).toBeFalsy()
     expect(consumer.checklistEnabled).toBe(false)
+  })
+
+  it('unlocks the import switch, back on, when the checklist switch is turned on again', async () => {
+    const { producer, consumer } = buildFactories()
+    const { satisfaction } = mountAll(producer, consumer)
+
+    await tick(satisfaction).trigger('click')
+    await flushPromises()
+    document.body.querySelector<HTMLInputElement>('#linked-import-enable-checklist')!.click()
+    await flushPromises()
+    document.body.querySelector<HTMLInputElement>('#linked-import-enable-checklist')!.click()
+    await flushPromises()
+
+    const importSwitch = document.body.querySelector<HTMLInputElement>('#linked-import-tick')!
+    expect(importSwitch.checked).toBe(true)
+    expect(importSwitch.disabled).toBe(false)
   })
 
   it('only turns the checklist on when the import toggle is turned off', async () => {
