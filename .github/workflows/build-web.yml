@@ -74,4 +74,4 @@ jobs:
       # No coverage here: nothing reads the web report in CI, and instrumenting costs about a
       # quarter of the run. `pnpm test` still reports it locally.
       - name: Test Web
-        run: nproc && pnpm exec vitest run --silent
+        run: pnpm exec vitest run --silent
