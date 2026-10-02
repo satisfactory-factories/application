@@ -9,6 +9,11 @@ export const isImportRedundant = (importIndex: number, factory: Factory): boolea
     return null
   }
 
+  // A redistributed import exists to be passed on, so the hub's own need says nothing about it.
+  if (input.redistribute) {
+    return false
+  }
+
   if (input.amount === 0) {
     return null // If the amount is 0, it's technically redundant, but it could also be the user hasn't chosen anything yet. They already get a chip saying no amount is set.
   }
