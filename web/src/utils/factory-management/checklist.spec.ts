@@ -116,7 +116,19 @@ describe('checklist', () => {
       expect(linkedImportTickOffer(destination, 1, 'Cable', false)).toBeNull()
 
       destination.inputs[0].completed = true
+      destination.checklistEnabled = true
       expect(linkedImportTickOffer(destination, 1, 'Cable', true)).toBeNull()
+    })
+
+    it('still offers the checklist when the import already agrees but the checklist is off', () => {
+      const destination = buildDestination()
+      destination.inputs[0].completed = true
+
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)).toEqual({
+        completed: true,
+        importCount: 0,
+        offerEnableChecklist: true,
+      })
     })
 
     it('offers to untick a ticked import, without offering to turn the checklist on', () => {
@@ -133,7 +145,7 @@ describe('checklist', () => {
     it('stores the tick and its baseline even when the checklist stays off', () => {
       const destination = buildDestination()
 
-      applyLinkedImportTick(destination, 1, 'Cable', true, false)
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: false })
 
       expect(destination.checklistEnabled).toBe(false)
       expect(destination.inputs[0].completed).toBe(true)
@@ -150,17 +162,37 @@ describe('checklist', () => {
     it('turns the checklist on when asked', () => {
       const destination = buildDestination()
 
-      applyLinkedImportTick(destination, 1, 'Cable', true, true)
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: true })
 
       expect(destination.checklistEnabled).toBe(true)
       expect(destination.inputs[0].completed).toBe(true)
+    })
+
+    it('turns the checklist on without touching the import when only that is chosen', () => {
+      const destination = buildDestination()
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: false, enableChecklist: true })
+
+      expect(destination.checklistEnabled).toBe(true)
+      expect(destination.inputs[0].completed).toBeUndefined()
+    })
+
+    it('changes nothing and saves nothing when both are declined', () => {
+      const destination = buildDestination()
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: false, enableChecklist: false })
+
+      expect(destination.inputs[0].completed).toBeUndefined()
+      expect(emit).not.toHaveBeenCalled()
+      emit.mockRestore()
     })
 
     it('unticks the import', () => {
       const destination = buildDestination()
       destination.inputs[0].completed = true
 
-      applyLinkedImportTick(destination, 1, 'Cable', false, false)
+      applyLinkedImportTick(destination, 1, 'Cable', false, { tickImports: true, enableChecklist: false })
 
       expect(destination.inputs[0].completed).toBe(false)
     })
@@ -169,7 +201,7 @@ describe('checklist', () => {
       const destination = buildDestination()
       destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 40, completed: true, checklistSyncedAmount: 30 })
 
-      applyLinkedImportTick(destination, 1, 'Cable', true, false)
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: false })
 
       // Re-stamping it would silently acknowledge a desync the player has not looked at.
       expect(destination.inputs[3].checklistSyncedAmount).toBe(30)
@@ -488,7 +520,7 @@ describe('checklist', () => {
         declared.push(payload)
       }) as any)
 
-      applyLinkedImportTick(destination, 1, 'Cable', true, false)
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: false })
 
       expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
       expect(declared).toEqual([destination, destination])

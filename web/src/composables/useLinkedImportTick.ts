@@ -9,6 +9,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import {
   applyLinkedImportTick,
   isChecklistExportComplete,
+  LinkedImportTickChoice,
   LinkedImportTickOffer,
   linkedImportTickOffer,
   toggleChecklistExport,
@@ -46,7 +47,7 @@ export const toggleChecklistExportWithOffer = (
 }
 
 export const useLinkedImportTick = () => {
-  const confirm = (destination: Factory | undefined, enableChecklist: boolean) => {
+  const confirm = (destination: Factory | undefined, choice: LinkedImportTickChoice) => {
     const current = pending.value
     pending.value = null
     if (!current || !destination || destination.id !== current.destinationFactoryId) return
@@ -55,7 +56,10 @@ export const useLinkedImportTick = () => {
       current.sourceFactoryId,
       current.part,
       current.offer.completed,
-      enableChecklist && current.offer.offerEnableChecklist
+      {
+        tickImports: choice.tickImports && current.offer.importCount > 0,
+        enableChecklist: choice.enableChecklist && current.offer.offerEnableChecklist,
+      }
     )
   }
 

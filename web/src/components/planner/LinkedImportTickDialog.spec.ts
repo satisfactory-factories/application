@@ -70,8 +70,8 @@ describe('LinkedImportTickDialog', () => {
     expect(dialogText()).toContain('Also tick the import?')
     expect(dialogText()).toContain('Iron Ingot')
     expect(dialogText()).toContain('Phase Three')
-    expect(dialogText()).toContain('from Iron Ingots')
-    expect(dialogText()).toContain('Turn on the checklist for Phase Three')
+    expect(dialogText()).toContain('Also mark as imported')
+    expect(dialogText()).toContain('Turn on the checklist for')
     // Only an offer: nothing on the destination has moved yet.
     expect(consumer.inputs[0].completed).toBeFalsy()
   })
@@ -82,7 +82,7 @@ describe('LinkedImportTickDialog', () => {
 
     await tick(satisfaction).trigger('click')
     await flushPromises()
-    button('linked-import-confirm')!.click()
+    button('linked-import-apply')!.click()
     await flushPromises()
 
     expect(consumer.inputs[0].completed).toBe(true)
@@ -99,20 +99,35 @@ describe('LinkedImportTickDialog', () => {
     await flushPromises()
     document.body.querySelector<HTMLInputElement>('#linked-import-enable-checklist')!.click()
     await flushPromises()
-    button('linked-import-confirm')!.click()
+    button('linked-import-apply')!.click()
     await flushPromises()
 
     expect(consumer.inputs[0].completed).toBe(true)
     expect(consumer.checklistEnabled).toBe(false)
   })
 
-  it('leaves the destination alone when declined', async () => {
+  it('only turns the checklist on when the import toggle is turned off', async () => {
     const { producer, consumer } = buildFactories()
     const { satisfaction } = mountAll(producer, consumer)
 
     await tick(satisfaction).trigger('click')
     await flushPromises()
-    button('linked-import-decline')!.click()
+    document.body.querySelector<HTMLInputElement>('#linked-import-tick')!.click()
+    await flushPromises()
+    button('linked-import-apply')!.click()
+    await flushPromises()
+
+    expect(consumer.inputs[0].completed).toBeFalsy()
+    expect(consumer.checklistEnabled).toBe(true)
+  })
+
+  it('leaves the destination alone when cancelled', async () => {
+    const { producer, consumer } = buildFactories()
+    const { satisfaction } = mountAll(producer, consumer)
+
+    await tick(satisfaction).trigger('click')
+    await flushPromises()
+    button('linked-import-cancel')!.click()
     await flushPromises()
 
     expect(producer.checklistExports['2:IronIngot']).toBe(true)
@@ -141,23 +156,24 @@ describe('LinkedImportTickDialog', () => {
     await tick(satisfaction).trigger('click')
     await flushPromises()
     expect(dialogText()).not.toContain('Turn on the checklist')
-    button('linked-import-confirm')!.click()
+    button('linked-import-apply')!.click()
     await flushPromises()
     expect(consumer.inputs[0].completed).toBe(true)
 
     await tick(satisfaction).trigger('click')
     await flushPromises()
     expect(dialogText()).toContain('Also untick the import?')
-    button('linked-import-confirm')!.click()
+    button('linked-import-apply')!.click()
     await flushPromises()
 
     expect(producer.checklistExports['2:IronIngot']).toBe(false)
     expect(consumer.inputs[0].completed).toBe(false)
   })
 
-  it('does not ask when the import already matches', async () => {
+  it('does not ask when the import already matches and its checklist is on', async () => {
     const { producer, consumer } = buildFactories()
     consumer.inputs[0].completed = true
+    consumer.checklistEnabled = true
     const { satisfaction } = mountAll(producer, consumer)
 
     await tick(satisfaction).trigger('click')
