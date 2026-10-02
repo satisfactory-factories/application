@@ -86,7 +86,8 @@ per address.
 ## In CI
 
 `.github/workflows/e2e.yml` runs the same `pnpm test:e2e` on `ubuntu-latest` when a PR touches
-`web/`, `backend/`, `common/` or the workspace files. It splits the suite four ways with
+`web/`, `backend/`, `common/` or the workspace files; Markdown files never count, so a docs
+edit alone runs nothing. It splits the suite four ways with
 `--shard`, one runner per shard, each booting its own stack, so a test is still alone against
 its API. A shard can be reproduced locally with `pnpm test:e2e --shard=2/4`. It caches the
 Chromium download and the mongod binary, and uploads `web/test-results/` (traces and

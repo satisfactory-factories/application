@@ -27,6 +27,8 @@ on:
       - 'pnpm-workspace.yaml'
       - 'pnpm-lock.yaml'
       - '.github/workflows/e2e.yml'
+      # Last, so it wins over the includes above: a Markdown-only push runs nothing.
+      - '!**/*.md'
   pull_request:
     branches:
       - main
@@ -55,6 +57,9 @@ jobs:
         pnpm-lock.yaml
         .github/workflows/e2e.yml
         .github/workflows/changed-paths.yml
+      # Docs beside the code, this suite's own README included, cannot break a test.
+      ignore: |
+        *.md
 
   e2e:
     name: Playwright E2E (${{ matrix.shard }}/${{ strategy.job-total }})
