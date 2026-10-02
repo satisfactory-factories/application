@@ -62,7 +62,25 @@
              swapPage). Sticky, so it covers the pane wherever it is scrolled. -->
         <div class="page-curtain-anchor">
           <div class="page-curtain" :class="{ 'page-curtain-shown': curtainShown }">
-            <planner-page-skeleton v-if="skeletonOn" />
+            <!-- Laid out like the page it stands in for: the real pager and group band, which
+                 cost next to nothing, then a ghost of the card, so nothing moves when the page
+                 replaces it. -->
+            <div v-if="skeletonOn" class="pa-3">
+              <template v-if="currentFactory">
+                <planner-factory-pager
+                  direction="previous"
+                  :from="currentFactory"
+                  :target="neighboursOf(factoryOrder, currentFactory.id).previous"
+                />
+                <planner-group-band
+                  v-if="arrivingGroup"
+                  :factories="arrivingGroup.factories"
+                  :group="arrivingGroup.group"
+                  :position="arrivingGroup.position"
+                />
+              </template>
+              <planner-page-skeleton :factory="currentFactory" />
+            </div>
           </div>
         </div>
         <div class="planner-page">
@@ -234,8 +252,8 @@
     shownFactory.value ? neighboursOf(factoryOrder.value, shownFactory.value.id) : null
   )
 
-  const currentGroup = computed(() => {
-    const factory = shownFactory.value
+  // Which group a factory belongs to and where in it, for the band above its card.
+  const groupOf = (factory: Factory | null) => {
     if (!factory?.group) return null
     const section = groupSections.value.find(entry => entry.group?.id === factory.group?.id)
     if (!section?.group) return null
@@ -244,7 +262,11 @@
       factories: section.factories,
       position: section.factories.indexOf(factory) + 1,
     }
-  })
+  }
+
+  const currentGroup = computed(() => groupOf(shownFactory.value))
+  // The same for the page being switched to, which the skeleton draws ahead of it.
+  const arrivingGroup = computed(() => groupOf(currentFactory.value))
 
   // Work that has to wait for the page being switched to: positioning it on the row a jump is
   // aiming at. Run once the page has rendered and before it fades in, so it arrives already in
