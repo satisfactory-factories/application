@@ -7,7 +7,6 @@
       <tooltip :text="planFull ? PLAN_FULL_MESSAGE : 'Add a new, empty factory to the plan, filed under no group.'">
         <v-btn
           color="primary"
-          data-testid="add-factory"
           :disabled="planFull"
           prepend-icon="fas fa-plus"
           ripple
