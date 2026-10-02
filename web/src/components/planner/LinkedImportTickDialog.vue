@@ -11,16 +11,17 @@
   >
     <template v-if="current && destination">
       <div class="linked-import d-flex align-center flex-wrap ga-2">
-        <game-asset
-          height="28"
-          :subject="current.part"
-          type="item"
-          width="28"
-        />
-        <b>
-          <template v-if="importAmount !== null">{{ formatNumber(importAmount) }}/min</template>
-          {{ getPartDisplayName(current.part) }}
-        </b>
+        <v-chip class="sf-chip small product no-margin">
+          <game-asset
+            height="24"
+            :subject="current.part"
+            type="item"
+            width="24"
+          />
+          <span class="ml-2">
+            <b>{{ getPartDisplayName(current.part) }}</b><template v-if="importAmount !== null">: {{ formatNumber(importAmount) }}/min</template>
+          </span>
+        </v-chip>
         <span>into</span>
         <v-chip class="sf-chip small factory no-margin">
           <factory-icon-display :icon="destination.icon" size="20" />
@@ -28,19 +29,10 @@
         </v-chip>
       </div>
       <v-switch
-        v-if="current.offer.importCount > 0"
-        id="linked-import-tick"
-        v-model="tickImports"
-        class="mt-3"
-        color="primary"
-        density="compact"
-        hide-details
-        :label="completed ? 'Also mark as imported' : 'Also unmark as imported'"
-      />
-      <v-switch
         v-if="current.offer.offerEnableChecklist"
         id="linked-import-enable-checklist"
         v-model="enableChecklist"
+        class="mt-3"
         color="primary"
         density="compact"
         hide-details
@@ -53,6 +45,16 @@
           </v-chip>
         </template>
       </v-switch>
+      <v-switch
+        v-if="current.offer.importCount > 0"
+        id="linked-import-tick"
+        v-model="tickImports"
+        :class="{ 'mt-3': !current.offer.offerEnableChecklist }"
+        color="primary"
+        density="compact"
+        hide-details
+        :label="completed ? 'Also mark as imported' : 'Also unmark as imported'"
+      />
     </template>
     <template #actions>
       <v-btn id="linked-import-cancel" variant="text" @click="dismiss">Cancel</v-btn>
@@ -79,9 +81,9 @@
 
   const { pending: current, confirm, dismiss } = useLinkedImportTick()
 
-  // Both on by default: a player ticking exports in checklist mode almost always wants the other
-  // end ticked, and the factory at the other end tracked the same way. Declining the checklist
-  // still stores the import's tick, so it is already ticked whenever the checklist goes on.
+  // Both on by default, the import tick even when the destination's checklist is off and stays
+  // off: the point is to steer players towards tracking both ends. Declining the checklist still
+  // stores the import's tick, so it is already ticked whenever the checklist goes on.
   const tickImports = ref(true)
   const enableChecklist = ref(true)
   watch(current, () => {

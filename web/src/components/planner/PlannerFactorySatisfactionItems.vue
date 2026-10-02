@@ -1108,6 +1108,12 @@ table {
   }
 }
 
+// The export chip's tick claws back the chip's left padding by the same 4px the jump button
+// claws back on the right, so the two ends of the chip sit the same distance from its border.
+.v-chip .checklist-tick {
+  margin-left: -4px;
+}
+
 // Sits inside the export chip, so it has to shed the icon button's circle and
 // claw back the chip's right padding to avoid looking bolted on.
 .chip-jump-btn {
