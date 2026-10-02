@@ -522,20 +522,30 @@
                 <div
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
-                  class="d-inline-flex align-center"
+                  class="export-entry d-inline-flex align-center"
+                  :class="{
+                    'with-tick': factory.checklistEnabled,
+                    selected: isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()),
+                  }"
                 >
-                  <input
-                    v-if="factory.checklistEnabled"
-                    :key="`${request.requestingFactoryId}-${partId}-${isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())}`"
-                    :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
-                    class="checklist-tick"
-                    :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
-                    :title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
-                    type="checkbox"
-                    @click.prevent="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
-                  >
+                  <!-- The tick and the chip read as one chip: the label draws the left end
+                       (border, corners) and the chip drops its own left border to meet it, so the
+                       tick is plainly part of this export rather than floating between two. The
+                       label also makes the whole end a click target for the tick. -->
+                  <label v-if="factory.checklistEnabled" class="export-tick-cap">
+                    <input
+                      :key="`${request.requestingFactoryId}-${partId}-${isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())}`"
+                      :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
+                      class="checklist-tick"
+                      :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
+                      :title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
+                      type="checkbox"
+                      @click.prevent="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
+                    >
+                  </label>
                   <v-chip
                     class="sf-chip sf-chip-clickable small factory"
+                    :class="{ attached: factory.checklistEnabled }"
                     :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
                     :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
                     @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
@@ -1107,6 +1117,40 @@ table {
   :deep(input) {
     font-weight: 700;
   }
+}
+
+// An export's tick and chip drawn as one chip (see the template). With the tick attached, the
+// space between exports is what separates them, so it is wider than a chip's own 8px margin.
+.export-entry.with-tick {
+  align-items: stretch !important;
+  margin: 4px 16px 4px 0;
+}
+
+.export-tick-cap {
+  align-items: center;
+  border: 2px solid #7f7f7f;
+  border-radius: 4px 0 0 4px;
+  border-right: 0;
+  cursor: pointer;
+  display: flex;
+  padding-left: 8px;
+
+  .checklist-tick {
+    margin: 0;
+  }
+}
+
+// Follows the chip's own selected look, so the two halves never disagree about the border.
+.export-entry.selected .export-tick-cap {
+  background-color: rgba(var(--v-theme-primary), 0.12);
+  border-color: rgb(0, 123, 255);
+}
+
+.sf-chip.attached {
+  border-bottom-left-radius: 0 !important;
+  border-left-width: 0 !important;
+  border-top-left-radius: 0 !important;
+  margin: 0 !important;
 }
 
 // Sits inside the export chip, so it has to shed the icon button's circle and
