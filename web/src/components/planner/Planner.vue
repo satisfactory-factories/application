@@ -56,15 +56,26 @@
         <!-- One page at a time: a single factory, or the overview when none is open. Mounting
              every card at once is what made a big plan lag and crash the tab; the sidebar and the
              pagers either side of the card are how the rest of the plan is reached. -->
-        <!-- Switching page fades the old one out, renders the new one while the pane is invisible,
-             and only then fades it in (see swapPage). Mounting a factory is a long task, and run
-             during either fade it stalls the animation. -->
-        <v-fade-transition>
-          <div v-if="pageLoading" class="planner-page-loading" data-testid="planner-page-loading">
-            <v-progress-circular color="primary" indeterminate size="48" />
+        <!-- Switching page draws a curtain over the pane rather than fading the page itself: the
+             curtain is only as big as the visible pane, so fading it costs the same whatever the
+             page holds, where fading the page's own opacity means compositing every element in a
+             factory that may be several screens tall. The old page is swapped for the new one
+             behind it (see swapPage). Sticky, so it covers the pane wherever it is scrolled. -->
+        <div class="page-curtain-anchor">
+          <div class="page-curtain" :class="{ 'page-curtain-shown': curtainShown }">
+            <v-fade-transition>
+              <v-progress-circular
+                v-if="pageLoading"
+                class="page-curtain-spinner"
+                color="primary"
+                data-testid="planner-page-loading"
+                indeterminate
+                size="48"
+              />
+            </v-fade-transition>
           </div>
-        </v-fade-transition>
-        <div class="planner-page" :class="{ 'planner-page-hidden': !pageVisible }">
+        </div>
+        <div class="planner-page">
           <template v-if="shownFactory">
             <planner-factory-pager
               v-if="neighbours"
@@ -250,14 +261,19 @@
   // place rather than scrolling there in front of the user.
   let pendingArrival: (() => void) | null = null
 
-  // Matches the opacity transition on .planner-page.
+  // Matches the opacity transition on .page-curtain.
   const PAGE_FADE_MS = 150
   // The longest a new page waits for the browser to go quiet before fading in anyway.
   const PAGE_SETTLE_MS = 150
+  // How long after a click the page swap keeps the main thread free. A clicked button's ripple
+  // grows for 250ms and then needs the main thread once more to start fading out; mounting a
+  // factory before then freezes it mid-ripple. After that its fade runs on the compositor.
+  const SWAP_HOLD_MS = 300
   // The longest a jump waits for the whole factory to render before positioning on what is there.
   const PAGE_RENDER_LIMIT_MS = 2000
 
-  const pageVisible = ref(true)
+  // The curtain over the pane, which hides it while the page underneath is swapped.
+  const curtainShown = ref(false)
   let swapToken = 0
 
   const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
@@ -280,18 +296,21 @@
     resolveRendered = null
   }
 
-  // Fade the old page out, swap the content while nothing is visible, let the new page render,
-  // position it, then fade it in. A plain switch fades in once the top of the factory is ready and
+  // Fade the curtain in over the old page, swap the content behind it, let the new page render,
+  // position it, then fade the curtain away. A plain switch fades in once the top of the factory is ready and
   // mounts the rest afterwards, below the fold; a jump aiming at a row waits for the whole card,
   // since the row may be anywhere in it. Each stage checks it is still the latest switch, so
   // clicking through several factories quickly lands on the last one without replaying the rest.
   const swapPage = async () => {
     const token = ++swapToken
-    if (pageVisible.value) {
-      pageVisible.value = false
+    const started = performance.now()
+    if (!curtainShown.value) {
+      curtainShown.value = true
       await wait(PAGE_FADE_MS)
       if (token !== swapToken) return
     }
+    await wait(Math.max(0, SWAP_HOLD_MS - (performance.now() - started)))
+    if (token !== swapToken) return
     const spinner = setTimeout(() => { if (token === swapToken) pageLoading.value = true }, PAGE_FADE_MS)
     try {
       document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
@@ -301,10 +320,15 @@
       const rendered = needsWholeCard
         ? new Promise<void>(resolve => { resolveRendered = resolve })
         : null
-      revealRest.value = needsWholeCard || target === OVERVIEW
+      revealRest.value = target === OVERVIEW
       shownView.value = target
       await nextTick()
-      if (rendered) await Promise.race([rendered, wait(PAGE_RENDER_LIMIT_MS)])
+      // Still staged when the whole card is needed, just without waiting for the fade: a stage per
+      // frame keeps the spinner turning, where mounting it all at once would freeze it.
+      if (rendered) {
+        revealRest.value = true
+        await Promise.race([rendered, wait(PAGE_RENDER_LIMIT_MS)])
+      }
       await nextFrame()
       await settled()
       if (token !== swapToken) return
@@ -317,13 +341,13 @@
       clearTimeout(spinner)
       if (token === swapToken) pageLoading.value = false
     }
-    pageVisible.value = true
+    curtainShown.value = false
     await wait(PAGE_FADE_MS)
     if (token === swapToken) revealRest.value = true
   }
 
   watch(() => currentFactory.value?.id ?? OVERVIEW, target => {
-    if (target !== shownView.value || !pageVisible.value) void swapPage()
+    if (target !== shownView.value || curtainShown.value) void swapPage()
   })
 
   const goToNeighbour = (target: Factory | typeof OVERVIEW) => {
@@ -1062,23 +1086,39 @@ $header-height: 65px;
 $tab-bar-height: 52px;
 $chrome-height: $header-height + $tab-bar-height; // 117px
 
-// The duration matches PAGE_FADE_MS.
-.planner-page {
-  transition: opacity 0.15s ease;
-  will-change: opacity;
+// A zero-height sticky anchor at the top of the scrolling pane, so the curtain hangs over whatever
+// part of the page is in view. Negative insets cover the pane's own pa-3 padding too.
+.page-curtain-anchor {
+  position: sticky;
+  top: 0;
+  height: 0;
+  z-index: 5;
 }
 
-.planner-page-hidden {
+// The duration matches PAGE_FADE_MS. Pointer events only while shown, so a click mid-switch lands
+// on nothing rather than on the page being swapped out.
+.page-curtain {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  height: calc(100vh - #{$chrome-height});
+  background: rgb(var(--v-theme-background));
   opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
-// Over the blank pane while a slow page renders. The pane is scrolled to the top by then.
-.planner-page-loading {
+.page-curtain-shown {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.page-curtain-spinner {
   position: absolute;
   top: 160px;
   left: 50%;
   transform: translateX(-50%);
-  pointer-events: none;
 }
 
 .planner-container {
