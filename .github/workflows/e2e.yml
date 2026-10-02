@@ -62,7 +62,9 @@ jobs:
         *.md
 
   e2e:
-    name: Playwright E2E (${{ matrix.shard }}/${{ strategy.job-total }})
+    # GitHub appends the matrix value, so the shards show as "Playwright E2E shard (1)" and
+    # so on, and a skipped matrix shows one plain "Playwright E2E shard" line.
+    name: Playwright E2E shard
     needs: changes
     if: needs.changes.outputs.matched == 'true'
     runs-on: ubuntu-latest
