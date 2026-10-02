@@ -179,6 +179,7 @@
   } from '@/utils/factory-management/planner-view'
   import eventBus from '@/utils/eventBus'
   import { dismissBootLoader } from '@/utils/bootLoader'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
   import { captureOrder, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
@@ -492,9 +493,9 @@
 
   // ### EVENT BUS LISTENERS ###
   // When we are starting a new load we need to unload all the DOM elements
-  eventBus.on('plannerShow', (show: boolean) => {
+  useEventBusListener('plannerShow', (show: boolean) => {
     if (!show) {
-      console.log('Planner: Received plannerShow(false) event, marked as unloaded, showing placeholders')
+      console.log('Planner: Received plannerShow(false) event, clearing the page')
       hidePlan()
     } else {
       console.log('Planner: Received plannerShow(true) event, showing content')
@@ -503,7 +504,7 @@
   })
 
   // When everything is loaded and ready to go, then we are ready to start loading things.
-  eventBus.on('loadingCompleted', () => {
+  useEventBusListener('loadingCompleted', () => {
     console.log('Planner: Received loadingCompleted event, booting planner')
     showPlan()
   })
@@ -513,16 +514,16 @@
   // back — and a transition fires on a schedule the store cannot reason about.
   onMounted(() => eventBus.emit('readyForData'))
 
-  eventBus.on('worldDataShow', (value: boolean) => {
+  useEventBusListener('worldDataShow', (value: boolean) => {
     showWorldData.value = value
   })
 
-  eventBus.on('navigationReady', () => {
+  useEventBusListener('navigationReady', () => {
     console.log('Planner: Received navigationReady event, teleporting factory list')
     navigationReady.value = true
   })
 
-  eventBus.on('toggleSidebar', () => {
+  useEventBusListener('toggleSidebar', () => {
     showSidebar.value = !showSidebar.value
     sidebarPeek.value = false
     console.log('Planner: Received toggleSidebar event, toggling sidebar visibility', showSidebar.value)
@@ -1025,11 +1026,11 @@
   }
 
   // A dialog cannot call navigateToSection itself, so it asks for the jump by id.
-  eventBus.on('jumpToSection', sectionId => navigateToSection(sectionId))
+  useEventBusListener('jumpToSection', sectionId => navigateToSection(sectionId))
 
   // Same for the tab bar's search: it sits above the planner in the layout, so it cannot inject
   // navigateToFactory and asks over the bus instead.
-  eventBus.on('jumpToFactory', ({ factoryId, targets, fallback }) =>
+  useEventBusListener('jumpToFactory', ({ factoryId, targets, fallback }) =>
     navigateToFactory(factoryId, targets, fallback))
 
   const forceSort = () => {

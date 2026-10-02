@@ -4,7 +4,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import type { TabField } from '@/sync/room-state'
 import type { ToastData } from '@/utils/toast'
 
-type Events = {
+export type Events = {
   factoryUpdated: Factory;
   // The factory the user acted on, as opposed to the ones a recalculation
   // rippled into. Sync treats this as intent and factoryUpdated as payload.
