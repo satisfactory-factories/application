@@ -104,3 +104,5 @@ a passing check rather than one that stays pending forever.
 | --- | --- |
 | `E2E_SKIP_BUILD=1` | Reuse the existing `web/dist` and `backend/dist`. Fast to iterate on, and wrong the moment either is stale or was built for another environment. |
 | `E2E_VERBOSE=1` | Stream the API's and Vite's output into the test run. |
+
+<!-- Docs-only change to show the e2e gate skipping its shards. Not for merge. -->
