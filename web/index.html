@@ -51,6 +51,12 @@
         background: #0094e6;
         animation: boot-loader-slide 1.2s ease-in-out infinite;
       }
+      #boot-loader .boot-loader-quip {
+        margin-top: 8px;
+        min-height: 1.25rem;
+        color: #9e9e9e;
+        font-size: 0.875rem;
+      }
       @keyframes boot-loader-slide {
         from { transform: translateX(-100%); }
         to { transform: translateX(250%); }
@@ -92,8 +98,35 @@
         <div class="boot-loader-card">
             Loading planner...
             <div class="boot-loader-bar"></div>
+            <div class="boot-loader-quip"></div>
         </div>
     </div>
+    <script>
+      // One of the old loader's quips, picked before the app has started.
+      ;(function () {
+        var quips = [
+          'Calculating...',
+          'Crunching numbers...',
+          'Doing the math...',
+          'Thinking...',
+          'ADA is hard at work...',
+          'ADA approves of this message...',
+          'FICSIT approves the efficient use of this tool...',
+          'Reticulating splines...',
+          'Bending the spoon...',
+          'The factory must grow...',
+          'Powered by cups of tea...',
+          'Constructing additional pylons...',
+          'We\'ll miss you Snutt!',
+          'Sing us your blood song...',
+          // Twice, so it comes up twice as often. Shameless plugging.
+          'Don\'t forget to donate if you\'re enjoying the tool! \u2764\ufe0f',
+          'Don\'t forget to donate if you\'re enjoying the tool! \u2764\ufe0f',
+        ]
+        var quip = document.querySelector('#boot-loader .boot-loader-quip')
+        if (quip) quip.textContent = quips[Math.floor(Math.random() * quips.length)]
+      })()
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
 </body>
