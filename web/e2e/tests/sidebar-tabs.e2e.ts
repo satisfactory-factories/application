@@ -11,14 +11,14 @@ import {
   loadingOverlay,
   openPlanner,
   selectTab,
-  settle,
   waitForTab,
 } from '../helpers/planner'
 import { shareARoom } from '../helpers/rooms'
 
 /**
  * The docked sidebar is the plan's table of contents, and it has gone blank
- * twice on load paths that skipped the staggered loader. Every assertion here is
+ * twice on load paths that skipped the staggered loader. It is also the only place
+ * the whole plan is listed, since the planner pane shows one factory at a time. Every assertion here is
  * `toBeVisible` on the rows themselves rather than a count or a stored read: a
  * list rendered into a hidden sidebar is the exact failure.
  */
@@ -49,47 +49,44 @@ test('the sidebar lists the active tab across repeated switches between two sync
 })
 
 /**
- * A plan too big to mount in one flush has to say so the moment it is clicked. It used to
- * take the instant path whenever there was nothing to calculate, which gave the user no
- * movement at all and then locked the tab for the length of the render.
+ * The planner shows one factory at a time, so a plan of any size opens without a loader and
+ * puts exactly one card on screen: the factory that was open when the tab was last left.
  */
-test('opening a big tab raises the loader, and opening a small one does not', async ({
+test('opening a big tab needs no loader, and reopens the factory left open there', async ({
   client,
   request,
 }) => {
   const user = await registerUser(request)
   const page = await openPlanner(await client({ user }))
   const overlay = loadingOverlay(page)
+  const cards = page.locator('.main-content .factory-card:not(.sub-card)')
 
   const small = await createSyncedTab(page)
   await addFactory(page, { name: 'Small One', note: 'the only one here' })
 
   const big = await createSyncedTab(page)
-  // One over the boundary the loader itself warns at, which is where pacing starts.
   const bigNames: string[] = []
-  for (let index = 1; index <= 11; index++) {
+  for (let index = 1; index <= 15; index++) {
     bigNames.push(`Big ${index}`)
     await addNamedFactory(page, `Big ${index}`)
   }
-  // Acknowledged at the server's revision, so this is the instant path being asked to
-  // pace itself rather than a plan that has something to calculate.
   await expectQuiesced([page], big)
 
-  await clickTab(page, small)
-  // Sampled rather than checked once: the staggered path holds the overlay for a second
-  // or more, so a whole window of clear samples is what says the small tab stayed instant.
-  for (let sample = 0; sample < 6; sample++) {
-    expect(await overlay.count(), 'the small tab raised a loader it does not need').toBe(0)
-    await page.waitForTimeout(50)
+  for (const [tab, names, open] of [
+    [small, ['Small One'], 'Small One'],
+    [big, bigNames, 'Big 15'],
+  ] as const) {
+    await clickTab(page, tab)
+    // Sampled rather than checked once: a load that paced itself would hold the overlay up
+    // for a second or more, so a whole window of clear samples is what says it never did.
+    for (let sample = 0; sample < 6; sample++) {
+      expect(await overlay.count(), 'the tab raised a loader it does not need').toBe(0)
+      await page.waitForTimeout(50)
+    }
+    await expectSidebarLists(page, [...names])
+    await expect(cards).toHaveCount(1)
+    await expect(cards.locator('input.factory-name')).toHaveValue(open)
   }
-  await expectSidebarLists(page, ['Small One'])
-
-  await clickTab(page, big)
-  await expect(overlay, 'the big tab rendered with no loader on screen').toBeVisible()
-  await expect(overlay).toContainText('factories')
-
-  await settle(page)
-  await expectSidebarLists(page, bigNames)
 })
 
 test('the sidebar lists a local tab the same way', async ({ client, request }) => {

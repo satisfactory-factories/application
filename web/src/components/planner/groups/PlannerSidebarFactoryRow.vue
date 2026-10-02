@@ -8,10 +8,23 @@
      was silently dropped and Sortable matched no items at all: dragging did nothing, with no
      error anywhere. -->
 <template>
-  <div class="mb-1 rounded" :class="rowClass" data-testid="sidebar-factory-row">
+  <div
+    class="mb-1 rounded"
+    :class="rowClass"
+    :data-factory-id="factory.id"
+    :data-factory-name="factory.name"
+    data-testid="sidebar-factory-row"
+    @click.capture="flash"
+  >
+    <!-- No ripples anywhere in the row: opening a factory mounts it straight away, and a ripple
+         would freeze part way through that. A single flash says the click landed instead, for a
+         click anywhere in the row (see .flash). -->
     <v-card
       class="w-100 header list px-0 rounded-0"
+      :class="{ flash: flashing }"
+      :ripple="false"
       style="box-shadow: none !important;"
+      @animationend.self="flashing = false"
       @click="navigateToFactory(factory.id)"
     >
       <v-row class="d-flex flex-nowrap ma-0">
@@ -32,6 +45,7 @@
           <factory-status-chips
             animated
             navigable
+            :ripple="false"
             :statuses="statuses"
             @navigate="target => navigateToStatus(target)"
           />
@@ -128,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref, type Ref } from 'vue'
+  import { computed, inject, nextTick, ref, type Ref } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import {
     FactoryStatus,
@@ -170,6 +184,14 @@
   const { dragEnabled } = useFactoryDrag()
 
   const iconDialogOpen = ref(false)
+
+  // Restarted on every click, so a second click on the same row flashes again.
+  const flashing = ref(false)
+  const flash = async () => {
+    flashing.value = false
+    await nextTick()
+    flashing.value = true
+  }
 
   const checklistDesyncCount = computed(() => countChecklistDesynced(props.factory))
 
@@ -218,6 +240,25 @@
 
   &.active-view::before {
     opacity: 1;
+  }
+}
+
+// One flash on click, on and then off with nothing in between. Opacity on a layer of its own, so
+// it holds its timing even while the factory it opened is mounting.
+.flash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: white;
+  opacity: 0;
+  pointer-events: none;
+  animation: row-flash 0.2s step-end;
+  will-change: opacity;
+}
+
+@keyframes row-flash {
+  0% {
+    opacity: 0.18;
   }
 }
 

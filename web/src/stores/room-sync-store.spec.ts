@@ -353,23 +353,26 @@ describe('room-sync-store', () => {
     /**
      * The other half of the same rule: a snapshot the user's edits fought with is
      * handed back to the loader, and handing it the live array lets the chain that is
-     * still staggering append its own copy of the plan onto the room's content.
+     * still running append its own copy of the plan onto the room's content.
      */
-    it('does not duplicate the plan when a recalculating snapshot lands mid-stagger', async () => {
+    it('does not duplicate the plan when a recalculating snapshot lands mid-load', async () => {
       const tab = syncAt(fixture, 4)
       appStore.currentFactoryTab = tab
       tab.factories[0].name = 'Mine'
       store.markUserTouched(ROOM, 1)
 
-      // forceRecalc so the chain actually staggers; the first increment is proof it is.
-      const loading = appStore.prepareLoader(tab.factories, true)
-      await new Promise<void>(resolve => {
-        const onIncrement = () => {
-          eventBus.off('incrementLoad', onIncrement)
+      // Hiding the planner is the chain's first step, emitted before prepareLoader returns;
+      // the snapshot lands in the pause after it.
+      const hidden = new Promise<void>(resolve => {
+        const onHide = (show: boolean) => {
+          if (show) return
+          eventBus.off('plannerShow', onHide)
           resolve()
         }
-        eventBus.on('incrementLoad', onIncrement)
+        eventBus.on('plannerShow', onHide)
       })
+      const loading = appStore.prepareLoader(tab.factories, true)
+      await hidden
 
       const server = wire(fixture)
       server[0].name = 'Theirs'

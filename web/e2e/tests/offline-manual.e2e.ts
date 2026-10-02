@@ -6,6 +6,7 @@ import {
   addFactory,
   addTask,
   createSyncedTab,
+  expectFactoryNames,
   expectQuiesced,
   factoryNames,
   mirroredTasks,
@@ -37,7 +38,7 @@ test('offline mode is silent, and the edits made in it sync on the way back', as
   const second = await openPlanner(await client({ user }))
   await showPlan(second, user, roomId)
   await selectTab(second, roomId)
-  await expect(second.locator('input.factory-name')).toHaveValue('Baseline')
+  await expectFactoryNames(second, ['Baseline'])
 
   const traffic = watchApiRequests(context)
   await setOfflineMode(first, user, true)
@@ -56,8 +57,7 @@ test('offline mode is silent, and the edits made in it sync on the way back', as
 
   await setOfflineMode(first, user, false)
 
-  await expect(second.locator('input.factory-name').nth(1))
-    .toHaveValue('Offline addition', { timeout: 20_000 })
+  await expectFactoryNames(second, ['Baseline', 'Offline addition'], { timeout: 20_000 })
   await expectQuiesced([first, second], roomId)
 })
 
@@ -76,7 +76,7 @@ test('a task added in offline mode survives the way back out', async ({ client, 
   const second = await openPlanner(await client({ user }))
   await showPlan(second, user, roomId)
   await selectTab(second, roomId)
-  await expect(second.locator('input.factory-name')).toHaveValue('Smelters')
+  await expectFactoryNames(second, ['Smelters'])
 
   await setOfflineMode(first, user, true)
   await addTask(first, 0, 'Build the smelters')

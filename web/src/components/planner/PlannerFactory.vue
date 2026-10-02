@@ -171,26 +171,6 @@
               @click="moveFactory(factory, 'down')"
             />
             <v-btn
-              v-show="!factory.hidden"
-              class="mr-2 rounded"
-              color="secondary"
-              icon="fas fa-compress-alt"
-              size="small"
-              title="Collapse Factory"
-              variant="outlined"
-              @click="setHidden(true)"
-            />
-            <v-btn
-              v-show="factory.hidden"
-              class="mr-2 rounded"
-              color="secondary"
-              icon="fas fa-expand-alt"
-              size="small"
-              title="Expand Factory"
-              variant="outlined"
-              @click="setHidden(false)"
-            />
-            <v-btn
               class="mr-2"
               color="orange rounded"
               icon="fas fa-copy"
@@ -233,7 +213,7 @@
             </v-tooltip>
           </v-col>
         </v-row>
-        <v-card-text v-if="!factory.hidden">
+        <v-card-text>
           <template v-if="factory.checklistEnabled">
             <planner-factory-checklist :id="`${factory.id}-checklist`" :factory="factory" />
             <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
@@ -243,236 +223,54 @@
             :factory="factory"
             :statuses="statuses"
           />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <factory-imports
-            :id="`${factory.id}-imports`"
-            :factory="factory"
-            :statuses="statuses"
-          />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <planner-factory-satisfaction
-            :id="`${factory.id}-satisfaction`"
-            :factory="factory"
-            :statuses="statuses"
-          />
-          <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <v-row>
-            <v-col cols="12" md="6">
-              <planner-factory-tasks
-                :id="`${factory.id}-tasks`"
-                :factory="factory"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <planner-factory-notes
-                :id="`${factory.id}-notes`"
-                :factory="factory"
-              />
-            </v-col>
-          </v-row>
+          <!-- Everything below the first few products waits for `revealRest` when the planner asks
+               it to: mounting a big factory in one go is a long task, and the part on screen first
+               is what the fade-in is waiting on. Each later stage mounts on its own frame (see
+               factory-render-stage.ts). -->
+          <template v-if="stage >= 2">
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+            <factory-imports
+              :id="`${factory.id}-imports`"
+              :factory="factory"
+              :statuses="statuses"
+            />
+          </template>
+          <template v-if="stage >= 3">
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+            <planner-factory-satisfaction
+              :id="`${factory.id}-satisfaction`"
+              :factory="factory"
+              :statuses="statuses"
+            />
+          </template>
+          <template v-if="stage >= 4">
+            <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
+            <v-row>
+              <v-col cols="12" md="6">
+                <planner-factory-tasks
+                  :id="`${factory.id}-tasks`"
+                  :factory="factory"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <planner-factory-notes
+                  :id="`${factory.id}-notes`"
+                  :factory="factory"
+                />
+              </v-col>
+            </v-row>
+          </template>
         </v-card-text>
 
-        <!-- Hidden factory collapse -->
-
-        <v-card-text v-if="factory.hidden" class="pa-0">
-          <div
-            v-if="factory.inputs.length > 0 || Object.keys(factory.rawResources).length > 0"
-            class="text-body-1 py-2 px-4 collapsed-section"
-            :class="hasOutput ? 'border-b-md' : ''"
-          >
-            <p class="section-label">Importing:</p>
-            <div class="section-chips">
-              <div
-                v-for="[inputFactoryId, inputs] in groupedInputs"
-                :key="inputFactoryId"
-                class="factory-group-chip clickable"
-                @click="navigateToFactory(inputFactoryId)"
-              >
-                <factory-icon-display class="ml-1" :icon="findFactory(inputFactoryId).icon" size="20" />
-                <span class="mx-2">
-                  <b>{{ findFactory(inputFactoryId).name }}</b>
-                </span>
-                <v-chip
-                  v-for="input in inputs"
-                  :key="`${inputFactoryId}-${input.outputPart}`"
-                  class="sf-chip small product"
-                >
-                  <game-asset
-                    v-if="input.outputPart"
-                    clickable
-                    height="24"
-                    :subject="input.outputPart"
-                    type="item"
-                    width="24"
-                  />
-                  <span class="ml-2"><b>{{ getPartDisplayName(input.outputPart) }}:</b> {{ formatNumber(input.amount) }}/min</span>
-                </v-chip>
-              </div>
-              <div
-                v-if="Object.keys(factory.rawResources).length > 0"
-                class="factory-group-chip"
-              >
-                <i class="fas fa-hard-hat ml-1" />
-                <span class="mx-2">
-                  <b>Raw Resources</b>
-                </span>
-                <v-chip
-                  v-for="(resource, resourceKey) in factory.rawResources"
-                  :key="resourceKey"
-                  class="sf-chip small raw-resource"
-                >
-                  <game-asset
-                    v-if="resource.id"
-                    clickable
-                    height="24"
-                    :subject="resource.id"
-                    type="item"
-                    width="24"
-                  />
-                  <span class="ml-2"><b>{{ getPartDisplayName(resource.id) }}:</b> {{ formatNumber(resource.amount) }}/min</span>
-                </v-chip>
-              </div>
-            </div>
-          </div>
-          <div
-            class="text-body-1 py-2 px-4 collapsed-section"
-            :class="hasExports(factory) ? 'border-b-md' : ''"
-          >
-            <p v-if="!hasOutput">Empty factory! Select a product!</p>
-            <template v-else>
-              <p class="section-label">Producing:</p>
-              <div class="section-chips">
-                <template v-for="part in factory.products">
-                  <v-chip
-                    v-if="factory.parts[part.id]"
-                    :key="`${factory.id}-${part.id}`"
-                    class="sf-chip"
-                    :class="factory.parts[part.id].amountRemaining < 0 ? 'red' : 'product'"
-                  >
-                    <game-asset
-                      v-if="part.id"
-                      clickable
-                      height="32"
-                      :subject="part.id"
-                      type="item"
-                      width="32"
-                    />
-                    <span class="ml-2">
-                      <b>{{ getPartDisplayName(part.id) }}</b>: {{ formatNumber(part.amount) }}/min
-                    </span>
-                    <span
-                      v-if="factory.parts[part.id].amountRemaining !== 0"
-                      class="ml-2"
-                      :class="differenceClass(factory.parts[part.id].amountRemaining)"
-                    >
-                      (<span v-if="factory.parts[part.id].amountRemaining > 0">+</span>{{ formatNumber(factory.parts[part.id].amountRemaining) }}/min)</span>
-                    <!-- A sunk part balances to zero, so without this a factory throwing 100/min
-                         into a sink reads identically to one that produces exactly what it ships. -->
-                    <span
-                      v-if="(factory.parts[part.id].amountRequiredSink ?? 0) > 0"
-                      class="ml-2 text-awesome-sink"
-                    >({{ formatNumber(factory.parts[part.id].amountRequiredSink ?? 0) }}/min sunk)</span>
-                  </v-chip>
-                </template>
-                <!-- Power generators produce as surely as products do, and a factory made only of
-                     them used to collapse to "Empty factory!". Green, and led by the same bolt-plus
-                     the generator's own power chip wears when expanded: a building icon on its own
-                     reads as a product, as though the factory were manufacturing generators. -->
-                <v-chip
-                  v-for="(producer, producerIndex) in factory.powerProducers"
-                  :key="`${factory.id}-power-${producerIndex}`"
-                  class="sf-chip green"
-                >
-                  <i class="fas fa-bolt" />
-                  <i class="fas fa-plus mr-2" />
-                  <game-asset
-                    v-if="producer.building"
-                    clickable
-                    height="32"
-                    :subject="producer.building"
-                    type="building"
-                    width="32"
-                  />
-                  <span class="ml-2">
-                    <b>{{ getPowerProducerDisplayName(producer) }}</b>: {{ formatNumber(Math.ceil(producer.buildingAmount)) }}x
-                  </span>
-                  <span class="ml-2 text-green">(+{{ formatMw(producer.powerProduced) }})</span>
-                </v-chip>
-                <!-- Custom buildings produce nothing, so they are stated as what they cost. Same
-                     reasoning as the generators above: without them a portal room collapsed to
-                     "Empty factory!". -->
-                <v-chip
-                  v-for="(customBuilding, customIndex) in factory.customBuildings"
-                  :key="`${factory.id}-custom-${customIndex}`"
-                  class="sf-chip custom-building"
-                >
-                  <game-asset
-                    v-if="customBuilding.building"
-                    clickable
-                    height="32"
-                    :subject="customBuilding.building"
-                    type="building"
-                    width="32"
-                  />
-                  <span class="ml-2">
-                    <b>{{ getBuildingDisplayName(customBuilding.building) }}</b>: {{ formatNumber(Math.ceil(customBuilding.amount)) }}x
-                  </span>
-                  <span class="ml-2 text-orange">(-{{ formatMw(customBuilding.powerConsumed) }})</span>
-                </v-chip>
-              </div>
-            </template>
-          </div>
-          <div
-            v-if="factory.dependencies?.requests && Object.keys(factory.dependencies?.requests).length > 0"
-            class="text-body-1 py-2 px-4 collapsed-section"
-          >
-            <p class="section-label">Exporting:</p>
-            <div class="section-chips">
-              <div
-                v-for="dependant in Object.keys(factory.dependencies.requests)"
-                :key="dependant"
-                class="factory-group-chip clickable"
-                @click="navigateToFactory(dependant)"
-              >
-                <factory-icon-display class="ml-1" :icon="findFactory(dependant).icon" size="20" />
-                <span class="mx-2">
-                  <b>{{ findFactory(dependant).name }}</b>
-                </span>
-                <!-- The chip is more specific than the row it sits in: it knows which part goes
-                     where, so it jumps to the import row taking it rather than the factory. -->
-                <v-chip
-                  v-for="part in factory.dependencies.requests[dependant]"
-                  :key="part.part"
-                  class="sf-chip sf-chip-clickable small product"
-                  title="Jump to the import taking this export"
-                  @click.stop="navigateToImport(dependant, part.part)"
-                >
-                  <game-asset
-                    v-if="part.part"
-                    clickable
-                    height="24"
-                    :subject="part.part"
-                    type="item"
-                    width="24"
-                  />
-                  <span class="ml-2"><b>{{ getPartDisplayName(part.part) }}:</b> {{ formatNumber(part.amount) }}/min</span>
-                </v-chip>
-              </div>
-            </div>
-          </div>
-        </v-card-text>
       </v-card>
     </v-col>
   </v-row>
-  <!-- Same orange as the sidebar's active-factory indicator and the selected tab slider. -->
-  <v-divider class="my-6 factory-divider" thickness="5px" />
 </template>
 
 <script setup lang="ts">
-  import { computed, inject, ref, watch } from 'vue'
-  import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
-  import { differenceClass, getPartDisplayName } from '@/utils/helpers'
-  import { getBuildingDisplayName, getPowerProducerDisplayName } from '@/utils/factory-management/common'
+  import { computed, inject, nextTick, onMounted, provide, ref, watch } from 'vue'
+  import { FACTORY_RENDER_STAGE, LAST_FACTORY_RENDER_STAGE } from '@/components/planner/factory-render-stage'
+  import { Factory } from '@/interfaces/planner/FactoryInterface'
   import { countActiveTasks, factoryPositionInGroup } from '@/utils/factory-management/factory'
   import {
     checklistChipClass,
@@ -497,10 +295,8 @@
   import FactoryGroupTray from '@/components/planner/groups/FactoryGroupTray.vue'
   import PlannerFactoryChecklist from '@/components/planner/PlannerFactoryChecklist.vue'
   import { groupColorVars } from '@/utils/colors'
-  import { importRowId } from '@/utils/factory-management/inputs'
   import eventBus from '@/utils/eventBus'
 
-  const findFactory = inject('findFactory') as (id: string | number) => Factory
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
@@ -510,16 +306,6 @@
     fallback?: string,
   ) => void
 
-  // Land on the import row consuming this factory's export, rather than on the destination
-  // factory's card which only says "somewhere in here". Falls back to its Imports section.
-  const navigateToImport = (requestingFactoryId: number | string, part: string) => {
-    navigateToFactory(
-      requestingFactoryId,
-      importRowId(requestingFactoryId, props.factory.id, part) ?? undefined,
-      `${requestingFactoryId}-imports`
-    )
-  }
-
   // Aim at every row the status names, with its section as the fallback for anything that has no
   // row of its own.
   const navigateToStatus = (target: { section: FactoryStatusSection, subjects: string[] }) => {
@@ -527,10 +313,36 @@
     navigateToFactory(props.factory.id, targets, fallback)
   }
 
-  const props = defineProps<{
+  const props = withDefaults(defineProps<{
     factory: Factory
     totalFactories: number;
+    // False holds back everything below the first few products until it turns true, then mounts
+    // the rest a stage per frame. The planner uses it to fade a factory in before all of it has rendered.
+    revealRest?: boolean
+  }>(), { revealRest: true })
+
+  const emit = defineEmits<{
+    // Every section is in the DOM, so a row anywhere in the card can be scrolled to.
+    rendered: []
   }>()
+
+  const LAST_STAGE = LAST_FACTORY_RENDER_STAGE
+  const stage = ref(props.revealRest ? LAST_STAGE : 0)
+  provide(FACTORY_RENDER_STAGE, stage)
+
+  onMounted(() => {
+    if (stage.value === LAST_STAGE) emit('rendered')
+  })
+
+  watch(() => props.revealRest, async reveal => {
+    if (!reveal || stage.value === LAST_STAGE) return
+    while (stage.value < LAST_STAGE) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      stage.value++
+    }
+    await nextTick()
+    emit('rendered')
+  })
 
   const { getFactories } = useAppStore()
 
@@ -606,29 +418,6 @@
   const factoryPowerShards = computed(() => getFactoryPowerShards(props.factory))
   const factorySomersloops = computed(() => getFactorySomersloops(props.factory))
 
-  // Collapsed view: a factory is only "empty" when it neither makes anything nor generates power.
-  // Power generators alone are a perfectly good factory, and were being called empty.
-  const hasOutput = computed(() =>
-    props.factory.products.length > 0 ||
-    props.factory.powerProducers.length > 0 ||
-    (props.factory.customBuildings?.length ?? 0) > 0
-  )
-
-  // Collapsed view: one group chip per source factory, with all its imported parts inside.
-  const groupedInputs = computed<[number, FactoryInput[]][]>(() => {
-    const groups = new Map<number, FactoryInput[]>()
-    for (const input of props.factory.inputs) {
-      if (input.factoryId == null) continue
-      const existing = groups.get(input.factoryId)
-      if (existing) {
-        existing.push(input)
-      } else {
-        groups.set(input.factoryId, [input])
-      }
-    }
-    return [...groups.entries()]
-  })
-
   // Derived once here and passed down, rather than each section header calling the helper itself:
   // that would run the predicates three more times per expanded card.
   const statuses = computed(() => getFactoryStatuses(props.factory))
@@ -651,11 +440,6 @@
     return confirm(message)
   }
 
-  const hasExports = (factory: Factory) => {
-    if (!factory.dependencies?.requests) return false
-    return Object.keys(factory.dependencies.requests).length > 0
-  }
-
   const validForGameSync = (factory: Factory): boolean => {
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
       (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '') ||
@@ -665,11 +449,6 @@
 
   // Every handler below writes a field the plan persists and the room syncs, so each one
   // declares intent as well as payload — a rebase carries over only what the user touched.
-  const setHidden = (hidden: boolean) => {
-    props.factory.hidden = hidden
-    markFactoryEdited(props.factory)
-  }
-
   const markInSync = (factory: Factory) => {
     setSyncState(factory)
     markFactoryEdited(factory)
@@ -694,11 +473,6 @@
 <style lang="scss" scoped>
 // The burnt orange of the app header — full indicator orange proved too bright
 // as a 5px band between cards.
-.factory-divider {
-  color: var(--sf-header);
-  opacity: 1;
-}
-
 // The reset button ends the chip, so the chip's own right padding only reads as a
 // gap after it. Three classes to outrank `.sf-chip.small`'s `!important` padding.
 .sf-chip.small.sync-chip {
@@ -726,38 +500,6 @@
   // The underline is the focus feedback; the browser's ring drew a box round the whole 85%.
   &:focus, &:focus-visible {
     outline: none;
-  }
-
-}
-
-// Collapsed-view section rows (Imports / Producing / Exports) read as a table:
-// a fixed-width right-aligned label column so every chip flow starts at the same
-// x, with the label vertically centred even when the chips wrap to more lines.
-.collapsed-section {
-  display: flex;
-  align-items: center;
-  column-gap: 8px;
-
-  .section-label {
-    flex: 0 0 85px;
-    text-align: right;
-  }
-
-  .section-chips {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    flex: 1 1 0;
-    min-width: 0;
-    gap: 8px;
-
-    // Spacing between chips is the gap's job — the global .sf-chip margins
-    // would stack on top of it and skew the section's vertical symmetry.
-    // Only direct children (the Producing chips): part chips inside the
-    // factory-group pills keep their own 4px rhythm below.
-    > .sf-chip {
-      margin: 0 !important;
-    }
   }
 }
 </style>

@@ -32,6 +32,8 @@ export interface JumpPoint {
   scrollTop: number
   // The row to pulse on arriving back here, if one is known.
   flashId: string | null
+  // The page the pane was showing, when the planner pages its content. Absent otherwise.
+  view?: string
 }
 
 export interface JumpHistoryOptions {
@@ -44,6 +46,12 @@ export interface JumpHistoryOptions {
   push?: (state: Record<string, string>) => unknown
   // Pulses the element arrived at. Defaults to the planner's navigation flash.
   flash?: (element: HTMLElement) => void
+  // The page on screen, for a pane that shows one page at a time: a place on another page is only
+  // reachable by opening that page first. Both or neither. `showView` calls `onShown` once the
+  // page is in the DOM, and the place is then set rather than scrolled to: the page is arriving
+  // anyway, so there is nothing for a scroll animation to show.
+  view?: () => string
+  showView?: (view: string, onShown: () => void) => void
 }
 
 export const JUMP_STATE_KEY = 'sfJumpId'
@@ -131,6 +139,7 @@ export const useJumpHistory = (options: JumpHistoryOptions) => {
       offset: anchor ? anchor.getBoundingClientRect().top - main.getBoundingClientRect().top : 0,
       scrollTop: main.scrollTop,
       flashId,
+      ...(options.view ? { view: options.view() } : {}),
     }
   }
 
@@ -172,19 +181,19 @@ export const useJumpHistory = (options: JumpHistoryOptions) => {
     return main.scrollTop + anchor.getBoundingClientRect().top - main.getBoundingClientRect().top - point.offset
   }
 
-  const restore = (point: JumpPoint, attempt = 0) => {
+  const restore = (point: JumpPoint, attempt = 0, instant = false) => {
     const main = options.container()
     if (!main) return
     const target = targetFor(main, point)
     const settled = Math.abs(target - main.scrollTop) < 2
     // Pulsed once per arrival, measured when it fires so it lands on wherever the row now is.
-    if (attempt === 0) pulse = setTimeout(() => pulseArrival(point), settled ? 0 : FLASH_DELAY)
+    if (attempt === 0) pulse = setTimeout(() => pulseArrival(point), settled || instant ? 0 : FLASH_DELAY)
     if (settled) return
 
     // Corrections snap instantly — a second smooth scroll would chase content still settling.
-    main.scrollTo({ top: target, behavior: attempt === 0 ? 'smooth' : 'auto' })
+    main.scrollTo({ top: target, behavior: attempt === 0 && !instant ? 'smooth' : 'auto' })
     if (attempt < MAX_CORRECTIONS) {
-      correction = setTimeout(() => restore(point, attempt + 1), CORRECTION_DELAY)
+      correction = setTimeout(() => restore(point, attempt + 1, instant), CORRECTION_DELAY)
     }
   }
 
@@ -225,7 +234,17 @@ export const useJumpHistory = (options: JumpHistoryOptions) => {
 
     cancelPending()
     const point = currentId ? points.get(currentId) : undefined
-    if (point) restore(point)
+    if (!point) return
+    if (point.view !== undefined && options.view && options.showView && options.view() !== point.view) {
+      // The place is on another page, which has to be on screen before it can be measured.
+      const arriving = currentId
+      options.showView(point.view, () => {
+        // Moved on again before the page arrived: the place is no longer wanted.
+        if (currentId === arriving) restore(point, 0, true)
+      })
+      return
+    }
+    restore(point)
   }
 
   const start = () => {
