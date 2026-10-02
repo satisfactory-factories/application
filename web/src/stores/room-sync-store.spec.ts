@@ -10,6 +10,7 @@ import {
   OFFLINE_NOTICE_MS,
   OP_DEBOUNCE_MS,
   REVISION_PROBE_MS,
+  TYPING_DEBOUNCE_MS,
   useRoomSyncStore,
 } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
@@ -704,6 +705,118 @@ describe('room-sync-store', () => {
       eventBus.emit('factoryEdited', tab.factories[0])
 
       expect(store.hasLocalEdits(ROOM)).toBe(true)
+    })
+  })
+
+  describe('typing into a free-text field', () => {
+    /** One keystroke, as the notes field and a task's title emit it. */
+    const keystroke = (factory: Factory, notes: string) => {
+      factory.notes = notes
+      eventBus.emit('textTyped', factory)
+      eventBus.emit('factoryEdited', factory)
+      eventBus.emit('factoryUpdated', factory)
+    }
+
+    it('waits for the typing to stop before sending, then sends the note once', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+
+      // Pauses longer than the plan debounce, which used to send at each one.
+      for (const notes of ['F', 'Fe', 'Feeds', 'Feeds the line']) {
+        keystroke(tab.factories[0], notes)
+        vi.advanceTimersByTime(OP_DEBOUNCE_MS + 100)
+      }
+      expect(opsOf()).toHaveLength(0)
+
+      vi.advanceTimersByTime(TYPING_DEBOUNCE_MS - OP_DEBOUNCE_MS - 101)
+      expect(opsOf()).toHaveLength(0)
+
+      vi.advanceTimersByTime(1)
+      expect(opsOf()).toHaveLength(1)
+      expect(lastOp().diff.factories[0].notes).toBe('Feeds the line')
+    })
+
+    it('keeps the plan debounce for every other edit', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+
+      tab.factories[0].name = 'Alpha renamed'
+      eventBus.emit('factoryEdited', tab.factories[0])
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(opsOf()).toHaveLength(1)
+    })
+
+    it('sends a held note straight away when the field is left', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+      keystroke(tab.factories[0], 'Feeds the line')
+
+      eventBus.emit('textTypingDone')
+
+      expect(opsOf()).toHaveLength(1)
+      // Nothing is left on the timer to send it twice.
+      vi.advanceTimersByTime(TYPING_DEBOUNCE_MS)
+      expect(opsOf()).toHaveLength(1)
+    })
+
+    it('sends a held note when the page is closed', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+      keystroke(tab.factories[0], 'Feeds the line')
+
+      window.dispatchEvent(new Event('pagehide'))
+
+      expect(lastOp().diff.factories[0].notes).toBe('Feeds the line')
+    })
+
+    it('asks nothing of the socket when nothing is held', () => {
+      syncAt(fixture, 4)
+
+      store.flushPending()
+
+      expect(opsOf()).toHaveLength(0)
+    })
+  })
+
+  describe('announcing a sent op', () => {
+    let sent: ReturnType<typeof vi.fn<(payload: { tabId: string }) => void>>
+
+    beforeEach(() => {
+      sent = vi.fn()
+      eventBus.on('planContentSent', sent)
+    })
+
+    afterEach(() => {
+      eventBus.off('planContentSent', sent)
+    })
+
+    it('announces an op that changes what the plan says, when it is sent', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].notes = 'Feeds the line'
+
+      expect(sent).not.toHaveBeenCalled()
+      store.flushRoom(ROOM)
+
+      expect(sent).toHaveBeenCalledWith({ tabId: ROOM })
+    })
+
+    it('says nothing for an op carrying only a rename', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].name = 'Alpha renamed'
+
+      expect(store.flushRoom(ROOM)).toBe(true)
+
+      expect(sent).not.toHaveBeenCalled()
+    })
+
+    it('announces a removal', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories.splice(1, 1)
+
+      store.flushRoom(ROOM)
+
+      expect(sent).toHaveBeenCalledWith({ tabId: ROOM })
     })
   })
 
