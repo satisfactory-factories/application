@@ -86,9 +86,11 @@ per address.
 ## In CI
 
 `.github/workflows/e2e.yml` runs the same `pnpm test:e2e` on `ubuntu-latest`, path-filtered
-to `web/`, `backend/`, `common/` and the workspace files. It caches the Chromium download and
-the mongod binary, and uploads `web/test-results/` (traces and screenshots) when the job
-fails. Unlike the three sibling check workflows it is free to path-filter because it is not a
+to `web/`, `backend/`, `common/` and the workspace files. It splits the suite four ways with
+`--shard`, one runner per shard, each booting its own stack, so a test is still alone against
+its API. A shard can be reproduced locally with `pnpm test:e2e --shard=2/4`. It caches the
+Chromium download and the mongod binary, and uploads `web/test-results/` (traces and
+screenshots) as `playwright-traces-<shard>` when a shard fails. Unlike the three sibling check workflows it is free to path-filter because it is not a
 required status check; making it required means dropping the filter first.
 
 ## Environment switches
