@@ -121,6 +121,7 @@
   import type { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
   import { markTabEdited } from '@/utils/sync-intent'
   import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   const appStore = useAppStore()
   const { getFactories, getCurrentTab, getTabState, prepareLoader, forceCalculation } = appStore
@@ -472,7 +473,7 @@
     eventBus.emit('toast', { message: 'Recalculations completed.', type: 'success' })
   }
 
-  eventBus.on('calculationsCompleted', () => {
+  useEventBusListener('calculationsCompleted', () => {
     disableRecalc.value = false
   })
 </script>
