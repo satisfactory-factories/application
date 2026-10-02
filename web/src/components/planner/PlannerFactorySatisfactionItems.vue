@@ -407,9 +407,9 @@
               <!-- Ignoring keeps the chip, stood down (no fill, dashed) and retitled, rather than
                    removing it: the choice stays visible and the checkbox stays to undo it. The
                    factory stops turning amber, because only the live advisory is a status. The
-                   checkbox sits inside the chip so it reads as part of the warning. That is safe
-                   here, unlike on the export chips below (#592), because this chip has no click
-                   handler of its own for the checkbox's clicks to be swallowed by. -->
+                   checkbox sits inside the chip so it reads as part of the warning. This chip has
+                   no click handler of its own, so unlike the export chips below the checkbox
+                   needs no `.stop`. -->
               <template v-if="hasBacklogAdvisory(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
@@ -509,51 +509,24 @@
             </p>
             <div v-else>
               <div>
-                <!-- The checkbox sits outside the v-chip rather than inside it: nested inside a
-                     clickable chip, its clicks were swallowed by the chip's own click handler and
-                     ripple/overlay layer before ever reaching the input (#592). Mirrors the
-                     sibling layout PlannerFactoryChecklist.vue uses for the same checkbox — that
-                     file's own per-value `:key` on the input is mirrored below too: without it,
-                     a `preventDefault()`-cancelled checkbox click can lose a race against the
-                     browser's own revert-to-pre-click-state step, leaving the tick visually
-                     unchanged even though the underlying state did flip. Keying the input on the
-                     checked value forces Vue to mount a fresh element at the new value instead of
-                     patching the (possibly just-reverted) old one. -->
                 <div
                   v-for="(request) in getPartExportRequests(factory, partId.toString())"
                   :key="`${partId}-${request.requestingFactoryId}`"
                   class="d-inline-flex align-center"
                 >
-                  <input
-                    v-if="factory.checklistEnabled"
-                    :key="`${request.requestingFactoryId}-${partId}-${isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())}`"
-                    :checked="isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString())"
-                    class="checklist-tick"
-                    :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount) }"
-                    :title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
-                    type="checkbox"
-                    @click.prevent="toggleChecklistExport(factory, request.requestingFactoryId, partId.toString(), request.amount)"
+                  <checklist-factory-chip
+                    :checked="factory.checklistEnabled ? isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString()) : undefined"
+                    :desynced="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount)"
+                    :factory="findFactory(request.requestingFactoryId)"
+                    jump-title="Jump to the import taking this export"
+                    :selected="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString())"
+                    :tick-title="checklistTickTitle(checklistExportDesync(factory, request.requestingFactoryId, partId.toString(), request.amount), 'Mark this export as built')"
+                    @jump="navigateToImport(request.requestingFactoryId, partId.toString())"
+                    @open="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
+                    @toggle="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
                   >
-                  <v-chip
-                    class="sf-chip sf-chip-clickable small factory"
-                    :color="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'primary' : ''"
-                    :style="isRequestSelected(factory, request.requestingFactoryId.toString(), partId.toString()) ? 'border-color: rgb(0, 123, 255) !important' : ''"
-                    @click="initCalculator(factory, partId.toString(), request.requestingFactoryId)"
-                  >
-                    <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
-                    <span class="ml-2">
-                      <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
-                    </span>
-                    <v-btn
-                      class="chip-jump-btn ml-2"
-                      color="primary"
-                      icon="fas fa-eye"
-                      size="x-small"
-                      title="Jump to the import taking this export"
-                      variant="flat"
-                      @click.stop="navigateToImport(request.requestingFactoryId, partId.toString())"
-                    />
-                  </v-chip>
+                    <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
+                  </checklist-factory-chip>
                 </div>
               </div>
             </div>
@@ -640,8 +613,8 @@
     checklistTickTitle,
     isChecklistExportComplete,
     isChecklistExportDesynced,
-    toggleChecklistExport,
   } from '@/utils/factory-management/checklist'
+  import { toggleChecklistExportWithOffer } from '@/composables/useLinkedImportTick'
   import { formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import {
@@ -1107,16 +1080,6 @@ table {
   :deep(input) {
     font-weight: 700;
   }
-}
-
-// Sits inside the export chip, so it has to shed the icon button's circle and
-// claw back the chip's right padding to avoid looking bolted on.
-.chip-jump-btn {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  border-radius: 4px !important;
-  margin-right: -4px;
 }
 
 .calculator-tray {
