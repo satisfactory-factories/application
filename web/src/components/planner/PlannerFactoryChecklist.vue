@@ -190,33 +190,28 @@
                       :key="entry.index"
                       class="checklist-source"
                     >
-                      <input
-                        :key="`${entry.index}-${!!entry.input.completed}`"
-                        :checked="!!entry.input.completed"
-                        class="checklist-tick"
-                        :class="{ desynced: isInputChecklistDesynced(entry.input) }"
-                        title="Mark as built"
-                        type="checkbox"
-                        @click.prevent="toggleChecklistInput(factory, entry.input)"
-                      >
-                      <v-chip
+                      <!-- A row with no source factory has no chip, so its tick stands alone. -->
+                      <checklist-factory-chip
                         v-if="entry.input.factoryId"
-                        class="sf-chip sf-chip-clickable small factory"
-                        @click="navigateToFactory(entry.input.factoryId)"
-                      >
-                        <factory-icon-display :icon="findFactory(entry.input.factoryId).icon" size="20" />
-                        <span class="ml-2">{{ findFactory(entry.input.factoryId).name }}</span>
-                        <v-btn
-                          class="chip-jump-btn ml-2"
-                          color="primary"
-                          icon="fas fa-eye"
-                          size="x-small"
-                          title="Jump to this factory"
-                          variant="flat"
-                          @click.stop="navigateToFactory(entry.input.factoryId)"
-                        />
-                      </v-chip>
-                      <span v-else class="text-body-2 text-medium-emphasis">No factory selected</span>
+                        :checked="!!entry.input.completed"
+                        :desynced="isInputChecklistDesynced(entry.input)"
+                        :factory="findFactory(entry.input.factoryId)"
+                        @jump="navigateToFactory(entry.input.factoryId)"
+                        @open="navigateToFactory(entry.input.factoryId)"
+                        @toggle="toggleChecklistInput(factory, entry.input)"
+                      />
+                      <template v-else>
+                        <input
+                          :key="`${entry.index}-${!!entry.input.completed}`"
+                          :checked="!!entry.input.completed"
+                          class="checklist-tick"
+                          :class="{ desynced: isInputChecklistDesynced(entry.input) }"
+                          title="Mark as built"
+                          type="checkbox"
+                          @click.prevent="toggleChecklistInput(factory, entry.input)"
+                        >
+                        <span class="text-body-2 text-medium-emphasis">No factory selected</span>
+                      </template>
                       <checklist-desync-chip
                         v-if="inputChecklistDesync(entry.input)"
                         :desync="inputChecklistDesync(entry.input)!"
@@ -259,31 +254,14 @@
                       :key="request.requestingFactoryId"
                       class="checklist-source"
                     >
-                      <input
-                        :key="`${request.requestingFactoryId}-${request.part}-${isChecklistExportComplete(factory, request.requestingFactoryId, request.part)}`"
+                      <checklist-factory-chip
                         :checked="isChecklistExportComplete(factory, request.requestingFactoryId, request.part)"
-                        class="checklist-tick"
-                        :class="{ desynced: isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount) }"
-                        title="Mark as built"
-                        type="checkbox"
-                        @click.prevent="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, request.part, request.amount, findFactory(request.requestingFactoryId))"
-                      >
-                      <v-chip
-                        class="sf-chip sf-chip-clickable small factory"
-                        @click="navigateToFactory(request.requestingFactoryId)"
-                      >
-                        <factory-icon-display :icon="findFactory(request.requestingFactoryId).icon" size="20" />
-                        <span class="ml-2">{{ findFactory(request.requestingFactoryId).name }}</span>
-                        <v-btn
-                          class="chip-jump-btn ml-2"
-                          color="primary"
-                          icon="fas fa-eye"
-                          size="x-small"
-                          title="Jump to this factory"
-                          variant="flat"
-                          @click.stop="navigateToFactory(request.requestingFactoryId)"
-                        />
-                      </v-chip>
+                        :desynced="isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount)"
+                        :factory="findFactory(request.requestingFactoryId)"
+                        @jump="navigateToFactory(request.requestingFactoryId)"
+                        @open="navigateToFactory(request.requestingFactoryId)"
+                        @toggle="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, request.part, request.amount, findFactory(request.requestingFactoryId))"
+                      />
                       <checklist-desync-chip
                         v-if="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)"
                         :desync="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)!"
@@ -476,17 +454,6 @@
   flex-wrap: nowrap;
   gap: 8px;
   padding: 2px 0;
-}
-
-// Sits inside the factory chip, so it has to shed the icon button's circle and claw back the
-// chip's right padding to avoid looking bolted on. Mirrors .chip-jump-btn in
-// PlannerFactorySatisfactionItems.vue, which the export chip here is styled after.
-.chip-jump-btn {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
-  border-radius: 4px !important;
-  margin-right: -4px;
 }
 
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
