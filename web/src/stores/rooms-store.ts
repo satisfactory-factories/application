@@ -495,7 +495,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   /** The toast, the list refresh and the mount every recovered plan needs. */
   const landRecoveredPlan = async (result: LegacyImportResult) => {
     legacyImported = true
-    // A cloud plan holds 150 factories, and an old save could be bigger. Saying how
+    // A cloud plan holds CAPS.factoriesPerRoom factories, and an old save could be bigger. Saying how
     // many were left behind is the difference between a partial recovery and a
     // silent one.
     const dropped = result.dropped ?? 0

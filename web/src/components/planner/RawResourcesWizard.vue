@@ -362,6 +362,7 @@
   import { downloadPlan } from '@/utils/plan-backup'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { PURITY_LABELS } from '@/utils/factory-management/building-groups/extraction'
+  import { canAddFactory } from '@/utils/plan-size'
 
   const props = defineProps<{ modelValue: boolean }>()
   const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
@@ -605,6 +606,9 @@
 
   const apply = async () => {
     if (applying.value || !pending.value) return
+    // Each mine it would create is a factory like any other, so they count against the cap.
+    const current = appStore.getFactories().length
+    if (!canAddFactory(current, pending.value.factories.length - current)) return
     applying.value = true
     await afterPaint()
 

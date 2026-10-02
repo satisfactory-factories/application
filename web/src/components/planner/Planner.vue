@@ -183,6 +183,7 @@
   import PlannerFactoryPager from '@/components/planner/PlannerFactoryPager.vue'
   import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
   import { flashElement } from '@/utils/navigation-highlight'
+  import { canAddFactory } from '@/utils/plan-size'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -663,7 +664,7 @@
   const createFactory = (groupId: string | null = null) => {
     const factory = newFactory()
     factory.displayOrder = getFactories().length
-    addFactory(factory)
+    if (!addFactory(factory)) return
     // Grouped after the fact rather than born into it: addFactory cannot see where the click came
     // from, and seats every new factory at the end of the Ungrouped block. The move re-seats it at
     // the end of its group and re-sorts the plan, so the card lands where the sidebar row is.
@@ -760,6 +761,7 @@
   }
 
   const copyFactory = (originalFactory: Factory) => {
+    if (!canAddFactory(getFactories().length)) return
     // Make a deep copy of the factory with a new ID, unique against the rest of the plan.
     const before = captureOrder(getFactories())
     const newId = generateFactoryId(getFactories())

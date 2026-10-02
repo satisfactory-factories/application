@@ -29,6 +29,7 @@ import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { forgetInstanceId, INSTANCE_ID_KEY, recoverJournalRoom } from '@/sync/plan-journal'
 import { resetStorageWarning } from '@/utils/safe-storage'
 import eventBus from '@/utils/eventBus'
+import { MAX_FACTORIES_PER_PLAN } from '@/utils/plan-size'
 import { refuseLocalStorageWrites } from '../../testing/storage'
 
 const ROOM = 'room-1'
@@ -1131,6 +1132,55 @@ describe('room-sync-store', () => {
       expect(store.rooms[ROOM].status).toBe('revoked')
       expect(names(tab)).toEqual(['Mine', 'Beta'])
       expect(readTabMirrorMeta()[ROOM]).toBeUndefined()
+    })
+  })
+
+  describe('a plan over the factory cap', () => {
+    const extras = (count: number, firstId: number) => wire(
+      Array.from({ length: count }, (_unused, index) => newFactory(`Extra ${index}`, index + 2, firstId + index)),
+    )
+
+    // The server refuses the whole op past the cap, so sending it would only buy three
+    // rejects and a pause. The edits wait here until the plan is back under.
+    it('holds a plan over the cap back, and sends it once it is under again', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories.push(...extras(MAX_FACTORIES_PER_PLAN - 1, 100))
+
+      expect(store.flushRoom(ROOM)).toBe(false)
+      expect(opsOf()).toHaveLength(0)
+      expect(store.rooms[ROOM].lastError).toBe('too_large')
+
+      tab.factories.pop()
+
+      expect(store.flushRoom(ROOM)).toBe(true)
+      expect(opsOf()).toHaveLength(1)
+
+      receive({ type: 'op_ack', roomId: ROOM, opId: lastOp().opId, revision: 5 })
+      expect(store.rooms[ROOM].lastError).toBeNull()
+    })
+
+    it('says once that the server refused the plan as too large', () => {
+      const toasts: string[] = []
+      const onToast = (toast: { message: string }) => toasts.push(toast.message)
+      eventBus.on('toast', onToast)
+
+      const tab = syncAt(fixture, 4)
+      for (let revision = 5; revision <= 6; revision++) {
+        tab.factories[0].name = `Mine ${revision}`
+        store.markUserTouched(ROOM, 1)
+        store.flushRoom(ROOM)
+        receive({
+          type: 'op_reject',
+          roomId: ROOM,
+          opId: lastOp().opId,
+          reason: 'too_large',
+          snapshot: snapshotOf(fixture, revision),
+        })
+      }
+      eventBus.off('toast', onToast)
+
+      expect(toasts.filter(message => message.includes('too big to save'))).toHaveLength(1)
+      expect(store.rooms[ROOM].lastError).toBe('too_large')
     })
   })
 
