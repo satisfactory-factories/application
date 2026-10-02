@@ -745,7 +745,7 @@
 
     try {
       const targetFactory = newFactory(`${getPartDisplayName(part)} Factory`)
-      appStore.addFactory(targetFactory)
+      if (!appStore.addFactory(targetFactory)) return
 
       addShortageToFactory(factory, targetFactory, part, getDefaultRecipeForPart(part), Math.abs(factory.parts[part]?.amountRemaining ?? 0))
       // The new factory is structural and inferred; the import this put on the factory that was

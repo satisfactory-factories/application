@@ -3,6 +3,7 @@
      so the two can never drift apart visually. Anything drawer-specific
      (sign-in, Ko-fi, Discord) lives in Navigation.vue's append slot instead. -->
 <template>
+  <plan-size-notice :count="factories.length" />
   <planner-factory-list
     :factories="factories"
     :loaded-from="loadedFrom"
@@ -23,6 +24,7 @@
 <script setup lang="ts">
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import PlannerGlobalActions from '@/components/planner/PlannerGlobalActions.vue'
+  import PlanSizeNotice from '@/components/planner/PlanSizeNotice.vue'
 
   defineProps<{
     factories: Factory[],
