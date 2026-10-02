@@ -89,6 +89,7 @@ declare module 'vue' {
     PlannerFactoryTasks: typeof import('./components/planner/PlannerFactoryTasks.vue')['default']
     PlannerGlobalActions: typeof import('./components/planner/PlannerGlobalActions.vue')['default']
     PlannerGroupBand: typeof import('./components/planner/groups/PlannerGroupBand.vue')['default']
+    PlannerPageSkeleton: typeof import('./components/planner/Placeholders/PlannerPageSkeleton.vue')['default']
     PlannerSearch: typeof import('./components/planner/PlannerSearch.vue')['default']
     PlannerSidebarContent: typeof import('./components/planner/PlannerSidebarContent.vue')['default']
     PlannerSidebarFactoryRow: typeof import('./components/planner/groups/PlannerSidebarFactoryRow.vue')['default']

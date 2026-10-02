@@ -56,23 +56,13 @@
         <!-- One page at a time: a single factory, or the overview when none is open. Mounting
              every card at once is what made a big plan lag and crash the tab; the sidebar and the
              pagers either side of the card are how the rest of the plan is reached. -->
-        <!-- Switching page draws a curtain over the pane rather than fading the page itself: the
-             curtain is only as big as the visible pane, so fading it costs the same whatever the
-             page holds, where fading the page's own opacity means compositing every element in a
-             factory that may be several screens tall. The old page is swapped for the new one
-             behind it (see swapPage). Sticky, so it covers the pane wherever it is scrolled. -->
+        <!-- Switching page drops a curtain over the pane at once, showing the outline of a factory
+             while the new page is built behind it, then fades the curtain away. The curtain is only
+             as big as the visible pane, so it costs the same whatever the page holds (see
+             swapPage). Sticky, so it covers the pane wherever it is scrolled. -->
         <div class="page-curtain-anchor">
           <div class="page-curtain" :class="{ 'page-curtain-shown': curtainShown }">
-            <v-fade-transition>
-              <v-progress-circular
-                v-if="pageLoading"
-                class="page-curtain-spinner"
-                color="primary"
-                data-testid="planner-page-loading"
-                indeterminate
-                size="48"
-              />
-            </v-fade-transition>
+            <planner-page-skeleton v-if="skeletonOn" />
           </div>
         </div>
         <div class="planner-page">
@@ -265,7 +255,7 @@
   const PAGE_FADE_MS = 150
   // The longest a new page waits for the browser to go quiet before fading in anyway.
   const PAGE_SETTLE_MS = 150
-  // How long after a click the page swap keeps the main thread free. A clicked button's ripple
+  // How long after a click the page swap keeps the main thread free, with the skeleton showing. A clicked button's ripple
   // grows for 250ms and then needs the main thread once more to start fading out; mounting a
   // factory before then freezes it mid-ripple. After that its fade runs on the compositor.
   const SWAP_HOLD_MS = 300
@@ -288,62 +278,56 @@
   // Whether the factory on screen may mount the sections below Products. Held back while it fades
   // in, so the long task of mounting them does not land inside the fade.
   const revealRest = ref(true)
-  // A spinner for a page that is taking a while to render while the pane is blank.
-  const pageLoading = ref(false)
+  // The skeleton outlives the curtain by its fade out, so it does not vanish mid-fade.
+  const skeletonOn = ref(false)
   let resolveRendered: (() => void) | null = null
   const onFactoryRendered = () => {
     resolveRendered?.()
     resolveRendered = null
   }
 
-  // Fade the curtain in over the old page, swap the content behind it, let the new page render,
-  // position it, then fade the curtain away. A plain switch fades in once the top of the factory is ready and
-  // mounts the rest afterwards, below the fold; a jump aiming at a row waits for the whole card,
+  // Drop the curtain over the old page, swap the content behind it, let the new page render,
+  // position it, then fade the curtain away. A plain switch lifts it once the top of the factory is
+  // ready and mounts the rest afterwards, below the fold; a jump aiming at a row waits for the whole card,
   // since the row may be anywhere in it. Each stage checks it is still the latest switch, so
   // clicking through several factories quickly lands on the last one without replaying the rest.
   const swapPage = async () => {
     const token = ++swapToken
     const started = performance.now()
-    if (!curtainShown.value) {
-      curtainShown.value = true
-      await wait(PAGE_FADE_MS)
-      if (token !== swapToken) return
-    }
+    // At once rather than faded in: the skeleton is what says the click landed.
+    curtainShown.value = true
+    skeletonOn.value = true
     await wait(Math.max(0, SWAP_HOLD_MS - (performance.now() - started)))
     if (token !== swapToken) return
-    const spinner = setTimeout(() => { if (token === swapToken) pageLoading.value = true }, PAGE_FADE_MS)
-    try {
-      document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
-      const target = currentFactory.value?.id ?? OVERVIEW
-      // A page already on screen keeps what it has rendered, so only a fresh one is waited on.
-      const needsWholeCard = pendingArrival !== null && target !== OVERVIEW && target !== shownView.value
-      const rendered = needsWholeCard
-        ? new Promise<void>(resolve => { resolveRendered = resolve })
-        : null
-      revealRest.value = target === OVERVIEW
-      shownView.value = target
-      await nextTick()
-      // Still staged when the whole card is needed, just without waiting for the fade: a stage per
-      // frame keeps the spinner turning, where mounting it all at once would freeze it.
-      if (rendered) {
-        revealRest.value = true
-        await Promise.race([rendered, wait(PAGE_RENDER_LIMIT_MS)])
-      }
-      await nextFrame()
-      await settled()
-      if (token !== swapToken) return
-      const arrive = pendingArrival
-      pendingArrival = null
-      arrive?.()
-      await nextFrame()
-      if (token !== swapToken) return
-    } finally {
-      clearTimeout(spinner)
-      if (token === swapToken) pageLoading.value = false
+    document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
+    const target = currentFactory.value?.id ?? OVERVIEW
+    // A page already on screen keeps what it has rendered, so only a fresh one is waited on.
+    const needsWholeCard = pendingArrival !== null && target !== OVERVIEW && target !== shownView.value
+    const rendered = needsWholeCard
+      ? new Promise<void>(resolve => { resolveRendered = resolve })
+      : null
+    revealRest.value = target === OVERVIEW
+    shownView.value = target
+    await nextTick()
+    // Still staged when the whole card is needed, just without waiting for the fade: a stage per
+    // frame keeps the page responsive, where mounting it all at once would freeze it.
+    if (rendered) {
+      revealRest.value = true
+      await Promise.race([rendered, wait(PAGE_RENDER_LIMIT_MS)])
     }
+    await nextFrame()
+    await settled()
+    if (token !== swapToken) return
+    const arrive = pendingArrival
+    pendingArrival = null
+    arrive?.()
+    await nextFrame()
+    if (token !== swapToken) return
     curtainShown.value = false
     await wait(PAGE_FADE_MS)
-    if (token === swapToken) revealRest.value = true
+    if (token !== swapToken) return
+    skeletonOn.value = false
+    revealRest.value = true
   }
 
   watch(() => currentFactory.value?.id ?? OVERVIEW, target => {
@@ -1095,14 +1079,15 @@ $chrome-height: $header-height + $tab-bar-height; // 117px
   z-index: 5;
 }
 
-// The duration matches PAGE_FADE_MS. Pointer events only while shown, so a click mid-switch lands
-// on nothing rather than on the page being swapped out.
+// Shown at once and faded away over PAGE_FADE_MS. Pointer events only while shown, so a click
+// mid-switch lands on nothing rather than on the page being swapped out.
 .page-curtain {
   position: absolute;
   top: -12px;
   left: -12px;
   right: -12px;
   height: calc(100vh - #{$chrome-height});
+  overflow: hidden;
   background: rgb(var(--v-theme-background));
   opacity: 0;
   pointer-events: none;
@@ -1112,13 +1097,7 @@ $chrome-height: $header-height + $tab-bar-height; // 117px
 .page-curtain-shown {
   opacity: 1;
   pointer-events: auto;
-}
-
-.page-curtain-spinner {
-  position: absolute;
-  top: 160px;
-  left: 50%;
-  transform: translateX(-50%);
+  transition: none;
 }
 
 .planner-container {
@@ -1184,7 +1163,7 @@ $chrome-height: $header-height + $tab-bar-height; // 117px
   }
 
   .main-content {
-    position: relative; // Anchors the page-loading spinner
+    position: relative;
     width: 100%;
     max-height: calc(100vh - #{$chrome-height});
     overflow-y: auto;
