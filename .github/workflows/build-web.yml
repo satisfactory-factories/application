@@ -12,6 +12,7 @@ on:
       - beta
     paths:
       - 'web/**'
+      - '!**/*.md'
   pull_request:
     branches:
       - main
@@ -32,6 +33,9 @@ jobs:
         pnpm-lock.yaml
         .github/workflows/build-web.yml
         .github/workflows/changed-paths.yml
+      # Nothing in web/ imports or lints Markdown, so a docs edit cannot break the build.
+      ignore: |
+        *.md
 
   build-web:
     name: Build & Test Web
