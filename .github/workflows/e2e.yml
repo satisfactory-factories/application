@@ -52,11 +52,23 @@ concurrency:
 
 jobs:
   e2e:
-    name: Playwright E2E
+    name: Playwright E2E (${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-latest
-    # The suite is ~2 minutes plus both builds; the headroom is for the first run
-    # on a cold cache, which downloads Chromium and the mongod binary.
-    timeout-minutes: 30
+    # The suite runs one test at a time against one stack (playwright.config.ts says
+    # why), and run whole it is ~9 minutes of real waiting: idle probe cycles, a lock
+    # TTL, offline quiet periods. Four shards, each a runner with its own API, mongod
+    # and rate-limit bucket, keep that serial guarantee inside each shard and bring
+    # the slowest one to ~3 minutes plus setup. More shards buys little: the setup
+    # below is about a minute per runner whatever its share of the tests.
+    strategy:
+      # A failure in one shard says nothing about the others, and their results are
+      # what tells a real regression from a one-off.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    # A shard is ~3 minutes plus both builds; the headroom is for the first run on a
+    # cold cache, which downloads Chromium and the mongod binary.
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash
@@ -112,10 +124,10 @@ jobs:
       - name: Pin the mongod download directory
         run: echo "MONGOMS_DOWNLOAD_DIR=$HOME/.cache/mongodb-binaries" >> "$GITHUB_ENV"
 
-      # `playwright test`. Its global setup builds backend/dist and web/dist, boots
+      # `playwright test`, this runner's quarter of it. Its global setup builds backend/dist and web/dist, boots
       # both on 3000/3001 and tears them down again; headless is the default.
       - name: Run e2e suite
-        run: pnpm test:e2e
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
       # `trace: retain-on-failure` and `screenshot: only-on-failure` are already
       # configured, and this suite cannot be reproduced from the log alone.
@@ -123,7 +135,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.shard }}
           path: web/test-results/
           retention-days: 7
           if-no-files-found: ignore
