@@ -10,6 +10,51 @@
          `vuetify-core`, promoting the core reset's `button { font: inherit }`
          over every component's own styles. Dev loads in order and hides this. -->
     <style>@layer vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final;</style>
+    <!-- The loading screen, painted from the HTML alone before any script has run, and removed
+         by bootLoader.ts once the page under it has painted. Plain CSS on purpose: it has to show
+         while the app's own bundle and stylesheets are still on their way. -->
+    <style>
+      #boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #121212;
+        font-family: Roboto, sans-serif;
+      }
+      #boot-loader .boot-loader-card {
+        width: min(500px, calc(100vw - 32px));
+        padding: 16px;
+        border-radius: 16px;
+        background: #212121;
+        box-shadow: #0094e6 0 0 10px 0;
+        color: #fff;
+        text-align: center;
+        font-size: 1.5rem;
+      }
+      #boot-loader .boot-loader-bar {
+        position: relative;
+        height: 8px;
+        margin-top: 12px;
+        overflow: hidden;
+        border-radius: 4px;
+        background: rgba(0, 148, 230, 0.25);
+      }
+      #boot-loader .boot-loader-bar::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        width: 40%;
+        background: #0094e6;
+        animation: boot-loader-slide 1.2s ease-in-out infinite;
+      }
+      @keyframes boot-loader-slide {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(250%); }
+      }
+    </style>
     <script defer src="/assets/js/fa-brands.min.js"></script>
     <script defer src="/assets/js/fa-solid.min.js"></script>
     <script defer src="/assets/js/fa.min.js"></script>
@@ -42,6 +87,12 @@
 </head>
 
 <body>
+    <div id="boot-loader" data-testid="boot-loader" role="status">
+        <div class="boot-loader-card">
+            Loading planner...
+            <div class="boot-loader-bar"></div>
+        </div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
 </body>

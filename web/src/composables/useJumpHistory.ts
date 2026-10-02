@@ -8,7 +8,7 @@
  * from, and a back press past the first jump leaves the page exactly as it always did.
  *
  * A place is remembered as the card or section under the reading line plus how far into it the
- * view sat, not as a raw scroll offset: jumps unhide factories and open collapsed groups, and cards
+ * view sat, not as a raw scroll offset: jumps open collapsed groups and sections, and cards
  * materialise as they scroll past, so the content above a pixel offset rarely stays the same size
  * between leaving and coming back. The raw offset is kept as the fallback for when the anchor has
  * gone (a deleted factory, a collapsed group).

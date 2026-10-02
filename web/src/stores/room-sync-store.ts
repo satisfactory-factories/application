@@ -844,7 +844,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // load chain owns, so this should be unreachable. If it is ever reached, queueing the
     // room's content as the next load lands it after the chain instead of under it — and
     // only for the tab on screen, since that is the one a queued load would commit to. A
-    // copy, because a staggered chain is still pushing into the array it holds.
+    // copy, so the queued load commits the room's content as it stood when it arrived.
     if (appStore.isTabLoading(tab.id) && appStore.getCurrentTab()?.id === tab.id) {
       void appStore.prepareLoader([...next])
     }

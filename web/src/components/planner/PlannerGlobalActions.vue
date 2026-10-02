@@ -270,15 +270,6 @@
     tab.depotExpansionTier = outgoing.depotExpansionTier
     tab.factories = outgoing.factories
 
-    // The store keeps the plan it was loading under this key and picks it up on the next
-    // load as a recovery copy. Left there it would put the import that just failed straight
-    // back over the plan being restored.
-    try {
-      localStorage.removeItem('preLoadFactories')
-    } catch (cause) {
-      console.error('applyPlanBlob: could not clear the recovery copy', cause)
-    }
-
     // The failed load hid the planner, so the restored plan needs drawing or the tab reads
     // empty until the page is reloaded. Guarded on its own: a restore that cannot draw has
     // still put the data back, which is the half that matters.

@@ -31,7 +31,8 @@ description: How to launch and drive the web planner to verify changes end-to-en
 - **An intro modal ("Welcome to Satisfactory Factories!") covers the planner on first load** — element screenshots silently capture the overlay instead of your target. Dismiss it first: find the `<button>` whose text includes "demo plan" (or "empty plan") and `.click()` it, then wait and confirm `document.querySelector('.v-overlay--active')` is gone.
 - **Mael's "MegaPlan"** (big real-world plan; its "Concrete MegaFac" factory imports Limestone + Water raw resources) loads via the sidebar TEMPLATES button → the `Mael's "MegaPlan"` row button (`Templates.vue`). Loading a template overwrites the current plan without a confirm.
 - Factory cards are `.main-content .v-card[id]` where `id` is the numeric factory id; the scroll container is `.main-content` (page chrome above it is ~114px).
-- The sidebar factory list exists TWICE in the DOM (desktop sidebar + teleported mobile drawer) — don't count text occurrences to count factories.
+- Only one copy of the sidebar factory list is mounted: the docked sidebar at lg and up, the teleported mobile drawer (`#navigationDrawer`) below it. Scope selectors to `.sidebar-content` or `#navigationDrawer` to match the viewport you launched.
+- The page opens behind `#boot-loader` (`data-testid="boot-loader"`), static HTML in `index.html` that is removed outright once the planner's plan is in the DOM; wait for it to be gone before clicking anything.
 - Toasts render into body text; `document.body.innerText.includes(...)` works for them.
 - Factory cards lazy-materialize as they scroll into view, so far-away element positions are wrong until you've scrolled there.
 

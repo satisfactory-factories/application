@@ -17,7 +17,7 @@ import { shareARoom } from '../helpers/rooms'
 
 /**
  * The docked sidebar is the plan's table of contents, and it has gone blank
- * twice on load paths that skipped the staggered loader. It is also the only place
+ * twice on load paths that skipped the old staggered loader. It is also the only place
  * the whole plan is listed, since the planner pane shows one factory at a time. Every assertion here is
  * `toBeVisible` on the rows themselves rather than a count or a stored read: a
  * list rendered into a hidden sidebar is the exact failure.
@@ -77,8 +77,8 @@ test('opening a big tab needs no loader, and reopens the factory left open there
     [big, bigNames, 'Big 15'],
   ] as const) {
     await clickTab(page, tab)
-    // Sampled rather than checked once: a load that paced itself would hold the overlay up
-    // for a second or more, so a whole window of clear samples is what says it never did.
+    // Sampled rather than checked once: a whole window of clear samples is what says the
+    // loading screen never came back for a tab switch.
     for (let sample = 0; sample < 6; sample++) {
       expect(await overlay.count(), 'the tab raised a loader it does not need').toBe(0)
       await page.waitForTimeout(50)
