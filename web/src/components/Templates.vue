@@ -54,6 +54,7 @@
   import { useAppStore } from '@/stores/app-store'
   import { config } from '@/config/config'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { create46Scenario } from '@/utils/factory-setups/46-redistribution-hub'
   import { create290Scenario } from '@/utils/factory-setups/290-multiple-byproduct-imports'
   import { create315Scenario } from '@/utils/factory-setups/315-non-exportable-parts-imports'
   import { create317Scenario } from '@/utils/factory-setups/317-malformed-plan'
@@ -146,6 +147,13 @@
       data: scenarioData(create268Scenraio().getFactories()),
       show: isDebugMode,
       isDebug: true,
+    },
+    {
+      name: '#46 Redistribution hub',
+      description: 'Proof of concept for distribution hubs. Iron Factory makes Iron Plates, the Hub imports them on a row flagged Redistribute and makes nothing itself, and Reinforced Plates imports its plates from the Hub. Push the Reinforced Plates import above 100/min and the Hub goes red.',
+      data: scenarioData(create46Scenario().getFactories()),
+      show: true,
+      isDebug: false,
     },
     {
       name: '#290 Multiple product imports',

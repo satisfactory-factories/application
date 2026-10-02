@@ -78,7 +78,8 @@ const buildPlan = (): { factories: Factory[], tab: FactoryTab, mine: Factory, co
   // Costs parts to run, which is the only custom building that does.
   addCustomBuildingToFactory(producer, { building: 'portal', amount: 2 })
 
-  consumer.inputs.push({ factoryId: 1, outputPart: 'IronIngot', amount: 60 })
+  // Flagged as a redistribution hub row (#46), so `redistribute` is exercised too.
+  consumer.inputs.push({ factoryId: 1, outputPart: 'IronIngot', amount: 60, redistribute: true })
 
   const factories = [producer, consumer]
   calculateFactories(factories, gameData, { origin: 'recalculate' })

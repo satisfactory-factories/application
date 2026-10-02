@@ -193,6 +193,9 @@ export interface FactoryInput {
   completed?: boolean
   // Checklist mode: `amount` at last tick/factory-sync. See FactoryItem.checklistSyncedAmount.
   checklistSyncedAmount?: number
+  // Redistribution hub (#46): this import's quantity is made exportable from the importing
+  // factory, so other factories can import it from here. Absent means a normal import.
+  redistribute?: boolean
 }
 
 export interface FactorySyncState {

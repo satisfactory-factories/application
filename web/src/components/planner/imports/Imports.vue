@@ -40,49 +40,40 @@
             @click.prevent="toggleChecklistInput(factory, input)"
           >
         </div>
+        <!-- One button names the whole source, factory and item, and opens the import dialog to
+             change it. The dialog is where the filtering lives (#46). -->
         <div class="input-row d-flex align-center">
-          <factory-icon-display
-            class="mr-2"
-            :icon="input.factoryId ? findFactory(input.factoryId)?.icon : undefined"
-            size="32"
-          />
-          <!-- This is being watched for changes to update the old factory -->
-          <v-autocomplete
-            v-model.number="input.factoryId"
-            hide-details
-            :items="getImportFactorySelections(inputIndex)"
-            label="Factory"
-            max-width="300px"
+          <v-btn
+            class="import-source-btn rounded text-none justify-start"
+            :class="{ 'text-medium-emphasis': !input.outputPart }"
+            height="48"
+            title="Change where this import comes from"
             variant="outlined"
-            width="300px"
-            @update:model-value="handleInputFactoryChange(factory, inputIndex)"
-          />
-        </div>
-        <div class="input-row d-flex align-center">
-          <span v-show="!input.outputPart" class="mr-2">
-            <i class="fas fa-cube" style="width: 32px; height: 32px" />
-          </span>
-          <span v-if="input.outputPart" class="mr-2">
+            width="360"
+            @click="openSourceDialog(inputIndex)"
+          >
+            <factory-icon-display
+              class="mr-2"
+              :icon="input.factoryId ? findFactory(input.factoryId)?.icon : undefined"
+              size="28"
+            />
             <game-asset
+              v-if="input.outputPart"
               :key="input.outputPart"
-              clickable
-              height="32px"
+              class="mr-2"
+              height="28px"
               :subject="input.outputPart"
               type="item"
-              width="32px"
+              width="28px"
             />
-          </span>
-          <v-autocomplete
-            v-model="input.outputPart"
-            :disabled="!input.factoryId"
-            hide-details
-            :items="getImportPartSelections(inputIndex)"
-            label="Item"
-            max-width="350px"
-            variant="outlined"
-            width="350px"
-            @update:model-value="updateFactories(factory, input)"
-          />
+            <span v-if="input.outputPart && input.factoryId" class="text-left text-truncate">
+              <span class="d-block text-body-2">{{ getPartDisplayName(input.outputPart) }}</span>
+              <span class="d-block text-caption text-medium-emphasis">
+                from {{ findFactory(input.factoryId)?.name }}<template v-if="sourceVia(input).length"> (via {{ sourceVia(input).join(', ') }})</template>
+              </span>
+            </span>
+            <span v-else>Choose what to import</span>
+          </v-btn>
         </div>
         <div class="input-row d-flex align-center">
           <v-number-input
@@ -179,7 +170,36 @@
             @click="deleteInput(inputIndex, factory)"
           />
         </div>
-        <div class="input-row d-flex align-center">
+        <div class="input-row d-flex align-center flex-wrap ga-2">
+          <v-tooltip location="top" max-width="360">
+            <template #activator="{ props: tooltipProps }">
+              <span class="d-inline-flex flex-shrink-0" v-bind="tooltipProps">
+                <v-switch
+                  v-model="input.redistribute"
+                  class="redistribute-switch"
+                  color="blue"
+                  density="compact"
+                  :disabled="!input.outputPart || !canRedistribute(input)"
+                  hide-details
+                  label="Redistribute"
+                  @update:model-value="toggleRedistribute(factory, input)"
+                />
+              </span>
+            </template>
+            <span v-if="input.outputPart && !canRedistribute(input)">
+              {{ findFactory(input.factoryId as number)?.name }} already gets its
+              {{ getPartDisplayName(input.outputPart) }} from this factory, so passing it back on
+              would make a loop.
+            </span>
+            <span v-else>
+              Make this import available for other factories to import from here, turning this
+              factory into a distribution hub for it.
+            </span>
+          </v-tooltip>
+          <v-chip v-if="input.redistribute" class="sf-chip blue small flex-shrink-0">
+            <i class="fas fa-random" />
+            <span class="ml-2">Redistributed</span>
+          </v-chip>
           <v-chip v-if="input.amount === 0" class="sf-chip red small">
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">No amount set!</span>
@@ -193,13 +213,12 @@
     </v-card>
     <div class="input-row d-flex align-center">
       <v-btn
-        v-show="Object.keys(factory.parts).length > 0"
         color="green"
         :disabled="ableToImport(factory) !== true"
         prepend-icon="fas fa-dolly"
         ripple
         :variant="ableToImport(factory) === true ? 'flat' : 'outlined'"
-        @click="addEmptyInput(factory)"
+        @click="openSourceDialog(null)"
       >Add Import
       </v-btn>
       <span v-if="ableToImport(factory) === 'producesRawOnly'" class="ml-2">(Imports don't apply here: this factory only produces raw resources, and extracting them takes no ingredients.)</span>
@@ -207,6 +226,12 @@
     </div>
   </template>
 
+  <import-source-dialog
+    v-model="sourceDialogOpen"
+    :factory="factory"
+    :input-index="sourceDialogIndex"
+    @select="applySource"
+  />
 </template>
 
 <script setup lang="ts">
@@ -219,8 +244,6 @@
     canSatisfyImportToCapacity,
     deleteInputPair,
     importExceedsCapacity,
-    importFactorySelections,
-    importPartSelections,
     importRowId,
     isDuplicateImport,
     isImportRedundant,
@@ -236,7 +259,15 @@
   import { fixTargetSuffix, formatNumber } from '@/utils/numberFormatter'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { getExportableFactories } from '@/utils/factory-management/exports'
+  import { getExportableFactories, getPartExportRequests } from '@/utils/factory-management/exports'
+  import {
+    canRedistributeInput,
+    getImportableParts,
+    getRedistributionSourceNames,
+    isPartRedistributed,
+  } from '@/utils/factory-management/redistribution'
+  import { calculateFactories } from '@/utils/factory-management/factory'
+  import ImportSourceDialog from '@/components/planner/imports/ImportSourceDialog.vue'
   import {
     checklistTickTitle,
     inputChecklistDesync,
@@ -289,7 +320,8 @@
       return true
     }
 
-    return false
+    // Nothing this factory needs is on offer, but something else is: it can still become a hub.
+    return surplusAvailable.value
   })
 
   // Check if another factory has exports that can be used as imports for the current factory
@@ -301,54 +333,106 @@
     return getExportableFactories(getFactories())
   })
 
-  // The blank row is stored on the factory, and nothing recalculates until it is filled in,
-  // so without this a rebase in between drops the row the user just added.
-  const addEmptyInput = (factory: Factory) => {
-    addInputToFactory(factory, {
-      factoryId: null,
-      outputPart: null,
-      amount: 0,
-    })
-    markFactoryEdited(factory)
-  }
+  // Whether any other factory has anything spare at all, needed here or not (#46).
+  const surplusAvailable = computed(() =>
+    getImportableParts(props.factory, getFactories(), true).length > 0
+  )
 
   const deleteInput = (inputIndex: number, factory: Factory) => {
     const input = factory.inputs[inputIndex]
     deleteInputPair(factory, input, getFactories(), getGameData())
   }
 
-  const getImportFactorySelections = (inputIndex: number) => {
-    return importFactorySelections(
-      inputIndex,
-      importCandidates.value,
-      props.factory,
-      getFactories(),
-    )
-  }
-
-  const getImportPartSelections = (inputIndex: number): { title: string, value: string }[] => {
-    // Get selected factory from input
-    const input = props.factory.inputs[inputIndex]
-    if (!input.factoryId) {
-      return [] // They're still choosing one, and the selector is disabled.
-    }
-    const parts = importPartSelections(
-      findFactory(input.factoryId),
-      props.factory,
-      inputIndex
-    )
-
-    // Since we don't want to include the gameDataStore in the inputs.ts file, we need to hydrate the part names now
-    return parts.map(part => {
-      return {
-        title: getPartDisplayName(part),
-        value: part,
-      }
-    })
-  }
-
   const ableToImport = (factory: Factory): string | boolean => {
-    return calculateAbleToImport(factory, importCandidates.value)
+    const result = calculateAbleToImport(factory, importCandidates.value)
+
+    // A factory that needs nothing (or has nothing it needs on offer) can still import a surplus
+    // to redistribute. A mine stays blocked: it is the thing being imported from.
+    if ((result === 'noProductsOrProducers' || result === 'noImportFacs') && surplusAvailable.value) {
+      return true
+    }
+
+    return result
+  }
+
+  // The import dialog. A null index adds a new row once a source is picked, so there is never a
+  // half-filled row sitting on the factory.
+  const sourceDialogOpen = ref(false)
+  const sourceDialogIndex = ref<number | null>(null)
+
+  const openSourceDialog = (inputIndex: number | null) => {
+    sourceDialogIndex.value = inputIndex
+    sourceDialogOpen.value = true
+  }
+
+  const applySource = ({ factoryId, part, spare }: { factoryId: number, part: string, spare: number }) => {
+    const factory = props.factory
+    let inputIndex = sourceDialogIndex.value
+
+    if (inputIndex === null) {
+      addInputToFactory(factory, { factoryId, outputPart: part, amount: 0 })
+      inputIndex = factory.inputs.length - 1
+    } else {
+      const input = factory.inputs[inputIndex]
+      const changed = input.factoryId !== factoryId || input.outputPart !== part
+      if (!changed) return
+      // Re-pointing a row at a different item changes what it is for, so a hub flag set for the
+      // old item does not carry over.
+      if (input.outputPart !== part) {
+        delete input.redistribute
+      }
+      input.factoryId = factoryId
+      input.outputPart = part
+    }
+
+    const input = factory.inputs[inputIndex]
+    if (!input.amount) {
+      // Size a new row to what this factory needs; a hub needs nothing, so it takes what is spare.
+      const need = factory.parts[part] ? satisfyImportTarget(inputIndex, factory) : null
+      input.amount = need && need > 0 ? need : (spare > 0 ? spare : 1)
+    }
+
+    markFactoryEdited(factory)
+    handleInputFactoryChange(factory, inputIndex)
+    updateFactories(factory, input)
+  }
+
+  // Where a hub's stock of the row's item comes from, for "from Hub (via Iron Factory)".
+  const sourceVia = (input: FactoryInput): string[] => {
+    if (!input.factoryId || !input.outputPart) return []
+    const provider = findFactory(input.factoryId)
+    if (!provider?.id || !isPartRedistributed(provider, input.outputPart)) return []
+    return getRedistributionSourceNames(provider, input.outputPart, getFactories())
+  }
+
+  const canRedistribute = (input: FactoryInput): boolean =>
+    canRedistributeInput(props.factory, input, getFactories())
+
+  const toggleRedistribute = (factory: Factory, input: FactoryInput) => {
+    if (!input.redistribute) {
+      delete input.redistribute
+
+      // Turning it off takes the part off the hub's export list, and the imports other factories
+      // take from it go with it on the next recalculation. Say so before that happens.
+      const part = input.outputPart as string
+      const consumers = getPartExportRequests(factory, part).length
+      if (consumers > 0 && !isPartRedistributed(factory, part) && !factory.parts[part]?.amountSuppliedViaProduction) {
+        if (!confirm(`${consumers} factor${consumers === 1 ? 'y imports' : 'ies import'} this item from here. Stopping redistribution will remove ${consumers === 1 ? 'that import' : 'those imports'}. Continue?`)) {
+          input.redistribute = true
+          return
+        }
+      }
+    }
+
+    markFactoryEdited(factory)
+
+    // Switching it on only changes this factory; switching it off can strip other factories'
+    // imports from here, which only a full pass reconciles.
+    if (input.redistribute) {
+      updateFactory(factory)
+    } else {
+      calculateFactories(getFactories(), getGameData())
+    }
   }
 
   const handleInputFactoryChange = (factory: Factory, inputIndex: number) => {
@@ -490,6 +574,17 @@
 <style lang="scss" scoped>
   .input-row {
     max-width: 100%;
+  }
+
+  .redistribute-switch {
+    flex: 0 0 auto;
+    width: auto;
+
+    :deep(.v-label) {
+      opacity: 1;
+      padding-right: 4px;
+      white-space: nowrap;
+    }
   }
 
   .selectors {
