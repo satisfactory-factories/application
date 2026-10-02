@@ -8,6 +8,8 @@ metadata:
   lastVerified: 2026-09-13
   originSessionId: f918c7e6-a8d3-4cdc-8406-cd3a9c367aad
   modified: 2026-09-11T23:35:10.521Z
+  lastUsed: 2026-09-24
+  useCount: 1
 ---
 
 **Dashboard edits go through the Grafana API, run on the Grafana box itself.** Driving the
