@@ -23,10 +23,13 @@ import {
   checkForItemUpdate,
   deleteBuildingGroup,
   getTotalPowerShards,
+  planSpread,
+  previewSpread,
   remainderToLast,
   remainderToNewGroup,
   solveGroupForRemainder,
   solveGroupTargetOutput,
+  spreadBuildingGroups,
   syncBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
@@ -1084,6 +1087,66 @@ describe('buildingGroupsCommon', async () => {
       toggleBuildingGroupTray(product)
 
       expect(product.buildingGroupsTrayOpen).toBe(false)
+    })
+  })
+
+  describe('spread', () => {
+    // The reporter's plan: 197.547 refineries of Pure Copper Ingot over 10 uneven groups.
+    let copper: FactoryItem
+    beforeEach(() => {
+      addProductToFactory(mockFactory, {
+        id: 'CopperIngot',
+        amount: 7408.0125, // 197.547 refineries
+        recipe: 'Alternate_PureCopperIngot',
+      })
+      copper = mockFactory.products[1]
+      calculateFactories(factories, gameData)
+      for (let i = 1; i < 10; i++) {
+        addBuildingGroup(copper, ItemType.Product, mockFactory)
+      }
+      copper.buildingGroups.forEach((group, index) => {
+        group.buildingCount = index < 7 ? 20 : 19
+        group.overclockPercent = 100
+      })
+      copper.buildingGroups[9].buildingCount = 19.547
+    })
+
+    it('plans one identical group: the fewest buildings, underclocked to one decimal place', () => {
+      expect(planSpread(copper, ItemType.Product)).toEqual({
+        groupCount: 10,
+        buildingCount: 20,
+        overclockPercent: 98.8,
+      })
+    })
+
+    it('makes every group identical and covers demand', () => {
+      spreadBuildingGroups(copper, ItemType.Product, mockFactory)
+
+      copper.buildingGroups.forEach(group => {
+        expect(group.buildingCount).toBe(20)
+        expect(group.overclockPercent).toBe(98.8)
+        expect(group.parts.OreCopper).toBe(296.4)
+        expect(group.parts.Water).toBe(197.6)
+        expect(group.parts.CopperIngot).toBe(741)
+      })
+      expect(calculateEffectiveBuildingCount(copper.buildingGroups, 'oilrefinery', copper.recipe)).toBeCloseTo(197.6, 6)
+      expect(copper.buildingGroupsHaveProblem).toBe(false)
+    })
+
+    it('keeps an exact share at 100% without an extra building', () => {
+      copper.amount = 7500 // 200 refineries, 20 per group
+      calculateFactories(factories, gameData)
+
+      expect(planSpread(copper, ItemType.Product)).toEqual({ groupCount: 10, buildingCount: 20, overclockPercent: 100 })
+    })
+
+    it('previews without touching the real groups', () => {
+      const before = JSON.stringify(copper.buildingGroups)
+      const preview = previewSpread(copper, ItemType.Product, mockFactory)
+
+      expect(preview?.item.buildingGroups[0].buildingCount).toBe(20)
+      expect(preview?.item.buildingGroups[0].parts.CopperIngot).toBe(741)
+      expect(JSON.stringify(copper.buildingGroups)).toBe(before)
     })
   })
 

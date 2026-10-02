@@ -380,6 +380,49 @@ describe('Component: BuildingGroups', () => {
           edited()
         })
 
+        it('asks before spreading, then makes every group identical', async () => {
+          product.amount = 210 // 7 buildings
+          calculateFactories([factory], gameData)
+          await addGroupButton.trigger('click')
+          product.buildingGroups[0].buildingCount = 6
+          product.buildingGroups[1].buildingCount = 1
+          subject = mountProduct(factory)
+          vi.mocked(eventBus.emit).mockClear()
+
+          await subject.find(`[id="${factory.id}-${product.id}-spread"]`).trigger('click')
+          await subject.vm.$nextTick()
+
+          // Nothing changes until the dialog is confirmed.
+          expect(product.buildingGroups.map(g => g.buildingCount)).toEqual([6, 1])
+          expect(document.body.querySelector(`[id="${factory.id}-${product.id}-spread-count"]`)?.textContent).toContain('2')
+          // The preview is the group as it will be: no delete button.
+          expect(document.body.querySelector(`[id="${factory.id}--1-building-group"]`)).not.toBeNull()
+          expect(document.body.querySelector(`[id="${factory.id}--1-delete"]`)).toBeNull()
+
+          document.body.querySelector<HTMLElement>(`[id="${factory.id}-${product.id}-spread-apply"]`)!.click()
+          await subject.vm.$nextTick()
+
+          expect(product.buildingGroups.map(g => g.buildingCount)).toEqual([4, 4])
+          expect(product.buildingGroups.map(g => g.overclockPercent)).toEqual([87.5, 87.5])
+          edited()
+        })
+
+        it('leaves the groups alone when the spread is cancelled', async () => {
+          product.amount = 210
+          calculateFactories([factory], gameData)
+          await addGroupButton.trigger('click')
+          product.buildingGroups[0].buildingCount = 6
+          product.buildingGroups[1].buildingCount = 1
+          subject = mountProduct(factory)
+
+          await subject.find(`[id="${factory.id}-${product.id}-spread"]`).trigger('click')
+          await subject.vm.$nextTick()
+          document.body.querySelector<HTMLElement>(`[id="${factory.id}-${product.id}-spread-cancel"]`)!.click()
+          await subject.vm.$nextTick()
+
+          expect(product.buildingGroups.map(g => g.buildingCount)).toEqual([6, 1])
+        })
+
         it('records an even rebalance', async () => {
           await addGroupButton.trigger('click')
           product.buildingGroups[1].buildingCount = 7
