@@ -85,13 +85,17 @@ per address.
 
 ## In CI
 
-`.github/workflows/e2e.yml` runs the same `pnpm test:e2e` on `ubuntu-latest`, path-filtered
-to `web/`, `backend/`, `common/` and the workspace files. It splits the suite four ways with
+`.github/workflows/e2e.yml` runs the same `pnpm test:e2e` on `ubuntu-latest` when a PR touches
+`web/`, `backend/`, `common/` or the workspace files. It splits the suite four ways with
 `--shard`, one runner per shard, each booting its own stack, so a test is still alone against
 its API. A shard can be reproduced locally with `pnpm test:e2e --shard=2/4`. It caches the
 Chromium download and the mongod binary, and uploads `web/test-results/` (traces and
-screenshots) as `playwright-traces-<shard>` when a shard fails. Unlike the three sibling check workflows it is free to path-filter because it is not a
-required status check; making it required means dropping the filter first.
+screenshots) as `playwright-traces-<shard>` when a shard fails.
+
+`Playwright E2E` is a required status check, and it is the summary job, not a shard: it passes
+when all four shards pass. Like the other required checks it always triggers on a PR and asks
+the `changed-paths.yml` gate whether to run, so a docs-only PR skips the shards and still gets
+a passing check rather than one that stays pending forever.
 
 ## Environment switches
 
