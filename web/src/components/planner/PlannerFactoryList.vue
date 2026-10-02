@@ -290,8 +290,7 @@
     totalFactories: number,
     loadedFrom: string
   }>()
-  // Visible from the start: the fast load paths (already-calculated plans,
-  // snapshot applies, instant renders) never emit incrementLoad, so an initial
+  // Visible from the start: the fast load paths never emit prepareForLoad, so an initial
   // false here left the docked sidebar empty for every plan that loaded quickly.
   const show = ref(true)
 
@@ -338,18 +337,15 @@
     setGroupOrder(ordered)
   }
 
-  // Hidden only while a staggered load is mid-flight. Every load path ends at
-  // loadingCompleted, so that is the reveal that cannot be starved; incrementLoad
-  // keeps the staggered path's earlier reveal. Named handlers, removed on
-  // unmount: this component mounts twice (dock + drawer) and re-mounts per visit.
+  // Hidden only while the recovery of an interrupted load is mid-flight. Every load path ends
+  // at loadingCompleted, so that is the reveal that cannot be starved. Named handlers, removed
+  // on unmount: this component mounts twice (dock + drawer) and re-mounts per visit.
   const hideForLoad = () => { show.value = false }
   const reveal = () => { show.value = true }
   eventBus.on('prepareForLoad', hideForLoad)
-  eventBus.on('incrementLoad', reveal)
   eventBus.on('loadingCompleted', reveal)
   onUnmounted(() => {
     eventBus.off('prepareForLoad', hideForLoad)
-    eventBus.off('incrementLoad', reveal)
     eventBus.off('loadingCompleted', reveal)
   })
 

@@ -36,8 +36,7 @@ type Events = {
   toast: ToastData;
   // Initial factory loading dialog
   loadingCompleted: undefined;
-  incrementLoad: { step: string }; // Payload to denote loading or calculation step
-  prepareForLoad: { count: number, shown: number };
+  prepareForLoad: { count: number };
   // Custom loading screen
   loaderInit: { title?: string, steps: number }
   loaderNextStep: { message: string, step?: number, isFinalStep?: boolean }

@@ -6,6 +6,7 @@ import {
   factoryNames,
   openPlanner,
   readTabBar,
+  sidebarFactoryRows,
   waitForRevision,
 } from '../helpers/planner'
 import { closeShareDialog, createSnapshotLink, openShareDialog } from '../helpers/rooms'
@@ -39,7 +40,7 @@ test('a snapshot link hands over a frozen local copy, not a seat in the room', a
   await addFactory(owner, { name: 'Added afterwards', note: 'never in the snapshot' })
   await waitForRevision(owner, roomId, 2)
 
-  await expect(visitor.locator('input.factory-name')).toHaveCount(1)
+  await expect(sidebarFactoryRows(visitor)).toHaveCount(1)
   expect(await factoryNames(visitor)).toEqual(['As it stood'])
 })
 

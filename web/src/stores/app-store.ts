@@ -24,7 +24,6 @@ import { PlanRepair, repairPlanPrecision } from '@/utils/factory-management/repa
 import { captureOrder, markFactoryRemoved, markPlanReplaced, markReorderedFactories, markTabEdited } from '@/utils/sync-intent'
 import { collectRawWizardRows } from '@/utils/factory-management/raw-wizard'
 import { getHandGatheredParts } from '@/utils/factory-management/parts'
-import { needsPacedRender } from '@/utils/render-pacing'
 import { config } from '@/config/config'
 import { recordEvent } from '@/utils/record-event'
 import { writeLocalStorage } from '@/utils/safe-storage'
@@ -34,7 +33,6 @@ export const useAppStore = defineStore('app', () => {
   const gameData = gameDataStore.getGameData()
 
   const inited = ref(false)
-  let loadedCount = 0
   const factoryTabs = ref<FactoryTab[]>(JSON.parse(localStorage.getItem('factoryTabs') ?? '[]') as FactoryTab[])
 
   if (factoryTabs.value.length === 0) {
@@ -169,10 +167,6 @@ export const useAppStore = defineStore('app', () => {
     }
     // Deliberately does not ask here: the plan being re-armed has not loaded yet, so the only
     // thing to evaluate at this point is the one on its way out. loadingCompleted does it.
-  }
-
-  const shownFactories = (factories: Factory[]) => {
-    return factories.filter(factory => !factory.hidden).length
   }
 
   // The tab-switch load is deferred to the next frame so the loading overlay paints
@@ -429,13 +423,11 @@ export const useAppStore = defineStore('app', () => {
     new Promise(resolve => setTimeout(resolve, import.meta.env.MODE === 'test' ? 0 : ms))
 
   // ==== LOADER GATING
-  // Two separate questions, and conflating them is what made a tab switch hitch with no
-  // loader on screen. Whether to CALCULATE is answered by the plan's own state: an already
-  // calculated plan is recalculated for nothing. Whether to PACE THE RENDER is answered by
-  // its size: the 75ms-per-factory stagger is not cosmetic, it paces the render of the whole
-  // list so a big plan doesn't freeze the tab, and that cost is owed by every big plan
-  // however little there was to calculate.
-  let lastLoadCalculated = false
+  // Whether to CALCULATE is answered by the plan's own state: an already calculated plan is
+  // recalculated for nothing. There is no longer a render to pace: the planner mounts one factory
+  // at a time, so a plan of any size goes on screen in one flush once its data is ready. The only
+  // load that still runs the long way round is the recovery of one that died part way, since that
+  // is the path that holds the recovery copy.
 
   // A previous load died mid-way and beginLoading holds the recovery copy, so the
   // full path has to run whatever the gate says.
@@ -444,19 +436,14 @@ export const useAppStore = defineStore('app', () => {
     return stored !== null && stored !== '[]'
   }
 
-  const shouldStagger = (plan: Factory[]): boolean =>
-    lastLoadCalculated || hasInterruptedLoad() || needsPacedRender(plan)
-
   /**
    * True when the mirror is provably the server's current state, written by this app
-   * version, and small enough that mounting it in one flush cannot hitch. A big plan is
-   * still spared the recalculation; it just takes the loader while it renders.
+   * version, so it needs no validation, migration or recalculation.
    */
   const canRenderInstantly = (tabId: string): boolean => {
     const state = tabSyncStates.value[tabId]
     if (!state || state.kind === 'local' || state.revision === null) return false
     if (hasInterruptedLoad()) return false
-    if (needsPacedRender(getTab(tabId)?.factories ?? [])) return false
 
     const meta = readTabMirrorMeta()[tabId]
     return meta !== undefined &&
@@ -474,12 +461,11 @@ export const useAppStore = defineStore('app', () => {
       factory.previousInputs = factory.inputs.map(input => ({ ...input }))
     })
     inited.value = true
-    lastLoadCalculated = false
     loadingCompleted()
   }
 
   // A load owns the chain from the moment it starts until loadingCompleted. Two chains
-  // share loadedCount, factories.value and the preLoadFactories key, so an overlap
+  // share factories.value and the preLoadFactories key, so an overlap
   // truncates the plan — and the overlay's after-enter used to start one on every open.
   const loadInFlight = ref(false)
   // The tab the running chain is pushing into, known once beginLoading captures it. Until
@@ -547,19 +533,8 @@ export const useAppStore = defineStore('app', () => {
   const runLoad = async (newFactories?: Factory[], forceRecalc = false) => {
     isLoaded.value = false
 
-    // The overlay goes up BEFORE the work and a frame is yielded so it paints. Everything below
-    // this blocks the main thread on a big plan, and a click that puts nothing on screen until
-    // it is over reads as a frozen tab. Read for its counts only, never committed — the plan
-    // that really loads is read after the pause below, and re-announced there.
-    const announcing = newFactories ?? currentFactoryTab.value?.factories ?? []
-    if (needsPacedRender(announcing)) {
-      eventBus.emit('prepareForLoad', {
-        count: announcing.length,
-        shown: shownFactories(announcing),
-      })
-    }
-
-    // Tell planner to hide to remove all rendered content
+    // Tell planner to hide to remove all rendered content. Its placeholders are what is on
+    // screen while the work below blocks the thread.
     eventBus.emit('plannerShow', false)
 
     await nextPaint()
@@ -575,21 +550,13 @@ export const useAppStore = defineStore('app', () => {
     // Set and initialize factories
     setFactories(factoriesToLoad, forceRecalc)
 
-    if (!shouldStagger(factories.value)) {
-      console.log('appStore: prepareLoader: Nothing was calculated and the plan is small, rendering straight through.')
+    if (!hasInterruptedLoad()) {
+      console.log('appStore: prepareLoader: Factories set, rendering straight through.')
       loadingCompleted()
       return
     }
 
-    // Tell loader to prepare for load
-    console.log('appStore: prepareLoader: Factories set, starting load process.')
-    eventBus.emit('prepareForLoad', {
-      count: factories.value.length,
-      shown: shownFactories(factories.value),
-    })
-
-    // Give the overlay a beat to paint before the staggered render starts.
-    await loadPause(50)
+    console.log('appStore: prepareLoader: A previous load was interrupted, recovering it.')
     await beginLoading(factories.value, true)
   }
 
@@ -628,8 +595,8 @@ export const useAppStore = defineStore('app', () => {
     // Reading the getter inits the plan on the first load, which is what decides
     // whether the stagger is owed.
     const plan = factories.value
-    if (!shouldStagger(plan)) {
-      console.log('appStore: readyForData: Nothing was calculated and the plan is small, rendering straight through.')
+    if (!hasInterruptedLoad()) {
+      console.log('appStore: readyForData: rendering straight through.')
       loadingCompleted()
       return
     }
@@ -642,7 +609,6 @@ export const useAppStore = defineStore('app', () => {
 
   const beginLoading = async (newFactories: Factory[], loadMode = false) => {
     console.log('appStore: beginLoading: start', newFactories, 'loadMode', loadMode)
-    loadedCount = 0
 
     // The chain's tab, captured before anything is emptied. Switching tabs inside the pause
     // below used to move the target: the records went to the second tab while the first was
@@ -682,7 +648,7 @@ export const useAppStore = defineStore('app', () => {
     }
 
     // Inform the loader of the counts it is really showing; the chain drives itself from here.
-    eventBus.emit('prepareForLoad', { count: newFactories.length, shown: shownFactories(newFactories) })
+    eventBus.emit('prepareForLoad', { count: newFactories.length })
 
     // Wait 50ms to allow the loader to update
     await loadPause(50)
@@ -693,17 +659,12 @@ export const useAppStore = defineStore('app', () => {
     await loadNextFactory(newFactories, owner)
   }
 
+  // Every factory goes in at once. The pushes used to be paced, one per 75ms, so a big plan's
+  // cards mounted a few at a time; the planner now mounts one factory whatever the plan's size,
+  // so pacing would only hold the overlay up for longer.
   const loadNextFactory = async (newFactories: Factory[], owner: FactoryTab) => {
-    while (loadedCount < newFactories.length) {
-      owner.factories.push(newFactories[loadedCount])
-      eventBus.emit('incrementLoad', { step: 'increment' })
-      loadedCount++
-
-      await loadPause(75) // Pause between loads
-    }
-
+    owner.factories.push(...newFactories)
     console.log('appStore: loadNextFactory: Finished loading factories.')
-    eventBus.emit('incrementLoad', { step: 'render' })
     await loadPause(75) // Wait for DOM updates
     loadingCompleted()
   }
@@ -1038,9 +999,6 @@ export const useAppStore = defineStore('app', () => {
       refreshBuildingGroupProblems(newFactories)
     }
 
-    // What the loader gate reads: the stagger paces a render that followed work.
-    lastLoadCalculated = needsCalculation
-
     console.log('appStore: initFactories - completed')
 
     inited.value = true
@@ -1083,7 +1041,6 @@ export const useAppStore = defineStore('app', () => {
     if (forceRecalc) {
       // Trigger calculations
       calculateFactories(newFactories, gameData, { origin: 'recalculate' })
-      lastLoadCalculated = true
     }
 
     // For each factory, snapshot the current inputs as the previous inputs. Must be a

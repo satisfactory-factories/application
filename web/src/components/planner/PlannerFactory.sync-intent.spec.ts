@@ -126,33 +126,11 @@ describe('Component: PlannerFactory (header sync intent)', () => {
     expect(factory.name).toBe('Steel B')
   })
 
-  it('collapsing the card is an edit, because the flag is stored with the plan', async () => {
+  // Only one factory is on screen at a time, so there is nothing left to collapse it for.
+  it('offers no collapse or expand button', () => {
     const subject = mountSubject()
 
-    await buttonTitled(subject, 'Collapse Factory')?.trigger('click')
-
-    expect(factory.hidden).toBe(true)
-    expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', factory)
-  })
-
-  it('expanding it again is too', async () => {
-    factory.hidden = true
-    const subject = mountSubject()
-
-    await buttonTitled(subject, 'Expand Factory')?.trigger('click')
-
-    expect(factory.hidden).toBe(false)
-    expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', factory)
-  })
-
-  it('does not claim intent when a peer collapses the card', async () => {
-    const subject = mountSubject()
-    vi.mocked(eventBus.emit).mockClear()
-
-    factory.hidden = true
-    await nextTick()
-
-    expect(subject.exists()).toBe(true)
-    expect(eventBus.emit).not.toHaveBeenCalledWith('factoryEdited', factory)
+    expect(buttonTitled(subject, 'Collapse Factory')).toBeUndefined()
+    expect(buttonTitled(subject, 'Expand Factory')).toBeUndefined()
   })
 })

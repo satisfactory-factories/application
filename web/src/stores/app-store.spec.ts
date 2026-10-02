@@ -15,7 +15,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { config } from '@/config/config'
-import { PACED_RENDER_FACTORY_COUNT } from '@/utils/render-pacing'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
 import { refuseLocalStorageWrites } from '../../testing/storage'
@@ -33,7 +32,7 @@ const resetAppStore = (keepLocalStorage = false) => {
 }
 
 /**
- * Waits for a staggered load to finish. Resetting the store does not stop one that is
+ * Waits for a load chain to finish. Resetting the store does not stop one that is
  * already running, and the event bus is global, so a chain left in flight goes on
  * emitting into whichever test comes next.
  */
@@ -504,7 +503,7 @@ describe('app-store', () => {
       // The load used to stop at prepareForLoad and wait for the loading overlay's
       // readyForData to carry it on. Nothing here mounts that overlay, and neither does
       // /room/<slug> — so the chain has to finish on its own or it never finishes at all.
-      it('should drive a staggered load to completion with no overlay listening', async () => {
+      it('should drive a load to completion with no overlay listening', async () => {
         await appStore.prepareLoader([newFactory('Foo')], true)
 
         expect(appStore.isLoaded).toBe(true)
@@ -535,21 +534,8 @@ describe('app-store', () => {
         expect(appStore.getFactories()).toEqual([factory, factory2])
       })
 
-      it('should emit the prepareForLoad event with the correct info', async () => {
-        const factory = newFactory('Foo')
-        const factory2 = newFactory('Foo2')
-        factory2.hidden = true
-
-        await appStore.prepareLoader([factory, factory2], true)
-
-        expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
-          count: 2,
-          shown: 1,
-        })
-      })
-
-      // The stagger paces the render of a whole plan and is only worth its cost when
-      // something was calculated. An already-calculated plan renders straight through.
+      // The planner mounts one factory at a time, so there is no render left to pace and the
+      // loader only ever opens to recover a load that died part way.
       describe('loader gating', () => {
         let factories: Factory[]
 
@@ -567,13 +553,15 @@ describe('app-store', () => {
           expect(appStore.getFactories()).toEqual(factories)
         })
 
-        it('should open the loader when a recalculation was forced', async () => {
+        it('should not open the loader when a recalculation was forced', async () => {
           await appStore.prepareLoader(factories, true)
 
-          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 2, shown: 2 })
+          expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+          expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+          expect(appStore.getFactories()).toEqual(factories)
         })
 
-        it('should open the loader when a data migration had to calculate', async () => {
+        it('should not open the loader when a data migration had to calculate', async () => {
           const migrated = newFactory('Migrated')
           // #180's backfill: a missing powerProducers array forces a recalculation.
           // @ts-ignore
@@ -581,7 +569,8 @@ describe('app-store', () => {
 
           await appStore.prepareLoader([migrated])
 
-          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 1, shown: 1 })
+          expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+          expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
         })
 
         it('should take the full path when a previous load was interrupted', async () => {
@@ -589,11 +578,12 @@ describe('app-store', () => {
 
           await appStore.prepareLoader(factories)
 
-          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 2, shown: 2 })
+          // The recovered plan, not the one asked for: that is the copy the overlay is loading.
+          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', { count: 1 })
           localStorage.removeItem('preLoadFactories')
         })
 
-        // Completing synchronously is the proof: the staggered path is async, so it
+        // Completing synchronously is the proof: the recovery path is async, so it
         // could not have finished by the time the call returns.
         it('should render straight through when the loader asks and nothing was calculated', async () => {
           await appStore.prepareLoader(factories)
@@ -604,67 +594,29 @@ describe('app-store', () => {
           expect(appStore.isLoaded).toBe(true)
         })
 
-        it('should stagger when the loader asks and a recalculation was forced', async () => {
+        it('should render straight through when the loader asks after a forced recalculation', async () => {
           await appStore.prepareLoader(factories, true)
           appStore.isLoaded = false
 
           appStore.startQueuedLoad()
 
-          expect(appStore.isLoaded).toBe(false)
-          await settleLoads()
+          expect(appStore.isLoaded).toBe(true)
         })
 
-        // Calculating and pacing the render are separate questions. A plan too big to mount
-        // in one flush took the instant path because there was nothing to calculate, so the
-        // click produced no movement at all and then the tab locked up.
-        describe('a plan too big to render in one flush', () => {
-          const emitsOf = (event: string) =>
-            vi.mocked(eventBus.emit).mock.calls.filter(call => call[0] === event)
+        // A plan of any size goes on screen in one flush: only the factory being looked at is
+        // mounted, so the size of the plan no longer decides anything about the load.
+        it('should render a big plan straight through, every factory at once', async () => {
+          const plan = Array.from({ length: 50 }, (_, index) => newFactory(`Big ${index}`, index, index + 1))
 
-          const bigPlan = () => Array.from(
-            { length: PACED_RENDER_FACTORY_COUNT + 1 },
-            (_, index) => newFactory(`Big ${index}`, index, index + 1),
-          )
+          await appStore.prepareLoader(plan)
 
-          it('should take the staggered loader with nothing calculated', async () => {
-            const calculate = vi.spyOn(FactoryManager, 'calculateFactories')
-            const plan = bigPlan()
-
-            await appStore.prepareLoader(plan)
-
-            expect(calculate).not.toHaveBeenCalled()
-            expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
-              count: plan.length,
-              shown: plan.length,
-            })
-            // One per factory plus the render step: the whole chain, not a shortcut to the end.
-            expect(emitsOf('incrementLoad')).toHaveLength(plan.length + 1)
-            expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
-            expect(appStore.getFactories()).toEqual(plan)
-          })
-
-          // The overlay is what the user sees the instant they click, so it is announced
-          // before the validate-and-mount work rather than after it.
-          it('should raise the overlay before it starts the work', async () => {
-            vi.mocked(eventBus.emit).mockClear()
-
-            await appStore.prepareLoader(bigPlan())
-
-            const events = vi.mocked(eventBus.emit).mock.calls.map(call => call[0])
-            expect(events.indexOf('prepareForLoad')).toBeGreaterThanOrEqual(0)
-            expect(events.indexOf('prepareForLoad')).toBeLessThan(events.indexOf('plannerShow'))
-          })
-
-          it('should still render a small plan straight through', async () => {
-            await appStore.prepareLoader([newFactory('Small One'), newFactory('Small Two')])
-
-            expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
-            expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
-          })
+          expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+          expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
+          expect(appStore.getFactories()).toEqual(plan)
         })
       })
 
-      // Two chains share loadedCount, the tab's factory array and the preLoadFactories key,
+      // Two chains share the tab's factory array and the preLoadFactories key,
       // so an overlap loses factories. Only one runs at a time; the other waits its turn.
       describe('one chain at a time', () => {
         const countEmits = (event: string) =>
@@ -687,29 +639,6 @@ describe('app-store', () => {
           expect(appStore.isLoaded).toBe(true)
         })
 
-        // The stagger pushes into whatever tab is current at the moment of each push,
-        // so switching tabs mid-chain used to append the old plan onto the new one.
-        it('should not push the loading plan into a tab the user switched to', async () => {
-          appStore.addTab({ name: 'Other', factories: [newFactory('Other One', 0, 9)] })
-          const other = appStore.getCurrentTab() as FactoryTab
-          appStore.activateTab(appStore.factoryTabs[0].id)
-          await settleLoads()
-
-          const running = appStore.prepareLoader([newFactory('A', 0, 1), newFactory('B', 1, 2)], true)
-          await new Promise<void>(resolve => {
-            const onIncrement = () => {
-              eventBus.off('incrementLoad', onIncrement)
-              resolve()
-            }
-            eventBus.on('incrementLoad', onIncrement)
-          })
-          appStore.activateTab(other.id)
-          await running
-          await settleLoads()
-
-          expect(other.factories.map(entry => entry.name)).toEqual(['Other One'])
-        })
-
         it('should ignore the overlay asking for data while a load is driving itself', async () => {
           const plan = [newFactory('Foo', 0, 1), newFactory('Bar', 1, 2)]
           vi.mocked(eventBus.emit).mockClear()
@@ -721,9 +650,7 @@ describe('app-store', () => {
           await settleLoads()
 
           expect(appStore.getFactories()).toHaveLength(2)
-          // One increment per factory plus one render step: a second chain would reset
-          // loadedCount and blank the tab, so the count is the proof it never started.
-          expect(countEmits('incrementLoad')).toBe(3)
+          // A second chain would finish too, so one completion is the proof it never started.
           expect(countEmits('loadingCompleted')).toBe(1)
         })
       })
@@ -740,16 +667,18 @@ describe('app-store', () => {
           await settleLoads()
           expect(appStore.isLoaded).toBe(true)
 
+          // Recovery is the one load that still runs as a chain.
+          localStorage.setItem('preLoadFactories', JSON.stringify([newFactory('A', 0, 1)]))
           const sampled: boolean[] = []
-          const onIncrement = () => sampled.push(appStore.isLoaded)
-          eventBus.on('incrementLoad', onIncrement)
+          const onAnnounce = () => sampled.push(appStore.isLoaded)
+          eventBus.on('prepareForLoad', onAnnounce)
 
           // What the planner mounting does, and what a return to `/` therefore does.
           appStore.startQueuedLoad()
           await settleLoads()
-          eventBus.off('incrementLoad', onIncrement)
+          eventBus.off('prepareForLoad', onAnnounce)
 
-          expect(sampled.length, 'the chain never staggered, so nothing was sampled')
+          expect(sampled.length, 'the chain never ran, so nothing was sampled')
             .toBeGreaterThan(0)
           expect(sampled).not.toContain(true)
           expect(appStore.isLoaded).toBe(true)
@@ -782,7 +711,6 @@ describe('app-store', () => {
           const factory = newFactory('Foo')
           const factory2 = newFactory('Foo2')
           factories = [factory, factory2]
-          // Forced, so the loader gate lets the staggered path run.
           await appStore.prepareLoader(factories, true)
         })
 
@@ -802,17 +730,15 @@ describe('app-store', () => {
           })
           expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
             count: 1, // Not 2 as per the beforeEach
-            shown: 1,
           })
         })
 
-        it('should emit the prepareForLoad event with the correct info', async () => {
-          eventBus.emit('readyForData') // Which calls beginLoading
+        it('should not open the loader when the planner asks and nothing was interrupted', async () => {
+          vi.mocked(eventBus.emit).mockClear()
+          eventBus.emit('readyForData')
 
-          expect(eventBus.emit).toHaveBeenCalledWith('prepareForLoad', {
-            count: 2,
-            shown: 2,
-          })
+          expect(eventBus.emit).not.toHaveBeenCalledWith('prepareForLoad', expect.any(Object))
+          expect(eventBus.emit).toHaveBeenCalledWith('loadingCompleted')
         })
       })
 
@@ -869,22 +795,17 @@ describe('app-store', () => {
           expect(localStorage.getItem('preLoadFactories')).toBe(null)
         })
 
-        it('should have emitted the incrementLoad,increment event the correct number of times', async () => {
+        it('should put every factory in at once, with no event per factory', async () => {
           // Only count emissions from the load flow itself, not from state init
           vi.mocked(eventBus.emit).mockClear()
           await appStore.prepareLoader(factories)
 
           await appStore.beginLoading(factories)
 
-          // Fresh factories need no migration, so prepareLoader's gate renders straight
-          // through. The 7 events are: plannerShow(false) and loadingCompleted from
-          // prepareLoader, then prepareForLoad, incrementLoad ×2 (one per factory), the
-          // render increment and loadingCompleted from the explicit beginLoading.
-          // Annoyingly we can't check the payload.
-          expect(eventBus.emit).toHaveBeenCalledTimes(7)
-          expect(eventBus.emit).toHaveBeenCalledWith('incrementLoad', {
-            step: 'increment',
-          })
+          // plannerShow(false) and loadingCompleted from prepareLoader, then prepareForLoad
+          // and loadingCompleted from the explicit beginLoading.
+          expect(eventBus.emit).toHaveBeenCalledTimes(4)
+          expect(appStore.getFactories()).toEqual(factories)
         })
 
         it('should have emitted the loadingCompleted event', async () => {
@@ -900,7 +821,7 @@ describe('app-store', () => {
 
   describe('persisting the plan when things go wrong', () => {
     const bigPlan = () =>
-      Array.from({ length: PACED_RENDER_FACTORY_COUNT + 1 }, (_, index) => newFactory(`Factory ${index}`))
+      Array.from({ length: 11 }, (_, index) => newFactory(`Factory ${index}`))
 
     let restoreWrites: (() => void) | null = null
 
@@ -941,7 +862,7 @@ describe('app-store', () => {
       const plan = bigPlan()
       const emit = eventBus.emit.bind(eventBus)
       vi.spyOn(eventBus, 'emit').mockImplementation(((event: string, payload: unknown) => {
-        if (event === 'incrementLoad') throw new Error('the chain died')
+        if (event === 'loadingCompleted') throw new Error('the chain died')
         return emit(event as never, payload as never)
       }) as typeof eventBus.emit)
       vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -1957,17 +1878,17 @@ describe('app-store', () => {
         expect(appStore.canRenderInstantly(tab.id)).toBe(true)
       })
 
-      // The regression Matt reported: an up-to-date big plan skipped the loader as well as
-      // the recalculation, so the click produced nothing until the whole plan appeared.
-      it('should not render a big plan instantly, however current its mirror is', () => {
+      // The planner mounts one factory at a time, so a plan's size no longer decides whether
+      // it can go straight on screen.
+      it('should render a big plan instantly when its mirror is current', () => {
         const tab = appStore.getCurrentTab()
-        for (let index = 0; index <= PACED_RENDER_FACTORY_COUNT; index++) {
+        for (let index = 0; index <= 50; index++) {
           tab.factories.push(newFactory(`Big ${index}`, index, index + 1))
         }
         appStore.setTabState(tab.id, syncedState(4))
         mirrorAt(tab.id, 4)
 
-        expect(appStore.canRenderInstantly(tab.id)).toBe(false)
+        expect(appStore.canRenderInstantly(tab.id)).toBe(true)
       })
 
       it('should not render instantly when the mirror is behind the server', () => {

@@ -1,37 +1,25 @@
-<!-- The heading above a group's cards in the planner. Deliberately lighter than the sidebar's
-     header: the sidebar is where you manage groups, this is a signpost while scrolling. -->
+<!-- The heading above a grouped factory in the planner. Deliberately lighter than the sidebar's
+     header: the sidebar is where you manage groups, this says which group the factory on screen
+     belongs to, where in it you are, and how the group as a whole is doing. -->
 <template>
-  <div :id="bandId" class="group-band" :class="{ ungrouped: !group, collapsed }" :style="colorVars">
+  <div :id="bandId" class="group-band" data-testid="group-band" :style="colorVars">
     <div class="d-flex align-center ga-2 px-3 py-2">
-      <!-- Two keyed icons rather than one with a bound class: Font Awesome swaps the <i> for an
-           <svg> Vue no longer owns, so a class flip leaves the chevron pointing the same way. -->
-      <v-btn
-        class="chevron"
-        density="compact"
-        icon
-        size="small"
-        :title="collapsed ? 'Expand group' : 'Collapse group'"
-        variant="text"
-        @click="$emit('toggle')"
-      >
-        <span v-if="collapsed" key="shut"><i class="fas fa-chevron-right" /></span>
-        <span v-else key="open"><i class="fas fa-chevron-down" /></span>
-      </v-btn>
       <!-- The same swatch the sidebar header carries, and it does the same thing: the band is
            where you are looking when a group's colour turns out to be wrong. -->
       <factory-group-color-menu
-        v-if="group"
         :model-value="group.color"
         @update:model-value="setGroupColor(group.id, $event)"
       />
-      <span class="band-title text-h6">{{ group?.name ?? 'Ungrouped' }}</span>
-      <!-- What the group is, next to its name: how many factories, and how many of them are in
-           trouble. The power figures are what it costs, which belongs with the totals on the
-           right rather than in the middle of the title. -->
-      <v-chip class="sf-chip small no-margin factory" variant="tonal">
-        <i class="fas fa-industry" />
-        <span class="ml-2">{{ count }}</span>
-      </v-chip>
+      <span class="band-title text-h6">{{ group.name }}</span>
+      <!-- What the group is, next to its name: where the factory on screen sits in it, and how
+           many of its factories are in trouble. The power figures are what it costs, which belongs
+           with the totals on the right rather than in the middle of the title. -->
+      <tooltip :text="`Factory ${position} of ${factories.length} in this group`">
+        <v-chip class="sf-chip small no-margin factory" data-testid="group-band-position" variant="tonal">
+          <i class="fas fa-industry" />
+          <span class="ml-2">{{ position }} / {{ factories.length }}</span>
+        </v-chip>
+      </tooltip>
       <!-- The same chips, icons and colours the Factories Summary and the sidebar use, so one
            tier of trouble looks the same wherever it is counted. -->
       <tooltip
@@ -80,9 +68,6 @@
           <span class="ml-2">{{ formatMw(power.difference) }}</span>
         </v-chip>
       </tooltip>
-      <span v-if="collapsed" class="text-body-2 text-medium-emphasis">
-        {{ count }} {{ count === 1 ? 'factory' : 'factories' }} hidden
-      </span>
     </div>
   </div>
 </template>
@@ -101,14 +86,14 @@
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
 
   const props = defineProps<{
-    group: FactoryGroup | null
-    count: number
-    collapsed: boolean
+    group: FactoryGroup
+    // 1-based place of the factory on screen among the group's factories.
+    position: number
     factories: Factory[]
   }>()
 
-  // The band is the only summary a collapsed group has, so it carries the group's own power
-  // balance rather than making you open it to find out what it costs.
+  // Only one of the group's factories is on screen, so the band carries the group's own power
+  // balance rather than making you visit each member to find out what it costs.
   const power = computed(() => {
     const totals = calculateTotalPower(props.factories)
     return {
@@ -126,61 +111,22 @@
 
   const { setGroupColor } = useFactoryGroups()
 
-  defineEmits<{ (event: 'toggle'): void }>()
+  const bandId = computed(() => `group-${props.group.id}`)
 
-  // Element id so the scroll-spy can see the band and the sidebar can jump to it.
-  const bandId = computed(() => `group-${props.group?.id ?? 'ungrouped'}`)
-
-  const colorVars = computed(() => (props.group ? groupColorVars(props.group.color) : {}))
+  const colorVars = computed(() => groupColorVars(props.group.color))
 </script>
 
 <style lang="scss" scoped>
-// Must match Planner.vue's $tree-line: the band's left edge is the top of the same line the cards
-// hang off, and a 2px band over a 3px trunk steps visibly where the two meet.
-$tree-line: 3px;
-
 .group-band {
   position: relative;
   border-radius: 4px;
   margin-bottom: 8px;
   background-color: var(--sf-group-muted, rgba(255, 255, 255, 0.05));
   border: 2px solid var(--sf-group, #6c6c6c);
-}
-
-// The band is the head of the tree, so its left edge is drawn as the trunk rather than as a
-// border that happens to be the same colour: full trunk width, and squared off at the bottom so
-// the line carries straight on into the cards instead of curving away from them.
-.group-band:not(.ungrouped) {
-  border-left-width: $tree-line;
-  border-bottom-left-radius: 0;
-  // The gap to the first card is that card's padding, not this band's margin. A margin sits
-  // outside both boxes, so nothing draws in it and the trunk arrives with a hole above it —
-  // and bridging it from this side lands short, because `bottom` on an absolutely positioned
-  // child resolves against the padding box and the bottom border swallows the last of it. As the
-  // card's padding it is simply inside the trunk. See Planner.vue's $band-gap.
-  margin-bottom: 0;
-}
-
-// Collapsed there are no cards to carry the gap or the trunk, so two shut groups sit edge to edge
-// and read as one box. Half the open band's margin is enough to separate them.
-.group-band.collapsed {
-  margin-bottom: 4px;
-  border-bottom-left-radius: 4px;
-}
-
-// The top of the trunk the cards hang off, bridging the band's own 8px bottom margin so the line
-// runs unbroken from the band's edge into the first card. Ungrouped draws no tree and so no stub —
-// see Planner.vue for the rest of the geometry.
-.chevron {
-  font-size: 1.1rem;
+  border-left-width: 6px;
 }
 
 .band-title {
   font-weight: 500;
-}
-
-.ungrouped .band-title {
-  color: #bdbdbd;
-  font-style: italic;
 }
 </style>

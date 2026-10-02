@@ -4,7 +4,9 @@ import {
   addFactory,
   expectMirroredNote,
   notesField,
+  openFactory,
   openPlanner,
+  sidebarFactoryRows,
   waitForRevision,
 } from '../helpers/planner'
 import { shareARoom } from '../helpers/rooms'
@@ -38,7 +40,7 @@ const joinAsVisitor = async (
   factories: number,
 ): Promise<Page> => {
   const visitor = await openPlanner(await client(), invitePath)
-  await expect(visitor.locator('input.factory-name')).toHaveCount(factories, { timeout: 20_000 })
+  await expect(sidebarFactoryRows(visitor)).toHaveCount(factories, { timeout: 20_000 })
   return visitor
 }
 
@@ -49,6 +51,8 @@ test('a note somebody is typing into cannot be edited by anyone else', async ({
   const { roomId, owner, invitePath } = await shareARoom(client, request)
   await seed(owner, roomId, ['Smelters'])
   const visitor = await joinAsVisitor(client, invitePath, 1)
+  await openFactory(owner, 0)
+  await openFactory(visitor, 0)
 
   const theirs = notesField(visitor).first()
   await expect(theirs, 'the note was locked before anybody was in it').toBeEnabled()
@@ -81,17 +85,21 @@ test('an idle lock lapses on its own, and never covers a second field', async ({
   const { roomId, owner, invitePath } = await shareARoom(client, request)
   await seed(owner, roomId, ['Smelters', 'Constructors'])
   const visitor = await joinAsVisitor(client, invitePath, 2)
+  await openFactory(owner, 0)
+  await openFactory(visitor, 0)
 
   await notesField(owner).first().click()
   await expect(notesField(visitor).first()).toBeDisabled()
 
   // Locks are per field, so the factory next to it is nobody's and still writes back.
   const elsewhere = 'written while the other note was locked'
-  await expect(notesField(visitor).nth(1)).toBeEnabled()
-  await notesField(visitor).nth(1).fill(elsewhere)
+  await openFactory(visitor, 1)
+  await expect(notesField(visitor).first()).toBeEnabled()
+  await notesField(visitor).first().fill(elsewhere)
   await expectMirroredNote(owner, roomId, 'Constructors', elsewhere)
 
   // Nothing renews the first one, so it lapses. Bounded poll rather than a stopwatch:
   // the holder gives its own claim up on the TTL, and the server's sweep is the backstop.
+  await openFactory(visitor, 0)
   await expect(notesField(visitor).first()).toBeEnabled({ timeout: TTL_MS * 2.5 })
 })
