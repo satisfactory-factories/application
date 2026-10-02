@@ -344,6 +344,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { formatNumber } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
   import { markPlanReplaced } from '@/utils/sync-intent'
   import {
     applyRawWizard,
@@ -576,6 +577,11 @@
     const name = editingName.value.trim()
     const factory = pending.value.factories.find(entry => entry.id === factoryId)
     if (!name || !factory || name === factory.name) return
+    const allowed = textFieldRule('name')(name)
+    if (allowed !== true) {
+      eventBus.emit('toast', { message: allowed, type: 'error' })
+      return
+    }
 
     const previous = factory.name
     factory.name = name

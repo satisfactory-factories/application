@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { CLOSE_CODES, FIELD_LOCK_TTL_MS, PROTOCOL_VERSION } from 'common'
+import { CLOSE_CODES, FIELD_LOCK_TTL_MS, findTabTextIssue, PROTOCOL_VERSION } from 'common'
 import type {
   Factory,
   FactoryTab,
@@ -9,6 +9,7 @@ import type {
   RoomMeta,
   RoomSnapshot,
   ServerMessage,
+  TextIssue,
 } from 'common'
 import { SyncSocket } from '@/sync/ws-client'
 import type { SyncSocketStatus } from '@/sync/ws-client'
@@ -52,6 +53,7 @@ import { useGameDataStore } from '@/stores/game-data-store'
 import { calculateFactories } from '@/utils/factory-management/factory'
 import eventBus from '@/utils/eventBus'
 import { MAX_FACTORIES_PER_PLAN, planIsOverCap } from '@/utils/plan-size'
+import { describeTextIssue } from '@/utils/text-issues'
 
 /** Trailing debounce on plan changes: one op per burst of edits, never one per keystroke. */
 export const OP_DEBOUNCE_MS = 400
@@ -688,6 +690,13 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const result = buildDiff(engine.acked, local)
     if (!result) return false
 
+    // The server refuses the whole op over one field breaking a text rule, and the field
+    // already says so under it. Held until it is fixed, like the size cap above.
+    if (findTabTextIssue(result.diff)) {
+      room.lastError = 'invalid_text'
+      return false
+    }
+
     const opId = crypto.randomUUID()
     const sent = ensureSocket().sendOp({
       roomId,
@@ -1228,7 +1237,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
         break
 
       case 'op_reject':
-        onOpReject(message.roomId, message.opId, message.reason, message.snapshot)
+        onOpReject(message.roomId, message.opId, message.reason, message.snapshot, message.textIssue)
         break
 
       case 'room_meta':
@@ -1419,9 +1428,10 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     room.hasPendingOp = false
     room.revision = revision
     room.rejectStreak = 0
-    // Taken, so the plan is within the cap again. Cleared here rather than on send: a resend
-    // the server refuses again is the same refusal, and must not announce itself twice.
-    if (room.lastError === 'too_large') room.lastError = null
+    // Taken, so the plan is within the cap and the text rules again. Cleared here rather than
+    // on send: a resend the server refuses again is the same refusal, and must not announce
+    // itself twice.
+    if (room.lastError === 'too_large' || room.lastError === 'invalid_text') room.lastError = null
 
     clearSatisfiedIntent(roomId, sent)
     persistBaseline(roomId)
@@ -1489,6 +1499,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     opId: string,
     reason: string,
     snapshot: RoomSnapshot | undefined,
+    textIssue?: TextIssue,
   ) => {
     const room = rooms.value[roomId]
     const engine = engines.get(roomId)
@@ -1498,6 +1509,14 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     if (engine.pending?.opId !== opId) return
 
     const refusedRemovals = engine.pending?.diff.removedFactoryIds ?? []
+    // Only reachable when this build and the server disagree on a rule: the flush holds
+    // anything this build can see is refused.
+    if (reason === 'invalid_text' && textIssue && room.lastError !== 'invalid_text') {
+      eventBus.emit('toast', {
+        message: `Your changes could not be saved to the cloud. ${describeTextIssue(textIssue, engine.pending?.diff)}`,
+        type: 'error',
+      })
+    }
     // Said once per run of refusals, not once per resend.
     const firstTooLarge = reason === 'too_large' && room.lastError !== 'too_large'
     engine.pending = null
