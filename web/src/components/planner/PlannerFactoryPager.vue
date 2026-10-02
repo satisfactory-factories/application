@@ -24,7 +24,7 @@
           <!-- Between the icon and the name, where the factory's own header carries it. -->
           <v-chip
             v-if="targetGroup"
-            class="sf-chip small no-margin group-chip"
+            class="sf-chip sf-chip-clickable small no-margin group-chip"
             data-testid="factory-pager-group"
             variant="tonal"
           >
@@ -47,8 +47,8 @@
   const props = defineProps<{
     direction: 'previous' | 'next'
     target: Factory | typeof OVERVIEW
-    // The factory on screen, or null on the overview. Only read to say whether the target is in
-    // the same group or starts a new one.
+    // The factory on screen, or null on the overview, where the way into the plan is captioned
+    // as such.
     from: Factory | null
   }>()
 
@@ -56,16 +56,12 @@
 
   const targetGroup = computed(() => props.target === OVERVIEW ? null : props.target.group ?? null)
 
+  // The group is not named here: the chip beside the factory's name already says it, as it does
+  // in the factory's own header.
   const caption = computed(() => {
     if (props.target === OVERVIEW) return 'Back to the plan overview'
     if (!props.from) return 'First factory'
-
-    const label = props.direction === 'next' ? 'Next' : 'Previous'
-    const group = targetGroup.value
-    if (!group) return `${label} factory`
-    // Crossing into a different group is worth saying out loud: the sidebar shows it as a new
-    // heading, and the pane has nothing else to mark the boundary.
-    return group.id === props.from.group?.id ? `${label} in ${group.name}` : `${label} group: ${group.name}`
+    return props.direction === 'next' ? 'Next factory' : 'Previous factory'
   })
 </script>
 

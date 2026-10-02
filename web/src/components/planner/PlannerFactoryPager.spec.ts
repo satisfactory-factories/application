@@ -35,26 +35,16 @@ describe('Component: PlannerFactoryPager', () => {
     expect(caption(subject)).toBe('Next factory')
   })
 
-  it('says when the next factory is in the same group', () => {
-    const subject = mountPager({
-      direction: 'next',
-      target: grouped('Rods', 2, iron),
-      from: grouped('Ingots', 1, iron),
-    })
-
-    expect(caption(subject)).toBe('Next in Iron Works')
-    expect(subject.find('[data-testid="factory-pager-group"]').text()).toBe('Iron Works')
-  })
-
-  // The pane has nothing else to mark a group boundary, so crossing one is said out loud.
-  it('says when the factory starts a different group', () => {
+  // The group chip beside the name says which group it is in, so the caption does not repeat it.
+  it('shows the target\'s group as a chip, not in the caption', () => {
     const subject = mountPager({
       direction: 'previous',
       target: grouped('Wire', 2, copper),
       from: grouped('Rods', 3, iron),
     })
 
-    expect(caption(subject)).toBe('Previous group: Copper')
+    expect(caption(subject)).toBe('Previous factory')
+    expect(subject.find('[data-testid="factory-pager-group"]').text()).toBe('Copper')
   })
 
   it('leads back to the overview from the first factory', () => {

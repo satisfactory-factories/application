@@ -81,7 +81,7 @@
         v-for="factory in factories"
         :key="factory.id"
         class="sf-chip small no-margin band-factory flex-shrink-0"
-        :class="factory.id === currentId ? 'band-factory-current' : 'sf-chip-clickable'"
+        :class="['sf-chip-clickable', { 'band-factory-current': factory.id === currentId }]"
         :data-testid="`group-band-factory-${factory.id}`"
         variant="tonal"
         v-bind="factory.id === currentId ? {} : { onClick: () => emit('go', factory) }"
@@ -167,10 +167,13 @@
   font-weight: 500;
 }
 
-// Squared like any pressable chip; the factory on screen keeps the pill and a bright border,
-// since clicking it would go nowhere.
+// The factory on screen: an orange ring and tint, the planner's accent. The ring is a pixel
+// heavier than the other chips' borders, so the padding gives that pixel back and the chip stays
+// the same size as its neighbours.
 .band-factory-current {
-  border-color: white !important;
+  border: 3px solid #f57f17 !important;
+  padding: 11px 9px !important;
+  background-color: rgba(245, 127, 23, 0.2);
   font-weight: 500;
   cursor: default;
 }
