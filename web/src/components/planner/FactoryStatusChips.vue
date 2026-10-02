@@ -24,6 +24,7 @@
             <game-asset
               v-for="subject in iconSubjects(status)"
               :key="`${status.type}-${subject.id}`"
+              class="status-icon"
               :height="iconSize"
               :subject="subject.id"
               :type="subject.type"
@@ -168,6 +169,11 @@
     opacity: 1;
     transition-delay: 0.15s;
   }
+}
+
+// Item and building art runs edge to edge otherwise, and a row of similar icons reads as one.
+.status-icon + .status-icon {
+  margin-left: 4px;
 }
 
 // x-small chips are a fixed 26px with no vertical padding; the item icons need the box to breathe.

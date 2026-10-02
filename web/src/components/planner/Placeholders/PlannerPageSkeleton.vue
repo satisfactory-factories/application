@@ -47,7 +47,7 @@
                 v-for="(width, glyph) in chip.glyphs"
                 :key="glyph"
                 class="ghost-glyph"
-                :style="{ width: `${width}px`, height: `${Math.max(width, 14)}px` }"
+                :style="{ width: `${width}px`, height: `${Math.min(Math.max(width, 14), 20)}px` }"
               />
               <span class="ml-2 ghost-text">{{ chip.label }}</span>
               <span v-if="chip.info" class="ghost-glyph ghost-glyph-info ml-2" />
@@ -123,7 +123,9 @@
   const statusChips = computed<GhostChip[]>(() =>
     getChipStatuses(statuses.value.filter(entry => entry.type !== 'outOfSync')).map(status => {
       const subjects = Math.min(status.subjects.length, 4)
-      return { label: status.label, glyphs: subjects ? Array(subjects).fill(20) : [14], pill: !status.section }
+      // Item art sits 4px apart, which the ghost counts into each icon after the first.
+      const art = Array.from({ length: subjects }, (_, index) => index ? 24 : 20)
+      return { label: status.label, glyphs: subjects ? art : [14], pill: !status.section }
     })
   )
 
