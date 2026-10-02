@@ -4,11 +4,11 @@ name: E2E Checks
 # production build of the client, real WebSockets and two browser contexts per
 # test. `web/e2e/README.md` covers what it proves and why the ports are fixed.
 #
-# Path-filtered at the trigger, which it can be because it is not a required status
-# check. The three required ones cannot (a required check that never triggers sits
-# pending forever) and gate inside the workflow instead, via changed-paths.yml.
-# Making this one required later means moving to that gate first, or a PR that
-# touches only docs can never be merged.
+# A required status check, so the pull_request trigger cannot be path-filtered: a
+# required check that never triggers sits pending forever, and a docs-only PR could
+# never merge. It always triggers instead, and the `changes` gate (changed-paths.yml)
+# decides whether the shards run. The push trigger is still filtered at the trigger,
+# since nothing waits on a push.
 #
 # The two lists are duplicated rather than shared: the workflow parser does not
 # accept YAML anchors, which is why deploy-backend.yml and pr-docker-backend.yml
@@ -17,8 +17,8 @@ on:
   push:
     branches:
       - main
-      # The v0.7.0 integration line: sync work lands here for beta testing first.
-      - beta7
+      # The beta line, moved by hand to whatever needs beta testing before main.
+      - beta
     paths:
       - 'web/**'
       - 'backend/**'
@@ -27,18 +27,12 @@ on:
       - 'pnpm-workspace.yaml'
       - 'pnpm-lock.yaml'
       - '.github/workflows/e2e.yml'
+      # Last, so it wins over the includes above: a Markdown-only push runs nothing.
+      - '!**/*.md'
   pull_request:
     branches:
       - main
-      - beta7
-    paths:
-      - 'web/**'
-      - 'backend/**'
-      - 'common/**'
-      - 'package.json'
-      - 'pnpm-workspace.yaml'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/e2e.yml'
+      - beta
   # So a flake can be re-run, or the suite pointed at a branch by hand.
   workflow_dispatch:
 
@@ -51,8 +45,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    uses: ./.github/workflows/changed-paths.yml
+    with:
+      patterns: |
+        web/*
+        backend/*
+        common/*
+        package.json
+        pnpm-workspace.yaml
+        pnpm-lock.yaml
+        .github/workflows/e2e.yml
+        .github/workflows/changed-paths.yml
+      # Docs beside the code, this suite's own README included, cannot break a test.
+      ignore: |
+        *.md
+
   e2e:
-    name: Playwright E2E (${{ matrix.shard }}/${{ strategy.job-total }})
+    # GitHub appends the matrix value, so the shards show as "Playwright E2E shard (1)" and
+    # so on, and a skipped matrix shows one plain "Playwright E2E shard" line.
+    name: Playwright E2E shard
+    needs: changes
+    if: needs.changes.outputs.matched == 'true'
     runs-on: ubuntu-latest
     # The suite runs one test at a time against one stack (playwright.config.ts says
     # why), and run whole it is ~9 minutes of real waiting: idle probe cycles, a lock
@@ -140,15 +154,24 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # One check under the name the job had before it was split, so anything that waits
-  # for "Playwright E2E" by name (a ruleset, branch protection) still gets an answer.
-  # It passes only when every shard did; a skipped or cancelled shard fails it.
+  # The required check, under the name the job had before it was split. It passes
+  # when every shard passed, or when the gate found nothing the suite covers and the
+  # shards were skipped for that reason. Anything else fails it: a failed, cancelled
+  # or skipped shard, or a gate that never answered.
   e2e-result:
     name: Playwright E2E
-    needs: e2e
+    needs: [changes, e2e]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every shard to pass
-        run: test "${{ needs.e2e.result }}" = success
+      - name: Require every shard to pass, or the gate to have skipped them
+        env:
+          GATE: ${{ needs.changes.result }}
+          MATCHED: ${{ needs.changes.outputs.matched }}
+          SHARDS: ${{ needs.e2e.result }}
+        run: |
+          echo "gate: $GATE (matched: $MATCHED), shards: $SHARDS"
+          [ "$GATE" = success ] || exit 1
+          [ "$SHARDS" = success ] && exit 0
+          [ "$MATCHED" = false ] && [ "$SHARDS" = skipped ]
