@@ -139,3 +139,16 @@ jobs:
           path: web/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # One check under the name the job had before it was split, so anything that waits
+  # for "Playwright E2E" by name (a ruleset, branch protection) still gets an answer.
+  # It passes only when every shard did; a skipped or cancelled shard fails it.
+  e2e-result:
+    name: Playwright E2E
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every shard to pass
+        run: test "${{ needs.e2e.result }}" = success
