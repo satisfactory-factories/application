@@ -30,7 +30,7 @@ import {
 import type { AckedState, RoomContent, TabField } from '@/sync/room-state'
 import { describeClash, fingerprint } from '@/sync/offline-conflict'
 import type { ConflictFactory } from '@/sync/offline-conflict'
-import { diffChangesContent } from '@/sync/plan-activity'
+import { diffChangesContent, sentDiffChangesContent } from '@/sync/plan-activity'
 import {
   pruneTabMirrorMeta,
   readTabMirrorMeta,
@@ -54,6 +54,13 @@ import eventBus from '@/utils/eventBus'
 
 /** Trailing debounce on plan changes: one op per burst of edits, never one per keystroke. */
 export const OP_DEBOUNCE_MS = 400
+
+/**
+ * The longer quiet a notes edit asks for. Typing is a burst that pauses between words, and
+ * at the plan debounce every pause sent the whole note again. The field's blur and the page
+ * being hidden both send what is owed straight away, so the wait never costs a lost edit.
+ */
+export const NOTES_DEBOUNCE_MS = 2_000
 export const REVISION_PROBE_MS = 10_000
 
 /**
@@ -291,6 +298,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   let unsubscribeMessage: (() => void) | null = null
   let unsubscribeStatus: (() => void) | null = null
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
+  /** Until when a notes edit holds the next flush back. Any edit inside it waits too. */
+  let holdUntil = 0
   /** Guards the post-4403 reconnect against looping when nothing was actually dropped. */
   let revokedSinceConnect = false
 
@@ -679,6 +688,11 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     })
     if (!sent) return false
 
+    // "Last updated" moves when the plan leaves this client, not as it is typed.
+    if (sentDiffChangesContent(result.diff, engine.acked.factories)) {
+      eventBus.emit('planContentSent', { tabId: roomId })
+    }
+
     // Send clears nothing: the baseline only moves when the server acks it.
     engine.pending = { opId, baseRevision: engine.acked.revision, diff: result.diff, sent: result.sent }
     room.hasPendingOp = true
@@ -702,7 +716,31 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
 
   const scheduleFlush = () => {
     clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(flushAll, OP_DEBOUNCE_MS)
+    const delay = Math.max(OP_DEBOUNCE_MS, holdUntil - Date.now())
+    debounceTimer = setTimeout(() => {
+      debounceTimer = undefined
+      holdUntil = 0
+      flushAll()
+    }, delay)
+  }
+
+  /** A notes keystroke: the next flush waits for the typing to stop, not just pause. */
+  const onNotesEdited = () => {
+    holdUntil = Date.now() + NOTES_DEBOUNCE_MS
+    scheduleFlush()
+  }
+
+  /**
+   * Sends whatever the debounce is still holding, now. For the moments waiting would lose
+   * or misorder an edit: the notes field's blur, whose unlock must not reach peers ahead
+   * of the text it guarded, and the page being hidden or closed.
+   */
+  const flushPending = () => {
+    if (debounceTimer === undefined) return
+    clearTimeout(debounceTimer)
+    debounceTimer = undefined
+    holdUntil = 0
+    flushAll()
   }
 
   // ===== The one rebase path =====
@@ -1941,6 +1979,8 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     mode.value = 'offline'
     failedReconnects.value = 0
     clearTimeout(debounceTimer)
+    debounceTimer = undefined
+    holdUntil = 0
     socket?.stop()
     // The notice goes; the state does not. The tab bar's chip and the account
     // panel both say "Offline mode" for as long as it is on.
@@ -2023,6 +2063,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const stopTabWatch = watch(() => appStore.getCurrentTab()?.id, () => releaseAllFields())
 
   eventBus.on('factoryEdited', onFactoryEdited)
+  eventBus.on('notesEdited', onNotesEdited)
   eventBus.on('tabEdited', onTabEdited)
   eventBus.on('planReplaced', onPlanReplaced)
   eventBus.on('factoryUpdated', scheduleFlush)
@@ -2035,12 +2076,18 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
    * out here instead, on the last event a page reliably gets.
    */
   const flushJournalOnHide = () => {
-    if (document.visibilityState === 'hidden') persistJournal()
+    if (document.visibilityState === 'hidden') onPageHide()
+  }
+
+  /** A held edit goes out while the socket is still there to carry it; the journal backs it up. */
+  const onPageHide = () => {
+    flushPending()
+    persistJournal()
   }
 
   if (typeof window !== 'undefined') {
     window.addEventListener('offline', onBrowserOffline)
-    window.addEventListener('pagehide', persistJournal)
+    window.addEventListener('pagehide', onPageHide)
     window.addEventListener('visibilitychange', flushJournalOnHide)
   }
 
@@ -2052,6 +2099,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     stopTabWatch()
     forgetFieldLocks()
     eventBus.off('factoryEdited', onFactoryEdited)
+    eventBus.off('notesEdited', onNotesEdited)
     eventBus.off('tabEdited', onTabEdited)
     eventBus.off('planReplaced', onPlanReplaced)
     eventBus.off('factoryUpdated', scheduleFlush)
@@ -2059,7 +2107,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     eventBus.off('loadingCompleted', onLoadingCompleted)
     if (typeof window !== 'undefined') {
       window.removeEventListener('offline', onBrowserOffline)
-      window.removeEventListener('pagehide', persistJournal)
+      window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('visibilitychange', flushJournalOnHide)
     }
     clearTimeout(debounceTimer)
@@ -2110,6 +2158,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     recordIntent,
     flushRoom,
     flushAll,
+    flushPending,
     resumeRoom,
 
     // The offline conflict prompt

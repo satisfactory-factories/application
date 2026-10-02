@@ -66,6 +66,15 @@ describe('PlannerFactoryNotes', () => {
     expect(eventBus.emit).toHaveBeenCalledWith('factoryEdited', factory)
   })
 
+  // Sync holds a notes edit longer than any other before sending it.
+  it('marks the edit as a notes edit', async () => {
+    const factory = render()
+
+    await type('Feeds the aluminium line')
+
+    expect(eventBus.emit).toHaveBeenCalledWith('notesEdited', factory)
+  })
+
   // What a collaborator's op looks like from here: the field changes underneath us.
   // Counting that as intent would make this client overlay its copy of the factory
   // on every later rebase, permanently, over an edit it never made.
@@ -150,6 +159,23 @@ describe('PlannerFactoryNotes', () => {
       await fireEvent.blur(textarea())
 
       expect(release).toHaveBeenCalledWith(roomId, `notes:${factory.id}`)
+    })
+
+    // Leaving the field re-enables it for everyone else, so the note it guarded has to
+    // reach them first rather than when the notes debounce runs out.
+    it('sends the held note before giving the field up', async () => {
+      vi.spyOn(roomSync, 'claimField').mockReturnValue(true)
+      const order: string[] = []
+      vi.spyOn(roomSync, 'flushPending').mockImplementation(() => { order.push('flush') })
+      vi.spyOn(roomSync, 'releaseField').mockImplementation(() => {
+        order.push('release')
+        return true
+      })
+
+      await fireEvent.focus(textarea())
+      await fireEvent.blur(textarea())
+
+      expect(order).toEqual(['flush', 'release'])
     })
 
     it('renews the lock on every keystroke, so a slow typist keeps the field', async () => {

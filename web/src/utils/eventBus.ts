@@ -12,6 +12,9 @@ type Events = {
   // The same statement for a field the tab owns rather than a factory, so a
   // power target or a group list edited on its own still saves and still syncs.
   tabEdited: TabField;
+  // A keystroke in a factory's notes. Sync waits longer after one of these before sending,
+  // so a paragraph goes out once the typing stops rather than at every pause.
+  notesEdited: Factory;
   // The user replaced the whole plan (clear, paste, template, demo). `removedIds` are the
   // records that went, and they are the only removals the server accepts in bulk.
   planReplaced: { removedIds: number[] };
@@ -22,6 +25,9 @@ type Events = {
   // A peer's op landed and it changed what the plan says — not a rename and not a
   // reorder, both of which arrive as ops like anything else.
   planContentApplied: { tabId: string };
+  // This client sent an op that changed what the plan says. A synced tab's "last updated"
+  // moves on this, not on the keystrokes that led to it.
+  planContentSent: { tabId: string };
   loggedIn: undefined;
   sessionExpired: undefined;
   // The version gate fired: an HTTP 426, or a socket closed 4426. `body` is only
