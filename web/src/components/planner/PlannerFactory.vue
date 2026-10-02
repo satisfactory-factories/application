@@ -255,8 +255,6 @@
       </v-card>
     </v-col>
   </v-row>
-  <!-- Same orange as the sidebar's active-factory indicator and the selected tab slider. -->
-  <v-divider class="my-6 factory-divider" thickness="5px" />
 </template>
 
 <script setup lang="ts">
@@ -438,11 +436,6 @@
 <style lang="scss" scoped>
 // The burnt orange of the app header — full indicator orange proved too bright
 // as a 5px band between cards.
-.factory-divider {
-  color: var(--sf-header);
-  opacity: 1;
-}
-
 // The reset button ends the chip, so the chip's own right padding only reads as a
 // gap after it. Three classes to outrank `.sf-chip.small`'s `!important` padding.
 .sf-chip.small.sync-chip {

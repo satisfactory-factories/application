@@ -56,77 +56,70 @@
         <!-- One page at a time: a single factory, or the overview when none is open. Mounting
              every card at once is what made a big plan lag and crash the tab; the sidebar and the
              pagers either side of the card are how the rest of the plan is reached. -->
-        <!-- Switching page fades the old one out and the new one in, rather than snapping. Each
-             page is positioned while it is still invisible (see onPageEnter), so it arrives where
-             the jump was aiming with no scroll animation to watch. -->
-        <transition
-          mode="out-in"
-          name="page-swap"
-          @after-leave="onPageLeft"
-          @enter="onPageEnter"
-        >
-          <div :key="pageKey">
-            <template v-if="currentFactory">
-              <planner-factory-pager
-                v-if="neighbours"
-                direction="previous"
-                :from="currentFactory"
-                :target="neighbours.previous"
-                @go="goToNeighbour"
-              />
-              <!-- Which group the factory belongs to and where in it this is, for a plan that uses
-                   groups. Ungrouped says nothing worth a band. -->
-              <planner-group-band
-                v-if="currentGroup"
-                :factories="currentGroup.factories"
-                :group="currentGroup.group"
-                :position="currentGroup.position"
-              />
-              <planner-factory
-                :key="currentFactory.id"
-                :factory="currentFactory"
-                :total-factories="getFactories().length"
-              />
-              <planner-factory-pager
-                v-if="neighbours?.next"
-                direction="next"
-                :from="currentFactory"
-                :target="neighbours.next"
-                @go="goToNeighbour"
-              />
-            </template>
-            <template v-else>
-              <statistics v-if="getFactories().length !== 0" :factories="getFactories()" />
-              <!-- The bottom gap rides on whichever section is last, so the run of top-level sections
-                   is evenly spaced however many of them are showing. -->
-              <statistics-factory-summary
-                v-if="getFactories().length !== 0"
-                :class="{ 'mb-4': !usesDimensionalDepot }"
-                :factories="getFactories()"
-              />
-              <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
-                   permanent advert for a feature the satisfaction table already offers in place. -->
-              <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" />
-              <planner-factory-pager
-                v-if="factoryOrder.length"
-                direction="next"
-                :from="null"
-                :target="factoryOrder[0]"
-                @go="goToNeighbour"
-              />
-            </template>
-            <!-- Inside the page, so it fades with it rather than jumping up while the pane is empty. -->
-            <div class="mt-4 text-center">
-              <v-btn
-                color="primary"
-                data-testid="add-factory"
-                prepend-icon="fas fa-plus"
-                size="large"
-                @click="createFactory()"
-              >Add Factory</v-btn>
-            </div>
+        <!-- Switching page fades the old one out, renders the new one while the pane is invisible,
+             and only then fades it in (see swapPage). Mounting a factory is a long task, and run
+             during either fade it stalls the animation. -->
+        <div class="planner-page" :class="{ 'planner-page-hidden': !pageVisible }">
+          <template v-if="shownFactory">
+            <planner-factory-pager
+              v-if="neighbours"
+              direction="previous"
+              :from="shownFactory"
+              :target="neighbours.previous"
+              @go="goToNeighbour"
+            />
+            <!-- Which group the factory belongs to and where in it this is, for a plan that uses
+                 groups. Ungrouped says nothing worth a band. -->
+            <planner-group-band
+              v-if="currentGroup"
+              :factories="currentGroup.factories"
+              :group="currentGroup.group"
+              :position="currentGroup.position"
+            />
+            <planner-factory
+              :key="shownFactory.id"
+              :factory="shownFactory"
+              :total-factories="getFactories().length"
+            />
+            <planner-factory-pager
+              v-if="neighbours?.next"
+              direction="next"
+              :from="shownFactory"
+              :target="neighbours.next"
+              @go="goToNeighbour"
+            />
+          </template>
+          <template v-else-if="shownView === OVERVIEW">
+            <statistics v-if="getFactories().length !== 0" :factories="getFactories()" />
+            <!-- The bottom gap rides on whichever section is last, so the run of top-level sections
+                 is evenly spaced however many of them are showing. -->
+            <statistics-factory-summary
+              v-if="getFactories().length !== 0"
+              :class="{ 'mb-4': !usesDimensionalDepot }"
+              :factories="getFactories()"
+            />
+            <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
+                 permanent advert for a feature the satisfaction table already offers in place. -->
+            <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" />
+            <planner-factory-pager
+              v-if="factoryOrder.length"
+              direction="next"
+              :from="null"
+              :target="factoryOrder[0]"
+              @go="goToNeighbour"
+            />
+          </template>
+          <!-- Inside the page, so it fades with it rather than jumping up while the pane is empty. -->
+          <div class="mt-4 text-center">
+            <v-btn
+              color="primary"
+              data-testid="add-factory"
+              prepend-icon="fas fa-plus"
+              size="large"
+              @click="createFactory()"
+            >Add Factory</v-btn>
           </div>
-        </transition>
+        </div>
       </v-col>
     </v-row>
   </div>
@@ -217,12 +210,24 @@
     return factoryOrder.value.find(factory => factory.id === open) ?? null
   })
 
+  // The page actually rendered, which trails the one asked for by a fade: the old page stays
+  // until it has faded out, and the new one goes in while the pane is invisible.
+  const shownView = ref<typeof OVERVIEW | number>(currentFactory.value?.id ?? OVERVIEW)
+
+  // A factory deleted while on screen renders nothing for the fade out, rather than a card for a
+  // factory the engine no longer holds.
+  const shownFactory = computed<Factory | null>(() => {
+    const shown = shownView.value
+    if (shown === OVERVIEW) return null
+    return factoryOrder.value.find(factory => factory.id === shown) ?? null
+  })
+
   const neighbours = computed(() =>
-    currentFactory.value ? neighboursOf(factoryOrder.value, currentFactory.value.id) : null
+    shownFactory.value ? neighboursOf(factoryOrder.value, shownFactory.value.id) : null
   )
 
   const currentGroup = computed(() => {
-    const factory = currentFactory.value
+    const factory = shownFactory.value
     if (!factory?.group) return null
     const section = groupSections.value.find(entry => entry.group?.id === factory.group?.id)
     if (!section?.group) return null
@@ -233,25 +238,55 @@
     }
   })
 
-  // What the fade transition keys on: a new key is a new page.
-  const pageKey = computed(() => currentFactory.value ? `factory-${currentFactory.value.id}` : OVERVIEW)
-
   // Work that has to wait for the page being switched to: positioning it on the row a jump is
-  // aiming at. Run as it enters, while it is still fully transparent, so it fades in already in
+  // aiming at. Run once the page has rendered and before it fades in, so it arrives already in
   // place rather than scrolling there in front of the user.
   let pendingArrival: (() => void) | null = null
 
-  // Between the old page fading out and the new one going in: the pane is empty, so this is the
-  // moment to put the scroll back to the top without anything visibly moving.
-  const onPageLeft = () => {
-    document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
-  }
+  // Matches the opacity transition on .planner-page.
+  const PAGE_FADE_MS = 150
+  // The longest a new page waits for the browser to go quiet before fading in anyway.
+  const PAGE_SETTLE_MS = 250
 
-  const onPageEnter = () => {
+  const pageVisible = ref(true)
+  let swapToken = 0
+
+  const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+  const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  // A freshly mounted factory keeps the main thread busy for a while after it is in the DOM
+  // (images, observers, layout); fading in on top of that is what stutters.
+  const settled = () => new Promise<void>(resolve => {
+    if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: PAGE_SETTLE_MS })
+    else setTimeout(resolve, 50)
+  })
+
+  // Fade the old page out, swap the content while nothing is visible, let the new page finish
+  // rendering, position it, then fade it in. Each stage checks it is still the latest switch, so
+  // clicking through several factories quickly lands on the last one without replaying the rest.
+  const swapPage = async () => {
+    const token = ++swapToken
+    if (pageVisible.value) {
+      pageVisible.value = false
+      await wait(PAGE_FADE_MS)
+      if (token !== swapToken) return
+    }
+    document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
+    shownView.value = currentFactory.value?.id ?? OVERVIEW
+    await nextTick()
+    await nextFrame()
+    await settled()
+    if (token !== swapToken) return
     const arrive = pendingArrival
     pendingArrival = null
     arrive?.()
+    await nextFrame()
+    if (token !== swapToken) return
+    pageVisible.value = true
   }
+
+  watch(() => currentFactory.value?.id ?? OVERVIEW, target => {
+    if (target !== shownView.value || !pageVisible.value) void swapPage()
+  })
 
   const goToNeighbour = (target: Factory | typeof OVERVIEW) => {
     if (target === OVERVIEW) navigateToSection('statistics')
@@ -989,13 +1024,13 @@ $header-height: 65px;
 $tab-bar-height: 52px;
 $chrome-height: $header-height + $tab-bar-height; // 117px
 
-.page-swap-enter-active,
-.page-swap-leave-active {
+// The duration matches PAGE_FADE_MS.
+.planner-page {
   transition: opacity 0.15s ease;
+  will-change: opacity;
 }
 
-.page-swap-enter-from,
-.page-swap-leave-to {
+.planner-page-hidden {
   opacity: 0;
 }
 
