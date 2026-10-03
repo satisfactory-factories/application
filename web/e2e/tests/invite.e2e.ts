@@ -2,9 +2,11 @@ import { expect, test } from '../helpers/fixtures'
 import { registerUser, unique } from '../helpers/accounts'
 import {
   addFactory,
+  expectFactoryNames,
   expectTabKind,
   factoryNames,
   notesField,
+  openFactory,
   openPlanner,
   readTabBar,
   selectTab,
@@ -26,7 +28,7 @@ test('a logged-out visitor joining the invite link gets the owner\'s plan', asyn
   // No account, no prior state: exactly what opening a pasted link looks like.
   const visitor = await openPlanner(await client(), invitePath)
 
-  await expect(visitor.locator('input.factory-name')).toHaveValue(name)
+  await expectFactoryNames(visitor, [name])
   expect(await readTabBar(visitor)).toContainEqual(
     expect.objectContaining({ kind: 'collaborative', selected: true }),
   )
@@ -53,7 +55,7 @@ test('a joined plan can be opened from the panel on the joiner\'s other device',
   await expectTabKind(second, roomId, 'collaborative')
 
   await selectTab(second, roomId)
-  await expect(second.locator('input.factory-name')).toHaveValue(name)
+  await expectFactoryNames(second, [name])
 })
 
 test('an edit by the visitor reaches the owner', async ({ client, request }) => {
@@ -64,7 +66,8 @@ test('an edit by the visitor reaches the owner', async ({ client, request }) => 
   const note = `written by a visitor: ${name}`
   await addFactory(visitor, { name, note })
 
-  await expect(owner.locator('input.factory-name')).toHaveValue(name, { timeout: 5_000 })
+  await expectFactoryNames(owner, [name], { timeout: 5_000 })
+  await openFactory(owner, 0)
   await expect(notesField(owner)).toHaveValue(note)
   expect(await factoryNames(owner)).toEqual([name])
 })

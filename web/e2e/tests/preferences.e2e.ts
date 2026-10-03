@@ -5,6 +5,7 @@ import { readServerPreferences, registerUser } from '../helpers/accounts'
 import {
   addFactory,
   createSyncedTab,
+  openFactory,
   openPlanner,
   selectTab,
   settle,
@@ -51,5 +52,6 @@ test('a preference set on one device is there on the next login', async ({ clien
   await settle(second)
   await showPlan(second, user, roomId)
   await selectTab(second, roomId)
+  await openFactory(second, 0)
   await expect(breakdownToggle(second)).toBeChecked()
 })

@@ -1,5 +1,5 @@
 import { VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
@@ -16,6 +16,16 @@ const gameData = await fetchGameData()
 const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
 }
+
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => {
   let factory: Factory
@@ -94,7 +104,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       product.buildingGroupItemSync = false
       // Requirement is 2 (amount 60)
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
       expect(subject.text()).toContain('Under producing!')
     })
 
@@ -103,7 +113,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       product.buildingGroups[0].buildingCount = 3
       product.buildingGroupItemSync = false
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
       expect(subject.text()).toContain('Over producing!')
     })
 
@@ -111,7 +121,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       // Balanced is 2 buildings
       product.buildingGroups[0].buildingCount = 2
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
       expect(subject.text()).toContain('Balanced')
     })
 
@@ -122,7 +132,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       product.buildingGroups[0].buildingCount = 2
       product.buildingGroups[1].buildingCount = 0
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
 
       // Sanity: we should be balanced
       expect(subject.text()).toContain('Balanced')
@@ -153,7 +163,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       product.buildingGroups[1].buildingCount = 0
       // Effective 1 vs requirement 2 => under producing
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
       expect(subject.text()).toContain('Under producing!')
 
       const remainderToLastButton = subject.find('button:has(.fa-balance-scale-right)')
@@ -166,7 +176,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       product.buildingGroups[0].buildingCount = 1
       // Effective 1 vs requirement 2 => under producing
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
       expect(subject.text()).toContain('Under producing!')
 
       const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
@@ -180,7 +190,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       product.buildingGroups[1].buildingCount = 0
       // Effective 1 vs requirement 2 => under producing
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
       expect(subject.text()).toContain('Under producing!')
 
       const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
@@ -192,12 +202,12 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
       product.buildingGroupItemSync = false
       product.buildingGroups[0].buildingCount = 1 // short by 1 building
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
       const groupsBefore = product.buildingGroups.length
 
       const remainderToNewGroupButton = subject.find('button:has(.fa-stream)')
       await remainderToNewGroupButton.trigger('click')
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
 
       // A new group should have been created and the remainder applied, making it balanced.
       expect(product.buildingGroups.length).toBe(groupsBefore + 1)
@@ -207,7 +217,7 @@ describe('TDD: BG-E-AB-PROD: Building Groups: Action Buttons (Products)', () => 
     test('BG-E-AB-PROD-13: When any group has clock of !== 100%, show OC @ 100% button', async () => {
       product.buildingGroups[0].overclockPercent = 50
       await subject.vm.$nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await vi.advanceTimersByTimeAsync(100)
 
       const ocButton = subject.find('button:has(.fa-history)')
       expect(ocButton.exists()).toBe(true)

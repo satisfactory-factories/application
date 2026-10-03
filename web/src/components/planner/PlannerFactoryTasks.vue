@@ -12,7 +12,7 @@
         label="New Task"
         outlined
         placeholder="Add a task..."
-        :rules="[newTaskRules.length]"
+        :rules="[newTaskRules.length, taskRule]"
         @blur="addTask"
         @keyup.enter="addTask"
       />
@@ -50,12 +50,14 @@
                   v-model="task.title"
                   auto-grow
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   rows="1"
+                  :rules="[taskRule]"
                   variant="plain"
+                  @blur="titleDone"
                   @change="validateTaskLength(task)"
                   @keydown.enter.exact.prevent="commitTaskEdit"
-                  @update:model-value="taskEdited"
+                  @update:model-value="titleTyped"
                 />
                 <p v-if="task.completed" class="text-done">{{ task.title }}</p>
               </td>
@@ -83,6 +85,8 @@
   import draggable from 'vuedraggable'
   import { Factory, FactoryTask } from '@/interfaces/planner/FactoryInterface'
   import { markFactoryEdited } from '@/utils/sync-intent'
+  import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
 
   const props = defineProps <{
     factory: Factory;
@@ -97,6 +101,18 @@
    * handlers rather than a watcher on `factory.tasks`, which also fires on inbound ops.
    */
   const taskEdited = () => markFactoryEdited(props.factory)
+
+  /**
+   * A keystroke in a title. Sync holds typing for longer than any other edit, so a title goes
+   * out once the typing stops rather than at every pause; leaving the field (blur, or enter,
+   * which blurs) sends it straight away.
+   */
+  const titleTyped = () => {
+    eventBus.emit('textTyped', props.factory)
+    taskEdited()
+  }
+
+  const titleDone = () => eventBus.emit('textTypingDone')
 
   // Tasks are persisted as bare {title, completed} and carry no id, so key the rows by object
   // identity — an index key reuses the wrong row after a drop, and titles can be duplicated.
@@ -118,6 +134,8 @@
     taskEdited()
   }
 
+  const taskRule = textFieldRule('task')
+
   const newTaskRules = {
     length: () => {
       if (newTask.value.length >= 200) {
@@ -137,6 +155,8 @@
       newTask.value = ''
       return
     }
+    // The field shows why; the text stays so it can be fixed.
+    if (taskRule(title) !== true) return
     if (props.factory.tasks.length >= 50) {
       alert('You have reached the maximum number of tasks allowed (50).')
       return

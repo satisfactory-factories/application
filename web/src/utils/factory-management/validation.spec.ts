@@ -236,6 +236,25 @@ describe('validation', () => {
       expect(validateFactories([factory], gameData)).toEqual([])
       expect(factory.partDisposal).toEqual({ IronIngot: { sinks: 1, depots: 2 } })
     })
+
+    // A record can now exist for the flag alone, so zero counts no longer mean "says nothing".
+    it('keeps a record that only carries the ignore flag', () => {
+      const factory = withParts({ IronIngot: { sinks: 0, depots: 0, ignoreBacklog: true } })
+
+      expect(validateFactories([factory], gameData)).toEqual([])
+      expect(factory.partDisposal).toEqual({ IronIngot: { sinks: 0, depots: 0, ignoreBacklog: true } })
+    })
+
+    it('drops an ignore flag that is not literally true, and the record with it if empty', () => {
+      const factory = withParts({
+        IronIngot: { sinks: 0, depots: 0, ignoreBacklog: 'yes' },
+        CopperIngot: { sinks: 2, depots: 0, ignoreBacklog: false },
+      })
+
+      validateFactories([factory], gameData)
+
+      expect(factory.partDisposal).toEqual({ CopperIngot: { sinks: 2, depots: 0 } })
+    })
   })
 
   it('should report nothing for a clean plan', () => {

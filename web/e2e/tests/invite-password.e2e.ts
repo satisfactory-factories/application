@@ -2,6 +2,7 @@ import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import {
   addFactory,
+  expectFactoryNames,
   expectMirroredNote,
   expectTabKind,
   mirroredFactories,
@@ -32,7 +33,7 @@ test('a wrong invite password is refused on the form, and the right one joins', 
   await submitInvitePassword(visitor, 'first-password')
   await settle(visitor)
 
-  await expect(visitor.locator('input.factory-name')).toHaveValue('Locked')
+  await expectFactoryNames(visitor, ['Locked'])
   await expectTabKind(visitor, roomId, 'collaborative')
 })
 

@@ -16,6 +16,18 @@ import {
 import { useAppStore } from '@/stores/app-store'
 import { useGroupCollapse } from '@/composables/useGroupCollapse'
 import { captureOrder, markFactoryEdited, markTabEdited, reorderedFactories } from '@/utils/sync-intent'
+import eventBus from '@/utils/eventBus'
+import { textFieldRule } from 'common'
+
+const groupNameRule = textFieldRule('name')
+
+/** Every group name passes the text rules here, so no dialog can write one the server refuses. */
+const nameAllowed = (name: string): boolean => {
+  const allowed = groupNameRule(name)
+  if (allowed === true) return true
+  eventBus.emit('toast', { message: allowed, type: 'error' })
+  return false
+}
 
 /**
  * The one writer for group state.
@@ -51,18 +63,20 @@ export const useFactoryGroups = () => {
 
   const createGroup = (name: string, color?: string): FactoryGroup | null => {
     const current = tab()
-    if (!current) return null
+    if (!current || !nameAllowed(name)) return null
     const before = captureOrder(factories())
     const group = createGroupIn(factories(), current, name, color)
     announce(before, [])
     return group
   }
 
-  const renameGroup = (groupId: string, name: string) => {
+  /** False when the name was refused, so the caller can put its draft back. */
+  const renameGroup = (groupId: string, name: string): boolean => {
     const current = tab()
-    if (!current) return
+    if (!current || !nameAllowed(name)) return false
     const before = captureOrder(factories())
     announce(before, renameGroupIn(factories(), current, groupId, name))
+    return true
   }
 
   const setGroupColor = (groupId: string, color: string) => {

@@ -21,6 +21,13 @@ on:
           `*` crosses directory separators, so `web/*` is everything under web/.
         required: true
         type: string
+      ignore:
+        description: >-
+          Optional. Patterns in the same form, for paths that never count even when they
+          match `patterns`: `*.md` keeps a README edit from running a suite it cannot break.
+        required: false
+        type: string
+        default: ''
     outputs:
       matched:
         description: '"true" when any changed path matches any pattern, or the event is not a pull_request.'
@@ -42,6 +49,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PATTERNS: ${{ inputs.patterns }}
+          IGNORE: ${{ inputs.ignore }}
         run: |
           if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
             echo "matched=true" >> "$GITHUB_OUTPUT"
@@ -51,9 +59,17 @@ jobs:
 
           mapfile -t files < <(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename')
           mapfile -t patterns < <(printf '%s\n' "$PATTERNS" | sed '/^[[:space:]]*$/d')
+          mapfile -t ignored < <(printf '%s\n' "$IGNORE" | sed '/^[[:space:]]*$/d')
 
           matched=false
           for file in "${files[@]}"; do
+            for pattern in "${ignored[@]}"; do
+              # shellcheck disable=SC2053
+              if [[ "$file" == $pattern ]]; then
+                echo "Ignoring: \`$file\` matches \`$pattern\`." >> "$GITHUB_STEP_SUMMARY"
+                continue 2
+              fi
+            done
             for pattern in "${patterns[@]}"; do
               # shellcheck disable=SC2053
               if [[ "$file" == $pattern ]]; then

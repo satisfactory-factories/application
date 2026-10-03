@@ -4,7 +4,7 @@ import { Factory, FactoryInput, FactoryTab } from '@/interfaces/planner/FactoryI
 import { DataInterface } from '@/interfaces/DataInterface'
 import { createNewPart, getPartDisplayNameWithoutDataStore, rawArray } from '@/utils/factory-management/common'
 import { StructuralRepair } from '@/utils/factory-management/repair'
-import { cleanDisposalCount } from '@/utils/factory-management/disposal'
+import { cleanDisposalCount, isEmptyDisposal } from '@/utils/factory-management/disposal'
 import { repairFactoryGroups } from '@/utils/factory-management/factory-groups'
 import type { EventReason } from 'common'
 import { recordEvent } from '@/utils/record-event'
@@ -84,15 +84,18 @@ export const repairPartDisposal = (factories: Factory[]): StructuralRepair[] => 
 
       if (sinks !== record.sinks || depots !== record.depots) damaged = true
 
-      // Dropped rather than kept at zero, so a repaired plan saves the same as one that never
-      // had the counts — matching what clearing them in the UI does.
-      if (sinks === 0 && depots === 0) {
-        delete disposal[partId]
-        return
-      }
-
       record.sinks = sinks
       record.depots = depots
+
+      // Only `true` is ever written, so anything else is hand-edited and reads as not ignored.
+      // Quietly normalised: unlike a count, there is no number to have been wrong about.
+      if (record.ignoreBacklog !== true) delete record.ignoreBacklog
+
+      // Dropped rather than kept at zero, so a repaired plan saves the same as one that never
+      // had the counts — matching what clearing them in the UI does.
+      if (isEmptyDisposal(record)) {
+        delete disposal[partId]
+      }
     })
 
     if (damaged) {

@@ -9,6 +9,7 @@ import {
   createSyncedTab,
   deleteCurrentTab,
   dragTab,
+  expectFactoryNames,
   expectTabKind,
   mirroredFactories,
   openPlanner,
@@ -84,7 +85,7 @@ test('a hidden plan survives a reload hidden, and Show brings it all back', asyn
   await showPlan(page, user, roomId)
   await expectTabKind(page, roomId, 'synced')
   await selectTab(page, roomId)
-  await expect(page.locator('input.factory-name')).toHaveValue('Hidden cargo')
+  await expectFactoryNames(page, ['Hidden cargo'])
 })
 
 test('a tab order dragged on one device reaches the other', async ({ client, request }) => {

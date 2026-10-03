@@ -14,11 +14,13 @@ import {
   getFactorySinkPower,
   getFactorySinks,
   getSinkCount,
+  isBacklogIgnored,
   isDepoted,
   isSunk,
   MERCER_SPHERES_PER_DEPOT,
   notifyDepotTutorial,
   notifySinkTutorial,
+  setBacklogIgnored,
   setDepotCount,
   setSinkCount,
   SINK_POWER_MW,
@@ -29,8 +31,10 @@ import {
   factoryStatusClass,
   factoryStatusDefinitions,
   getFactoryStatuses,
+  hasBacklogAdvisory,
   hasFactoryProblem,
   showBacklogAdvisory,
+  showBacklogIgnored,
   willBacklog,
 } from '@/utils/factory-management/status'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
@@ -140,6 +144,68 @@ describe('disposal', () => {
     it('ignores a write against an empty part id', () => {
       setSinkCount(factory, '', 3)
       expect(factory.partDisposal).toEqual({})
+    })
+  })
+
+  describe('ignoring the backlog warning', () => {
+    let factory: Factory
+
+    beforeEach(() => {
+      factory = platesFactory()
+    })
+
+    it('reads as not ignored on a plan that never chose to', () => {
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(false)
+      delete factory.partDisposal
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(false)
+    })
+
+    it('stores only `true`, leaving the counts alone', () => {
+      setSinkCount(factory, 'IronPlate', 2)
+      setBacklogIgnored(factory, 'IronPlate', true)
+
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(true)
+      expect(factory.partDisposal?.IronPlate).toEqual({ sinks: 2, depots: 0, ignoreBacklog: true })
+
+      setBacklogIgnored(factory, 'IronPlate', false)
+      expect(factory.partDisposal?.IronPlate).toEqual({ sinks: 2, depots: 0 })
+    })
+
+    // The record survives zero counts while it carries the flag, and goes again once it says nothing.
+    it('keeps a record alive for the flag alone, and drops it once unticked', () => {
+      setBacklogIgnored(factory, 'IronPlate', true)
+      expect(factory.partDisposal?.IronPlate).toEqual({ sinks: 0, depots: 0, ignoreBacklog: true })
+
+      // Clearing a count must not take the flag with it.
+      setSinkCount(factory, 'IronPlate', 1)
+      setSinkCount(factory, 'IronPlate', 0)
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(true)
+
+      setBacklogIgnored(factory, 'IronPlate', false)
+      expect(factory.partDisposal?.IronPlate).toBeUndefined()
+    })
+
+    it('does not create a record to un-ignore something never ignored', () => {
+      setBacklogIgnored(factory, 'IronPlate', false)
+      expect(factory.partDisposal).toEqual({})
+    })
+
+    it('creates the map lazily on an older plan, and ignores an empty part id', () => {
+      delete factory.partDisposal
+      setBacklogIgnored(factory, '', true)
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(false)
+
+      setBacklogIgnored(factory, 'IronPlate', true)
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(true)
+    })
+
+    // Not a cost: a flag is no building, so it must not read as sinks or spheres.
+    it('adds nothing to the factory totals', () => {
+      calculateFactories([factory], gameData)
+      setBacklogIgnored(factory, 'IronPlate', true)
+
+      expect(getFactorySinks(factory)).toBe(0)
+      expect(getFactoryDepots(factory)).toBe(0)
     })
   })
 
@@ -523,6 +589,41 @@ describe('disposal', () => {
       expect(order.lastIndexOf('warning')).toBeLessThan(firstNote)
     })
 
+    // Ignoring stands the warning down without removing it: the row still shows it, retitled, so
+    // the choice can be undone — but the factory stops turning amber and no status counts it.
+    it('stops counting as a status once ignored, but the row still shows it', () => {
+      const consumer = newFactory('Consumer')
+      addProductToFactory(consumer, { id: 'IronPlateReinforced', amount: 10, recipe: 'IronPlateReinforced' })
+      addInputToFactory(consumer, { factoryId: factory.id, outputPart: 'IronPlate', amount: 60 })
+      calculateFactories([factory, consumer], gameData)
+
+      expect(hasBacklogAdvisory(factory, 'IronPlate')).toBe(true)
+      expect(showBacklogIgnored(factory, 'IronPlate')).toBe(false)
+      expect(getFactoryStatuses(factory).some(status => status.type === 'willBacklog')).toBe(true)
+
+      setBacklogIgnored(factory, 'IronPlate', true)
+
+      expect(hasBacklogAdvisory(factory, 'IronPlate')).toBe(true)
+      expect(showBacklogIgnored(factory, 'IronPlate')).toBe(true)
+      expect(showBacklogAdvisory(factory, 'IronPlate')).toBe(false)
+      expect(getFactoryStatuses(factory).some(status => status.type === 'willBacklog')).toBe(false)
+    })
+
+    // The choice outlives the warning: sink the surplus and the row has nothing to ignore, but
+    // letting it come back finds the choice still made.
+    it('hides the ignored row once the surplus is gone, and remembers the choice', () => {
+      setBacklogIgnored(factory, 'IronPlate', true)
+      setSinkCount(factory, 'IronPlate', 1)
+      calculateFactories([factory], gameData)
+
+      expect(hasBacklogAdvisory(factory, 'IronPlate')).toBe(false)
+      expect(showBacklogIgnored(factory, 'IronPlate')).toBe(false)
+
+      setSinkCount(factory, 'IronPlate', 0)
+      calculateFactories([factory], gameData)
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(true)
+    })
+
     it('is silenced entirely by the option', () => {
       usePlannerOptions().value.showBacklogAdvisory = false
       const consumer = newFactory('Consumer')
@@ -532,6 +633,7 @@ describe('disposal', () => {
 
       expect(willBacklog(factory, 'IronPlate')).toBe(true)
       expect(showBacklogAdvisory(factory, 'IronPlate')).toBe(false)
+      expect(hasBacklogAdvisory(factory, 'IronPlate')).toBe(false)
 
       usePlannerOptions().value.showBacklogAdvisory = true
     })
