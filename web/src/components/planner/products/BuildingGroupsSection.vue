@@ -17,7 +17,7 @@
       </span>
       <i class="fas fa-layer-group" />
       <span v-if="item.buildingGroupsHaveProblem" class="ml-2">
-        <i class="fas fa-exclamation-triangle" /> Building Groups have a problem!
+        <i class="fas fa-exclamation-triangle" /> Building Groups are {{ problemDirection }}!
       </span>
       <span v-else class="ml-2">
         {{ forceOpen ? '' : (trayOpen ? 'Close ' : 'Open ') }}Building Groups ({{ item.buildingGroups.length }})
@@ -54,7 +54,11 @@
 <script setup lang="ts">
   import { computed } from 'vue'
   import { Factory, FactoryItem, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
-  import { getTotalPowerShards, toggleBuildingGroupTray } from '@/utils/factory-management/building-groups/common'
+  import {
+    calculateRemainingBuildingCount,
+    getTotalPowerShards,
+    toggleBuildingGroupTray,
+  } from '@/utils/factory-management/building-groups/common'
   import { getSomersloopBuildCost, getTotalSomersloops } from '@/utils/factory-management/building-groups/somersloops'
   import { markFactoryEdited } from '@/utils/sync-intent'
 
@@ -78,6 +82,12 @@
   }
 
   const trayOpen = computed(() => props.forceOpen || props.item.buildingGroupsTrayOpen)
+
+  // Which way the groups are out, so the bar says something the reader can act on without
+  // opening the tray. Only read while the bar is red, which already means outside tolerance.
+  const problemDirection = computed(() =>
+    calculateRemainingBuildingCount(props.item, props.type) > 0 ? 'under producing' : 'over producing'
+  )
 
   const itemNoun = computed(() => props.type === ItemType.Product ? 'product' : 'producer')
 
