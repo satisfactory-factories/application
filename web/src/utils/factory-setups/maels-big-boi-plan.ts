@@ -4,7 +4,7 @@ import { TemplatePlan } from '@/utils/factory-setups/template-plan'
 // sibling maels-big-boi-plan.json would be what every bare import of this module got.
 import planData from '@/utils/factory-setups/maels-big-boi-plan-data.json'
 
-// To update the plan: press "Copy plan" in the planner and paste the clipboard over the whole
+// To update the plan: press "Export plan" in the planner, copy to clipboard, and paste it over the whole
 // of the -data.json file. Nothing else needs doing — the blob's other keys (name,
 // plannerVersion, groups) are simply not read here, so it goes in exactly as it comes out.
 //

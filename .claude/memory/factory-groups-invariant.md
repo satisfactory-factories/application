@@ -4,6 +4,8 @@ description: Groups are denormalised onto each factory and expressed as a sort o
 metadata:
   node_type: memory
   type: project
+  volatility: durable
+  lastVerified: 2026-08-28
 ---
 
 Two decisions underpin factory groups, and both fail quietly rather than loudly.
@@ -43,8 +45,19 @@ group: keyed on global position, the card's up/down buttons sat enabled at every
 and silently did nothing. See also [[calc-engine-gotchas]] for the load-bearing pass order the
 engine has, which this deliberately does not touch.
 
-**A trap worth remembering beyond this feature:** vuedraggable switches Sortable's `draggable`
-option to `[data-draggable]` as soon as a list has a header or footer slot, and marks each item's
-root element with that attribute. A **multi-root** item component cannot receive a fallthrough
-attribute, so the mark is silently dropped and Sortable matches no items — dragging does nothing,
-with no error anywhere. Keep `PlannerSidebarFactoryRow` single-root.
+**Two vuedraggable traps worth remembering beyond this feature**, both silent:
+
+**Sortable only ever matches `[data-draggable]`.** Read in the installed 4.1.0 source
+(`core/componentBuilderHelper.js`): `createSortableOption` builds the selector as
+`` `[data-draggable]${options.draggable || ''}` `` unconditionally, and `core/renderHelper.js` puts
+`data-draggable` on each item node's props. It is **not** conditional on a header or footer slot, as
+this note previously claimed. A **multi-root** item component cannot receive a fallthrough
+attribute, so the mark is dropped and Sortable matches no items — dragging does nothing, with no
+error anywhere. Keep `PlannerSidebarFactoryRow` single-root, and assert `[data-draggable]` lands on
+the item root in the component spec (`TabNavigation.spec.ts` does).
+
+**Most attributes never reach the DOM.** `util/tags.js`'s `isHtmlAttribute` allows only `id`,
+`class`, `role`, `style`, `data-*`, `aria-*` and `on*`; everything else is handed to Sortable as an
+option instead. So `:title` on a `<draggable>` renders nothing and quietly becomes a bogus Sortable
+option. Pass it through `:component-data="{ title }"`, which is merged into the rendered
+attributes.

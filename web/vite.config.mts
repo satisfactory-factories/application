@@ -9,9 +9,14 @@ import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // Utilities
-import { defineConfig } from 'vitest/config'
+import { configDefaults, coverageConfigDefaults, defineConfig } from 'vitest/config'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
+
+// e2e/ is Playwright's, and it must stay out of Vitest entirely: its files import
+// @playwright/test, which cannot run under jsdom. The *.e2e.ts naming already
+// misses Vitest's include, so these two are belt and braces.
+const PLAYWRIGHT_FILES = ['e2e/**', 'playwright.config.ts']
 
 // The repo root package.json is the single version for everything here, and it is what the
 // backend's client gate compares against. Read at config time so a build can never ship a
@@ -26,6 +31,49 @@ process.env.VITE_APP_VERSION = JSON.parse(
   readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
 ).version
 
+// The exact commit this bundle was built from, so a rollout can be watched by commit and not
+// only by release. Vercel sets VERCEL_GIT_COMMIT_SHA on every build; GIT_SHA is the escape
+// hatch for building somewhere else. Truncated to 12 characters, which is unambiguous in
+// practice and short enough to read on a chart axis.
+//
+// Empty rather than a placeholder when unknown: the telemetry schema treats the field as
+// optional, so a local `pnpm dev` reports no commit rather than a fake one.
+process.env.VITE_GIT_SHA =
+  (process.env.VERCEL_GIT_COMMIT_SHA || process.env.GIT_SHA || '').slice(0, 12)
+
+// The Vitest API URL must never reach a bundle. `config.ts` only picks it when `MODE` is
+// `test`, and only Vitest sets that, so today it cannot happen by accident — but "cannot
+// happen" is what every shipped mistake was, and this one ships an app that talks to a port
+// on the user's own machine. `vite build --mode test`, or an edit that inverts the condition,
+// is all it would take.
+//
+// It is asserted here rather than as a CI step because CI is not on the path of the build
+// that ships: Vercel builds the web app itself, from the repository, and never runs the
+// workflow. A plugin runs wherever `vite build` does — Vercel, CI and a laptop alike.
+//
+// The literal is repeated from `config.ts` on purpose: a guard that imports the value it
+// guards agrees with itself no matter what that value becomes. `setup-vitest.spec.ts` asserts
+// the same string from the other side, so changing it in `config.ts` alone fails the suite.
+const TEST_API_URL = 'http://127.0.0.1:1'
+
+const refuseTestApiUrl = () => ({
+  name: 'refuse-test-api-url',
+  apply: 'build' as const,
+  generateBundle (_options: unknown, bundle: Record<string, { type: string, code?: string, source?: unknown }>) {
+    for (const [fileName, emitted] of Object.entries(bundle)) {
+      const contents = emitted.type === 'chunk' ? emitted.code ?? '' : String(emitted.source ?? '')
+      if (!contents.includes(TEST_API_URL)) continue
+
+      throw new Error(
+        `${fileName} carries the Vitest API URL (${TEST_API_URL}). That is the address a unit ` +
+        'run points at so nothing can reach a real server, and a build that ships it is a ' +
+        'planner that talks to the reader\'s own machine. Check the `MODE` branch in ' +
+        'src/config/config.ts, and the mode this build ran in.',
+      )
+    }
+  },
+})
+
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   build: {
@@ -37,6 +85,7 @@ export default defineConfig(() => ({
     },
   },
   plugins: [
+    refuseTestApiUrl(),
     VueRouter({
       dts: 'src/typed-router.d.ts',
     }),
@@ -92,6 +141,9 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Matches the tsconfig path: bundle `common` from source, so a web build (and
+      // Vercel's) never waits on that package having been compiled first.
+      common: fileURLToPath(new URL('../common/src/index.ts', import.meta.url)),
     },
     extensions: [
       '.js',
@@ -104,18 +156,31 @@ export default defineConfig(() => ({
     ],
   },
   server: {
-    port: 3000,
+    // 3000 unless a dev moved it for one run with `pnpm dev --port`. Playwright
+    // passes --port on the CLI, which wins over this.
+    port: Number(process.env.WEB_PORT) || 3000,
+    // scripts/dev.mjs always sets WEB_PORT, so every scripted dev run fails on a
+    // taken port rather than drifting to the next free one. A moved port was
+    // handed to the API as an allowed origin, and on the default pair the next
+    // free port is the API's own.
+    strictPort: Boolean(process.env.WEB_PORT),
   },
   test: {
     globals: true,
     environment: 'jsdom',
     pool: 'forks',
+    // Every core. Vitest leaves one free by default, and on CI's 4 vCPUs that is a quarter of the
+    // runner idle: 161s against 141s here at 4 cores. More workers than cores is no faster.
+    maxWorkers: '100%',
     setupFiles: ['src/setup-vitest.ts'],
     globalSetup: './testing/global-setup.ts',
+    exclude: [...configDefaults.exclude, ...PLAYWRIGHT_FILES],
+    coverage: {
+      exclude: [...coverageConfigDefaults.exclude, ...PLAYWRIGHT_FILES],
+    },
     css: true,
-    // The suite waits out roughly 135 seconds of real debounce timers across its component specs,
-    // and a jsdom + Vuetify mount on top of that does not fit in Vitest's 5s default once the
-    // files are running in parallel. Tests were failing on the timeout rather than on an
+    // A jsdom + Vuetify mount with a full factory recalc does not fit in Vitest's 5s default once
+    // the files are running in parallel. Tests were failing on the timeout rather than on an
     // assertion, on a different handful each run — worst seen was a 384ms test taking 15.6s.
     // CI runs on 4 vCPUs, so it is permanently in the contended state this only reaches under load.
     testTimeout: 20000,

@@ -1,27 +1,49 @@
 import mitt from 'mitt'
+import type { VersionMismatchBody } from 'common'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
+import type { TabField } from '@/sync/room-state'
+import type { ToastData } from '@/utils/toast'
 
-type Events = {
+export type Events = {
   factoryUpdated: Factory;
+  // The factory the user acted on, as opposed to the ones a recalculation
+  // rippled into. Sync treats this as intent and factoryUpdated as payload.
+  factoryEdited: Factory;
+  // The same statement for a field the tab owns rather than a factory, so a
+  // power target or a group list edited on its own still saves and still syncs.
+  tabEdited: TabField;
+  // A keystroke in a free-text field (notes, a task's title). Sync waits longer after one of
+  // these before sending, so a paragraph goes out once the typing stops rather than at every pause.
+  textTyped: Factory;
+  // The user left that field: whatever the longer wait is holding is sent now.
+  textTypingDone: undefined;
+  // The user replaced the whole plan (clear, paste, template, demo). `removedIds` are the
+  // records that went, and they are the only removals the server accepts in bulk.
+  planReplaced: { removedIds: number[] };
   // Plan-level state changed (the planner version, and anything else held on the tab rather
   // than on a factory). Persistence and the cloud dirty flag both hang off factoryUpdated, so
   // without this a tab-level edit is saved by nothing.
   planUpdated: undefined;
+  // A peer's op landed and it changed what the plan says — not a rename and not a
+  // reorder, both of which arrive as ops like anything else.
+  planContentApplied: { tabId: string };
+  // This client sent an op that changed what the plan says. A synced tab's "last updated"
+  // moves on this, not on the keystrokes that led to it.
+  planContentSent: { tabId: string };
   loggedIn: undefined;
   sessionExpired: undefined;
-  dataSynced: undefined;
-  dataOutOfSync: undefined;
-  // The API has refused this build. Syncing stops and the user is asked to reload; local data
-  // is never touched.
+  // The version gate fired: an HTTP 426, or a socket closed 4426. `body` is only
+  // present on the REST side, where the server states what it wanted.
+  versionMismatch: { source: 'rest' | 'ws', body?: VersionMismatchBody };
+  // The same refusal reached through a raw fetch that does not go via api/client.ts, which
+  // reports the minimum the server named rather than the body.
   clientOutdated: { minimumVersion: string };
-  // A newer release is live. Advisory, unlike clientOutdated: this build still works, so the
+  // A newer release is live. Advisory, unlike the version gate: this build still works, so the
   // user is offered a reload rather than made to do one.
   updateAvailable: { version: string };
-  toast: { message: string; type?: 'info' | 'success' | 'warning' | 'error', timeout?: number };
-  // Initial factory loading dialog
+  toast: ToastData;
+  // A load has finished and the plan is in place
   loadingCompleted: undefined;
-  incrementLoad: { step: string }; // Payload to denote loading or calculation step
-  prepareForLoad: { count: number, shown: number };
   // Custom loading screen
   loaderInit: { title?: string, steps: number }
   loaderNextStep: { message: string, step?: number, isFinalStep?: boolean }
@@ -32,6 +54,15 @@ type Events = {
   readyForData: undefined;
   plannerShow: boolean;
   calculationsCompleted: undefined
+  /**
+   * A whole plan has just been dropped into a tab from outside: a paste today, an
+   * import tomorrow. Carries the tab it landed in, and fires as it lands rather than
+   * once it has drawn: the emitter knows a plan arrived, and whoever cares waits for
+   * the load themselves. The rooms store answers it by offering that tab to the
+   * cloud, which nothing else would. The sweep of what this browser holds is made
+   * at sign-in, and a plan that turns up afterwards misses it.
+   */
+  planLanded: string
 
   // Intro
   introToggle: boolean;
@@ -40,8 +71,12 @@ type Events = {
   // and deliberately stopped, so that a first-time visitor is not handed it the moment they
   // finish reading the introduction.
   introDismissed: undefined;
+  // The current release's deck. What the header's "Show changes" asks for, and the only
+  // one of the three that ever opens on its own.
   splashShow: undefined;
-  // The previous release's splash, kept for anyone who missed it. Only ever opened by hand.
+  // The decks behind it, each kept for anyone who missed it and each reachable only from the
+  // last slide of the one in front. Never opened automatically.
+  splashShowV6: undefined;
   splashShowV5: undefined;
   // The Raw Resources Wizard is mounted by OptionsDialog; this is how anything else asks for it.
   openRawWizard: undefined;
@@ -66,7 +101,6 @@ type Events = {
   // Checklist mode: fired the first time any factory's checklist toggle is switched on and the
   // player hasn't dismissed the explainer yet.
   openChecklistTutorial: undefined;
-  buildingGroupUpdated: Factory;
   toggleSidebar: undefined;
   sidebarChanged: boolean;
   // Opens the Factories Summary fullscreen. The payload is a group id to narrow it to, so a

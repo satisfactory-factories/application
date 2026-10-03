@@ -450,7 +450,7 @@ export const deleteInputPair = (factory: Factory, input: FactoryInput, factories
   const supplyingFactory = input.factoryId ? findFac(input.factoryId, factories) : null
 
   // Calculate the factory again as it's inputs have now changed
-  calculateFactory(factory, factories, gameData)
+  calculateFactory(factory, factories, gameData, { intent: 'userEdit' })
 
   if (!supplyingFactory?.id) {
     return

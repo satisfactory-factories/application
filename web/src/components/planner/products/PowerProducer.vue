@@ -38,13 +38,17 @@
         @click="deletePowerProducer(producerIndex, factory)"
       />
     </div>
-    <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row ga-3">
+    <!-- flex-wrap, unlike the product and custom-building rows: this row is the widest in the
+         app (two autocompletes, two number fields and the output chip) and already runs a hair
+         past the card at 1440px. A supply button on the end tips it well over, and a control the
+         user cannot reach is worse than one on a second line. -->
+    <div class="selectors mt-3 mb-2 d-flex flex-column flex-md-row flex-wrap ga-3">
       <div v-if="factory.checklistEnabled" class="input-row d-flex align-center">
         <input
           :checked="!!producer.completed"
           class="checklist-tick"
           :class="{ desynced: isPowerProducerChecklistDesynced(producer) }"
-          :title="isPowerProducerChecklistDesynced(producer) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this generator as built'"
+          :title="checklistTickTitle(powerProducerChecklistDesync(producer), 'Mark this generator as built')"
           type="checkbox"
           @click.prevent="toggleChecklistPowerProducer(factory, producer)"
         >
@@ -137,6 +141,35 @@
         />
         <debounce-spinner :active="pendingRecalc === `${producer.id}-${FactoryPowerChangeType.Power}`" />
       </div>
+      <!-- The factory makes (or imports) this generator's fuel, and the two do not agree. These
+           set the fuel rate to whatever the rest of the factory leaves over, which is the sum the
+           user would otherwise be doing by hand. -->
+      <tooltip
+        v-if="fuelFixDirection(producer) === 'expand'"
+        classes="align-self-center"
+        :text="`This factory has spare ${fuelFixPartName(producer)} once everything else that wants it has been served.<br>Expanding burns the lot, raising this generator's output.`"
+      >
+        <v-btn
+          class="rounded"
+          color="green"
+          prepend-icon="fas fa-arrow-up"
+          size="default"
+          @click="doFixProducerFuel(producer)"
+        >Expand to supply{{ fuelFixLabel(producer) }}</v-btn>
+      </tooltip>
+      <tooltip
+        v-if="fuelFixDirection(producer) === 'trim'"
+        classes="align-self-center"
+        :text="`This generator burns more ${fuelFixPartName(producer)} than the factory has left after everything else that wants it.<br>Trimming drops it to what is actually spare, lowering this generator's output.`"
+      >
+        <v-btn
+          class="rounded"
+          color="yellow"
+          prepend-icon="fas fa-arrow-down"
+          size="default"
+          @click="doFixProducerFuel(producer)"
+        >Trim to supply{{ fuelFixLabel(producer) }}</v-btn>
+      </tooltip>
       <v-chip
         class="align-self-center sf-chip green"
         variant="tonal"
@@ -295,6 +328,7 @@
   </div>
 </template>
 <script setup lang="ts">
+  import { recordEvent } from '@/utils/record-event'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { getPartDisplayName } from '@/utils/helpers'
   import { useDisplay } from 'vuetify'
@@ -304,8 +338,15 @@
   import { inject } from 'vue'
   import { deleteItem, getBuildingDisplayName } from '@/utils/factory-management/common'
   import { isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
-  import { isPowerProducerChecklistDesynced, toggleChecklistPowerProducer } from '@/utils/factory-management/checklist'
+  import {
+    checklistTickTitle,
+    isPowerProducerChecklistDesynced,
+    powerProducerChecklistDesync,
+    toggleChecklistPowerProducer,
+  } from '@/utils/factory-management/checklist'
   import { addPowerProducerBuildingGroup } from '@/utils/factory-management/building-groups/power'
+  import { fixProducerFuel, fuelFixTarget, producerFuelPart, shouldShowFuelFix } from '@/utils/factory-management/power'
+  import { fixTargetSuffix } from '@/utils/numberFormatter'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
 
@@ -321,6 +362,8 @@
     getDefaultRecipeForPowerProducer,
     getGameData,
   } = useGameDataStore()
+
+  const gameData = getGameData()
 
   const props = defineProps<{
     factory: Factory;
@@ -420,6 +463,23 @@
     return range.max !== range.min
   }
 
+  // Fuel supply matching (see power.ts). Bound per producer so the template does not have to
+  // carry the factory and game data through every call.
+  const fuelFixDirection = (producer: FactoryPowerProducer) =>
+    shouldShowFuelFix(producer, props.factory, gameData)
+
+  // What the button would set the fuel rate to, named on the button itself.
+  const fuelFixLabel = (producer: FactoryPowerProducer) =>
+    fixTargetSuffix(fuelFixTarget(producer, props.factory, gameData))
+
+  const fuelFixPartName = (producer: FactoryPowerProducer) =>
+    getPartDisplayName(producerFuelPart(producer, gameData) ?? '')
+
+  const doFixProducerFuel = (producer: FactoryPowerProducer) => {
+    fixProducerFuel(producer, props.factory, gameData)
+    updateFactory(props.factory)
+  }
+
   const updatePowerProducerSelection = (source: 'building' | 'recipe', producer: FactoryPowerProducer, factory: Factory) => {
     // Since the user has selected a new building, we need to reset the building groups
     producer.buildingGroups = []
@@ -435,6 +495,7 @@
     if (!originalRecipe) {
       console.error('No recipe found for power producer!', producer)
       alert('Unable to find recipe for power generator! Please report this to Discord!')
+      recordEvent('calc_power_recipe_missing')
       return
     }
 

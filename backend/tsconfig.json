@@ -1,16 +1,20 @@
 {
   "compilerOptions": {
-    "target": "ES2021",
+    "target": "ES2023",
+    "lib": ["ES2023"],
     "module": "nodenext",
+    "moduleResolution": "nodenext",
     "strict": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "rootDir": "./",
     "resolveJsonModule": true,
-    "moduleResolution": "nodenext"
+    "sourceMap": true,
+    "noFallthroughCasesInSwitch": true,
+    "outDir": "./dist"
   },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

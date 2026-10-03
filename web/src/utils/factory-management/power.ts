@@ -276,3 +276,115 @@ export const calculateGridBoost = (factories: Factory[], gameData: DataInterface
     factory.power.boostUnfueledBuildings = unfueledBuildings
   })
 }
+
+// ---------------------------------------------------------------------------
+// Matching a generator's fuel draw to what the factory can supply
+// ---------------------------------------------------------------------------
+//
+// A generator burning fuel the factory makes itself is the one consumer the planner can settle
+// without the user reaching for a calculator: the fuel's supply is known, every other claim on it
+// (production, exports, the other generators) is known, and what is left over is exactly what this
+// generator may burn. The three functions below mirror products.ts's shouldShowFix /
+// fixProductTarget / fixProduct, and are shaped the same way so the two rows behave alike.
+
+// The fuel a producer burns — ingredients[0], the same convention power.ts uses throughout.
+// Null for the generators whose draw is not the user's to dial: Geothermal has no fuel at all, and
+// an Alien Power Augmenter's matrix demand is synthesised from its building groups
+// (see calculateFuellessPowerProducer), so a rate set here would be overwritten on the next pass.
+export const producerFuelPart = (
+  producer: FactoryPowerProducer,
+  gameData: DataInterface
+): string | null => {
+  if (!producer.recipe || !producer.building) {
+    return null
+  }
+
+  const recipe = getPowerRecipe(producer.recipe, gameData)
+  if (!recipe || recipe.ingredients.length === 0) {
+    return null
+  }
+
+  return producer.ingredients[0]?.part ?? null
+}
+
+// The fuel rate that would leave the part exactly balanced, without setting it. The buttons name
+// this figure, so the user can see what they are agreeing to before pressing rather than after.
+//
+// amountRemainingPreSink carries the whole calculation: it is supply minus every claim on the
+// part, this generator's own draw included, so adding that draw back turns "what is spare" into
+// "what this generator may burn". A second recipe eating the same fuel — Recycled Rubber, say —
+// is therefore handled for free: its share sits in amountRequiredProduction and never reaches the
+// allowance. Pre-sink because the AWESOME Sink only ever takes what nothing else claimed, so a
+// surplus currently being sunk is still spare fuel, and burning it shrinks the sunk amount by
+// itself on the next recalculation.
+//
+// Null when the question cannot be answered: no fuel to dial, no part ledger yet, or a factory
+// with no supply of the fuel at all, where the only honest answer is "bring some in".
+export const fuelFixTarget = (
+  producer: FactoryPowerProducer,
+  factory: Factory,
+  gameData: DataInterface
+): number | null => {
+  const fuelPart = producerFuelPart(producer, gameData)
+  if (!fuelPart) {
+    return null
+  }
+
+  const partData = factory.parts[fuelPart]
+  if (!partData || partData.amountSupplied <= 0) {
+    return null
+  }
+
+  // ?? amountRemaining for plans saved before pre-sink surplus was tracked; the two only differ
+  // once a sink is placed, which those plans could not have done either.
+  const spare = (producer.ingredients[0]?.perMin ?? 0) +
+    (partData.amountRemainingPreSink ?? partData.amountRemaining)
+
+  // Floored at zero: when the factory's other demands already outstrip the supply there is
+  // nothing left over, and zero means turn the generator off rather than burn fuel that isn't
+  // there. Formatted because the ledger arrives carrying float noise.
+  return Math.max(0, formatNumberFully(spare, 3))
+}
+
+// Which way the fuel draw would have to move to match supply, or null to offer nothing.
+// Named for the action rather than for the sign of the shortfall: a fuel deficit means this
+// generator has to burn less, which is the opposite of what a product's deficit asks for.
+export const shouldShowFuelFix = (
+  producer: FactoryPowerProducer,
+  factory: Factory,
+  gameData: DataInterface
+): 'trim' | 'expand' | null => {
+  const target = fuelFixTarget(producer, factory, gameData)
+  if (target === null) {
+    return null
+  }
+
+  const current = producer.ingredients[0]?.perMin ?? 0
+
+  if (target < current) {
+    return 'trim'
+  }
+
+  if (target > current) {
+    return 'expand'
+  }
+
+  return null
+}
+
+// Sets the fuel rate to fuelFixTarget. The caller must call updateFactory afterwards, as with
+// fixProduct — the power, the buildings and the building groups are all derived from it.
+export const fixProducerFuel = (
+  producer: FactoryPowerProducer,
+  factory: Factory,
+  gameData: DataInterface
+): void => {
+  const target = fuelFixTarget(producer, factory, gameData)
+  if (target === null) {
+    console.error('power: fixProducerFuel: no fuel target could be calculated!', producer)
+    return
+  }
+
+  producer.fuelAmount = target
+  producer.updated = FactoryPowerChangeType.Fuel
+}

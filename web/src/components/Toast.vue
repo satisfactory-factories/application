@@ -1,37 +1,34 @@
 <template>
-  <v-snackbar v-model="showToast" :color="toastType" :timeout="timeout" top>
-    <!-- Escaped: toasts interpolate factory and part names. See safeHtml. -->
-    <span v-html="safeHtml(toastMessage)" />
-  </v-snackbar>
+  <toast-notification
+    v-model="showToast"
+    :duration="timeout"
+    :message="toastMessage"
+    :sequence="sequence"
+    :type="toastType"
+    :variant="toastVariant"
+  />
 </template>
 
 <script setup lang="ts">
-  import { safeHtml } from '@/utils/safeHtml'
+  import { ref } from 'vue'
+  import ToastNotification from '@/components/common/ToastNotification.vue'
   import eventBus from '@/utils/eventBus'
-
-  export interface ToastData {
-    message: string
-    type?: 'info' | 'success' | 'warning' | 'error'
-    timeout?: number
-  }
+  import type { ToastData, ToastType, ToastVariant } from '@/utils/toast'
 
   const showToast = ref(false)
-  const toastType = ref('success')
+  const toastType = ref<ToastType>('success')
+  const toastVariant = ref<ToastVariant>('plain')
   const toastMessage = ref('')
   const timeout = ref(3000)
+  // Restarts the bar when the same notice arrives again while it is still up.
+  const sequence = ref(0)
 
   const showToastMessage = (data: ToastData) => {
-    if (data.type === 'error') {
-      toastType.value = 'red'
-    } else if (data.type === 'warning') {
-      toastType.value = 'amber'
-    } else if (data.type === 'info') {
-      toastType.value = 'blue'
-    } else {
-      toastType.value = 'success'
-    }
+    toastType.value = data.type ?? 'success'
+    toastVariant.value = data.variant ?? 'plain'
     toastMessage.value = data.message
     timeout.value = data.timeout || 3000
+    sequence.value += 1
     showToast.value = true
   }
 

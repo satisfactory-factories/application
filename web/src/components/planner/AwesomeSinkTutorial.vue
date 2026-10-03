@@ -24,11 +24,11 @@
 </template>
 
 <script lang="ts" setup>
-  import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   const openTutorial = ref(false)
 
-  eventBus.on('openAwesomeSinkTutorial', () => {
+  useEventBusListener('openAwesomeSinkTutorial', () => {
     openTutorial.value = true
   })
 </script>

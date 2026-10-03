@@ -12,7 +12,7 @@
         label="New Task"
         outlined
         placeholder="Add a task..."
-        :rules="[newTaskRules.length]"
+        :rules="[newTaskRules.length, taskRule]"
         @blur="addTask"
         @keyup.enter="addTask"
       />
@@ -50,11 +50,14 @@
                   v-model="task.title"
                   auto-grow
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   rows="1"
+                  :rules="[taskRule]"
                   variant="plain"
+                  @blur="titleDone"
                   @change="validateTaskLength(task)"
                   @keydown.enter.exact.prevent="commitTaskEdit"
+                  @update:model-value="titleTyped"
                 />
                 <p v-if="task.completed" class="text-done">{{ task.title }}</p>
               </td>
@@ -81,12 +84,35 @@
   import { ref } from 'vue'
   import draggable from 'vuedraggable'
   import { Factory, FactoryTask } from '@/interfaces/planner/FactoryInterface'
+  import { markFactoryEdited } from '@/utils/sync-intent'
+  import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
 
   const props = defineProps <{
     factory: Factory;
   }>()
 
   const newTask = ref('')
+
+  /**
+   * Tasks are persisted and synced, and nothing recalculates when one changes, so every
+   * handler below has to announce itself: payload so the plan saves and flushes, intent so
+   * a rebase carries the change over instead of taking the server's list. Declared from the
+   * handlers rather than a watcher on `factory.tasks`, which also fires on inbound ops.
+   */
+  const taskEdited = () => markFactoryEdited(props.factory)
+
+  /**
+   * A keystroke in a title. Sync holds typing for longer than any other edit, so a title goes
+   * out once the typing stops rather than at every pause; leaving the field (blur, or enter,
+   * which blurs) sends it straight away.
+   */
+  const titleTyped = () => {
+    eventBus.emit('textTyped', props.factory)
+    taskEdited()
+  }
+
+  const titleDone = () => eventBus.emit('textTypingDone')
 
   // Tasks are persisted as bare {title, completed} and carry no id, so key the rows by object
   // identity — an index key reuses the wrong row after a drop, and titles can be duplicated.
@@ -105,7 +131,10 @@
     if (!event.moved) return
     const [task] = props.factory.tasks.splice(event.moved.oldIndex, 1)
     props.factory.tasks.splice(event.moved.newIndex, 0, task)
+    taskEdited()
   }
+
+  const taskRule = textFieldRule('task')
 
   const newTaskRules = {
     length: () => {
@@ -126,6 +155,8 @@
       newTask.value = ''
       return
     }
+    // The field shows why; the text stays so it can be fixed.
+    if (taskRule(title) !== true) return
     if (props.factory.tasks.length >= 50) {
       alert('You have reached the maximum number of tasks allowed (50).')
       return
@@ -138,15 +169,18 @@
     }
 
     props.factory.tasks.push({ title, completed: false })
+    taskEdited()
     newTask.value = ''
   }
 
   const toggleTask = (index: number) => {
     props.factory.tasks[index].completed = !props.factory.tasks[index].completed
+    taskEdited()
   }
 
   const removeTask = (index: number) => {
     props.factory.tasks.splice(index, 1)
+    taskEdited()
   }
 
   // Tasks are one-liners, so enter accepts the edit instead of dropping a newline into the
@@ -160,6 +194,7 @@
     if (task.title.length > 200) {
       alert('Max character limit (200) reached. Condense your thoughts pioneer!')
       task.title = task.title.slice(0, 200)
+      taskEdited()
     }
   }
 </script>

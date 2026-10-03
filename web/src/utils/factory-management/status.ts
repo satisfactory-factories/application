@@ -21,23 +21,28 @@
  *
  * This module must stay a LEAF. `problems.ts` imports it and is itself imported by `factory.ts`, so
  * importing anything that reaches `factory.ts` closes a cycle. That is why the import predicates
- * live in `inputs-analysis.ts`.
+ * live in `inputs-analysis.ts`. `checklist.ts` is safe to reach for: its own subtree is
+ * `exports.ts`, `syncState.ts`, `numberFormatter.ts` and the event bus, none of which climb back up
+ * to `factory.ts`.
  */
 import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { listChecklistDesyncs } from '@/utils/factory-management/checklist'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
+import { isBacklogIgnored } from '@/utils/factory-management/disposal'
 import { isSurplusSignificant } from '@/utils/factory-management/parts'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
 
 export type FactoryStatusSeverity = 'problem' | 'warning' | 'note'
 
 // Element-id suffix of the card section a status points at, for navigateToFactory().
-export type FactoryStatusSection = 'satisfaction' | 'imports' | 'products'
+export type FactoryStatusSection = 'satisfaction' | 'imports' | 'products' | 'checklist'
 
 export type FactoryStatusType =
   | 'partShortage' |
   'exportShortage' |
   'buildingGroupMismatch' |
   'outOfSync' |
+  'checklistDesync' |
   'unhandledByproduct' |
   'redundantImport' |
   'duplicateImport' |
@@ -176,11 +181,11 @@ export const willBacklog = (factory: Factory, partId: string): boolean => {
 }
 
 /**
- * Whether the row for this part should carry the backlog advisory — the option, the predicate and
- * the suppressions in one place, so the chip on the row and the chip in the section header cannot
- * come to different conclusions about the same part.
+ * Whether the row for this part carries a backlog warning at all, ignored or not — the option, the
+ * predicate and the suppressions in one place, so the row and the section header cannot come to
+ * different conclusions about the same part.
  */
-export const showBacklogAdvisory = (factory: Factory, partId: string): boolean =>
+export const hasBacklogAdvisory = (factory: Factory, partId: string): boolean =>
   usePlannerOptions().value.showBacklogAdvisory &&
   willBacklog(factory, partId) &&
   // Said once. Each of these already names the part and says something more specific about the
@@ -188,6 +193,22 @@ export const showBacklogAdvisory = (factory: Factory, partId: string): boolean =
   !isPotentialBlockage(factory, partId) &&
   !isUnhandledByproduct(factory, partId) &&
   !hasNoDemand(factory, partId)
+
+/**
+ * The live backlog advisory: warned about and not ignored. This is the one the status registry
+ * counts, so ignoring a warning stops the factory turning amber for it.
+ */
+export const showBacklogAdvisory = (factory: Factory, partId: string): boolean =>
+  hasBacklogAdvisory(factory, partId) && !isBacklogIgnored(factory, partId)
+
+/**
+ * The backlog advisory the user has chosen to live with. The row still shows it, dimmed and
+ * retitled, so the choice stays visible and reversible, but it is not a status: nothing outside
+ * the row counts it. Dropping the surplus (a sink, an export) makes `hasBacklogAdvisory` false and
+ * takes the row's chip with it, while the flag stays stored for if the surplus comes back.
+ */
+export const showBacklogIgnored = (factory: Factory, partId: string): boolean =>
+  hasBacklogAdvisory(factory, partId) && isBacklogIgnored(factory, partId)
 
 const count = (list: FactoryStatusSubject[], one: string, many: string) =>
   list.length > 1 ? `${list.length} ${many}` : one
@@ -302,6 +323,33 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     detail: 'This factory has changed since you marked it built in game.',
     detect: factory => factory.inSync === false ? [] : null,
     label: () => 'Out of sync',
+  },
+  {
+    // Amber by the tier rule's second clause: the numbers say the plan moved, but only the player
+    // knows whether the thing standing in the world was rebuilt to match. Its own status rather
+    // than a shade of outOfSync — that one is about the factory's recipes against the game, this
+    // is about individual rows the player ticked, and the two go stale independently.
+    type: 'checklistDesync',
+    severity: 'warning',
+    // The checklist's own glyph, not a warning triangle: the whole point of the chip is that the
+    // reader can tell at a glance which of a card's amber signals this one is.
+    icon: 'fas fa-check-square',
+    chip: true,
+    section: 'checklist',
+    detail: 'Items ticked off as built at a number the plan has since changed. Reconfirm each one, or change the plan back.',
+    // Gated on checklist mode being on: with the panel hidden there is nothing on the card to act
+    // on, and the ticks survive the toggle, so an old plan would otherwise light up amber for a
+    // mode its owner has switched off.
+    detect: factory => {
+      if (!factory.checklistEnabled) return null
+      const desyncs = listChecklistDesyncs(factory)
+      return nonEmpty([
+        ...subjects(desyncs.map(entry => entry.part)),
+        ...subjects(desyncs.map(entry => entry.building), 'building'),
+      ])
+    },
+    label: list => count(list, 'Checklist desync', 'checklist desyncs'),
+    detailLabel: list => count(list, 'Checklist desync', 'desynced checklist items'),
   },
   {
     type: 'redundantImport',
@@ -526,6 +574,14 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     class: 'status-warning',
     label: ['out of sync', 'out of sync'],
     sentence: ['factory is out of sync with the game', 'factories are out of sync with the game'],
+  },
+  {
+    key: 'checklistDesync',
+    types: ['checklistDesync'],
+    icon: 'fas fa-check-square',
+    class: 'status-warning',
+    label: ['checklist desync', 'checklist desyncs'],
+    sentence: ['factory has checklist items ticked at a number that has since changed', 'factories have checklist items ticked at a number that has since changed'],
   },
   {
     key: 'redundantImport',

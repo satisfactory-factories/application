@@ -261,6 +261,16 @@
     border-color: var(--sf-status-warning-border) !important;
   }
 
+  // A warning the user has chosen to live with: the amber outline of `status-warning-outlined`,
+  // with the fill gone and the border dashed, so it reads as present but stood down. Dashed rather
+  // than merely dimmer because colour alone is the thing the amber tier already spends.
+  &.status-warning-ignored {
+    color: var(--sf-status-warning) !important;
+    border-color: var(--sf-status-warning-border) !important;
+    border-style: dashed !important;
+    background-color: transparent !important;
+  }
+
   &.node-setting {
     color: var(--sf-node-setting) !important;
     border-color: var(--sf-node-setting-border) !important;
@@ -845,6 +855,18 @@ tr.sf-nav-flash {
   border-radius: 3px;
 }
 
+// Opt-in: `class="sf-checkbox-tick"` on a v-checkbox draws a white tick over the filled mark, so a
+// ticked box reads as a tick rather than as the stray filled square the group and options dialogs
+// each drew their own control to avoid. The box colour is the control's own `color` prop, so pair
+// it with one that the white tick shows up on. An image rather than another pseudo-element:
+// `::before` is Vuetify's ripple overlay and `::after` is already the box.
+.sf-checkbox-tick .v-selection-control--dirty .v-selection-control__input::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.5 6.2 4.6 9.3 10.5 3' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
+}
+
 // A drawn tick box on a native checkbox, shared by the factory task list and the Mercer Sphere
 // research rows. Native rather than a v-checkbox because Vuetify's selection controls point their
 // icons at Font Awesome Regular, which this app does not ship, so the unticked box renders as
@@ -903,8 +925,23 @@ tr.sf-nav-flash {
     margin: 0 0 0 4px !important;
   }
 
+  // Square-rounded when it is clickable, because that is what a clickable thing looks like
+  // everywhere else in the planner. A pill that navigates somewhere reads as a label. The 4px is
+  // `sf-chip-clickable`'s, so a factory chip in the statistics table and one in the search results
+  // are the same shape.
+  &.clickable {
+    border-radius: 4px;
+  }
+
   &.clickable:hover {
     cursor: pointer;
     background-color: #323232;
+  }
+
+  // The group's colour on the left edge, handed in as a custom property so the rule that reads
+  // it can carry its own !important; a plain inline style loses to the border rule above.
+  &.grouped {
+    border-left-color: var(--group-color) !important;
+    border-left-width: 5px !important;
   }
 }

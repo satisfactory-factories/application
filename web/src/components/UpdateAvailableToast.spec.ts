@@ -45,6 +45,30 @@ describe('UpdateAvailableToast', () => {
     expect(document.querySelector('.v-snackbar--active')).toBeFalsy()
   })
 
+  // Upstream's release ping and the v7 version gate are the same news at different strengths.
+  // The gate means nothing this tab sends will be accepted until it reloads, and VersionPrompt
+  // says so persistently, so this stands down rather than stacking a second notice beside it.
+  describe('when the version gate has already spoken', () => {
+    it('should close a toast that was already up', async () => {
+      eventBus.emit('updateAvailable', { version: '0.6.1' })
+      await nextTick()
+      expect(document.querySelector('.v-snackbar--active')).toBeTruthy()
+
+      eventBus.emit('versionMismatch', { source: 'rest' })
+      await nextTick()
+
+      expect(document.querySelector('.v-snackbar--active')).toBeFalsy()
+    })
+
+    it('should not open for a later announcement', async () => {
+      eventBus.emit('versionMismatch', { source: 'ws' })
+      eventBus.emit('updateAvailable', { version: '0.6.1' })
+      await nextTick()
+
+      expect(document.querySelector('.v-snackbar--active')).toBeFalsy()
+    })
+  })
+
   it('should reload the page, and do nothing else, when asked', async () => {
     const reload = vi.fn()
     Object.defineProperty(window, 'location', { value: { reload }, writable: true })

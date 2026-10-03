@@ -6,6 +6,7 @@ import {
   FactoryPowerProducer,
   ItemType,
 } from '@/interfaces/planner/FactoryInterface'
+import { toRaw } from 'vue'
 import { formatNumberFully } from '@/utils/numberFormatter'
 import { fetchGameData } from '@/utils/gameDataService'
 import { calculateHasProblem } from '@/utils/factory-management/problems'
@@ -74,10 +75,89 @@ export const addBuildingGroup = (
   recalculateGroupMetrics(item, type, factory)
 }
 
+/**
+ * Building group ids have to be reproducible, because the engine mints them.
+ *
+ * A groupless item (an older plan, an import, a plan joined from a room) gets its first group
+ * from calculateBuildingGroupParts, deep inside a calculation pass. Sync sends whole changed
+ * factories, so a random id there meant two clients holding the same plan computed different
+ * output the moment they loaded it: every client reported the factory as changed, and the id
+ * itself travelled in the payload. Deriving the id from the item makes the calculation a pure
+ * function of the plan again.
+ *
+ * Ids issued before this sat at `Math.random() * 10000`, so every one saved in an existing plan
+ * is below 10,000. Minting above this offset leaves the two kinds unable to collide, and nothing
+ * already stored has to be rewritten.
+ */
+export const DETERMINISTIC_GROUP_ID_OFFSET = 1_000_000
+
+// Each item gets its own block of ids so two items minting a group at the same time on different
+// clients cannot pick the same number.
+const GROUP_ID_BLOCK_SIZE = 1_000
+const GROUP_ID_BLOCKS = 1_000_000
+
+// FNV-1a. Any stable string hash would do; this one is short, needs no dependency, and depends
+// on nothing but the characters — no locale, no clock, no iteration order.
+const hashGroupIdentity = (value: string): number => {
+  let hash = 0x811C9DC5
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash
+}
+
+// What the item is, rather than where it currently sits: the part/producer id and the recipe are
+// both plan data, identical on every client, and neither moves when rows are reordered.
+const buildingGroupIdentity = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType
+): string => `${groupType}|${item.id ?? ''}|${item.recipe ?? ''}`
+
+// Uniqueness has to hold factory-wide, not just within the item: the group card builds its DOM
+// ids as `${factory.id}-${group.id}-...` and focuses them with getElementById.
+const takenGroupIds = (
+  item: FactoryItem | FactoryPowerProducer,
+  factory?: Factory
+): Set<number> => {
+  const taken = new Set<number>()
+  const collect = (groups?: BuildingGroup[]) => groups?.forEach(group => taken.add(group.id))
+
+  factory?.products?.forEach(product => collect(product.buildingGroups))
+  factory?.powerProducers?.forEach(producer => collect(producer.buildingGroups))
+  // The item is normally already in the factory, but a group can be created before it is pushed.
+  collect(item.buildingGroups)
+
+  return taken
+}
+
+export const nextBuildingGroupId = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  factory?: Factory
+): number => {
+  const taken = takenGroupIds(item, factory)
+  const base = DETERMINISTIC_GROUP_ID_OFFSET +
+    (hashGroupIdentity(buildingGroupIdentity(item, groupType)) % GROUP_ID_BLOCKS) * GROUP_ID_BLOCK_SIZE
+
+  // The ordinal is "first free slot in the block", not the group count, so deleting a group from
+  // the middle and adding another cannot reissue an id that is still in use.
+  for (let ordinal = 0; ordinal < GROUP_ID_BLOCK_SIZE; ordinal++) {
+    if (!taken.has(base + ordinal)) {
+      return base + ordinal
+    }
+  }
+
+  // A full block needs 1,000 groups on one item, which the row caps do not allow. Carry on above
+  // everything the factory holds rather than handing back a duplicate.
+  return Math.max(DETERMINISTIC_GROUP_ID_OFFSET, ...taken) + 1
+}
+
 // @See ./product.ts, ./power.ts for usages
 export const createBuildingGroup = (
   item: FactoryItem | FactoryPowerProducer,
   groupType: ItemType,
+  factory?: Factory,
   matchBuildings = true
 ) => {
   let buildingCount = 0
@@ -103,7 +183,7 @@ export const createBuildingGroup = (
   }
 
   const group: BuildingGroup = {
-    id: Math.floor(Math.random() * 10000),
+    id: nextBuildingGroupId(item, groupType, factory),
     type: groupType,
     buildingCount,
     overclockPercent: 100,
@@ -620,6 +700,108 @@ export const syncBuildingGroups = (
     // Recalculate the group metrics after the rebalance.
     recalculateGroupMetrics(item, groupType, factory)
   }
+}
+
+export interface SpreadPlan {
+  groupCount: number
+  buildingCount: number
+  overclockPercent: number
+}
+
+// Works out the one group every group becomes when spread: the same building count and the same
+// clock in every group, together meeting the item's requirement. Each group gets the fewest
+// buildings that can carry its share, underclocked to fit. The clock is rounded UP to one decimal
+// place so the groups read as clean figures and never fall short of demand (e.g. 197.547
+// buildings over 10 groups is 20 buildings @ 98.8% each, 197.6 effective). The first group's
+// somersloops, extractor and purity are what every group inherits.
+// Returns null when there is nothing to spread over.
+export const planSpread = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType
+): SpreadPlan | null => {
+  const groups = item.buildingGroups
+  if (!groups || groups.length === 0) return null
+
+  const target = getBuildingCount(item, groupType)
+  if (!(target > 0)) return null
+
+  const building = getItemBuilding(item, groupType)
+  const outputMultiplier = getGroupOutputMultiplier(groups[0], building, item.recipe)
+  if (!outputMultiplier || !Number.isFinite(outputMultiplier)) return null
+
+  // Physical buildings each group must carry at 100%. The epsilon keeps float noise on an
+  // exact share (20.0000000001) from costing a whole extra building.
+  const perGroup = target / groups.length / outputMultiplier
+  const buildingCount = Math.max(1, Math.ceil(perGroup - 1e-9))
+
+  // Buildings with no clock can only be spread in whole buildings.
+  if (!canBuildingOverclock(building)) {
+    return { groupCount: groups.length, buildingCount, overclockPercent: 100 }
+  }
+
+  const overclockPercent = Math.min(100, Math.ceil((perGroup / buildingCount) * 1000 - 1e-6) / 10)
+
+  return { groupCount: groups.length, buildingCount, overclockPercent }
+}
+
+// Destructively rewrites every group to the plan: each becomes a copy of the first group's
+// settings at the planned building count and clock.
+export const applySpread = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  plan: SpreadPlan
+) => {
+  const [first] = item.buildingGroups
+  item.buildingGroups.forEach(group => {
+    group.buildingCount = plan.buildingCount
+    group.overclockPercent = plan.overclockPercent
+    group.clockSetByUser = false
+    group.somersloops = first.somersloops
+    group.extractorBuilding = first.extractorBuilding
+    group.purity = first.purity
+    if (first.satellites) {
+      group.satellites = { ...first.satellites }
+    }
+    group.supplyMatrixes = first.supplyMatrixes
+    group.type = groupType
+  })
+}
+
+export const spreadBuildingGroups = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  factory: Factory
+) => {
+  const plan = planSpread(item, groupType)
+  if (!plan) return
+
+  applySpread(item, groupType, plan)
+  recalculateGroupMetrics(item, groupType, factory)
+}
+
+// What one group looks like after a spread, without touching the real item: a clone with the
+// plan applied and its parts and power worked out, for the confirmation dialog to render.
+export const previewSpread = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  factory: Factory
+): { plan: SpreadPlan, item: FactoryItem | FactoryPowerProducer } | null => {
+  const plan = planSpread(item, groupType)
+  if (!plan) return null
+
+  // A plain copy, so nothing the preview computes leaks back into the plan.
+  const clone = structuredClone(toRaw(item))
+  applySpread(clone, groupType, plan)
+  calculateBuildingGroupParts([clone], groupType, factory)
+  if (groupType === ItemType.Product) {
+    const subject = clone as FactoryItem
+    calculateProductBuildingGroupPower(subject.buildingGroups, subject.buildingRequirements.name, subject.recipe)
+  } else {
+    const subject = clone as FactoryPowerProducer
+    calculatePowerProducerBuildingGroupPower(subject.buildingGroups, subject.recipe)
+  }
+
+  return { plan, item: clone }
 }
 
 // Scenario:

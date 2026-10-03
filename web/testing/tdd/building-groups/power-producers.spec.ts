@@ -1,5 +1,5 @@
 import { VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import PowerProducer from '../../../src/components/planner/products/PowerProducer.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addPowerProducerToFactory } from '../../../src/utils/factory-management/power'
@@ -44,6 +44,16 @@ const setupNuclearProducer = (factory: Factory): FactoryPowerProducer => {
   return producer
 }
 
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
   let factory: Factory
   let producer: FactoryPowerProducer
@@ -67,7 +77,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
 
       // Edit the group's building count directly
       await groupCount.setValue(5)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
       // The group should reflect the new count
       expect(producer.buildingGroups[0].buildingCount).toBe(5)
@@ -90,7 +100,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         // Bump the producer up to 4 buildings so we can prove it resets
         const fuel = subject.find(`[id="${factory.id}-${producer.id}-fuel-quantity"]`)
         await fuel.setValue('80')
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(producer.buildingGroups[0].buildingCount).toBe(4)
 
         // Switch the generator via the building autocomplete (first VAutocomplete)
@@ -110,7 +120,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         // Bump the producer up to 4 buildings so we can prove it resets
         const fuel = subject.find(`[id="${factory.id}-${producer.id}-fuel-quantity"]`)
         await fuel.setValue('80')
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(producer.buildingGroups[0].buildingCount).toBe(4)
 
         // Switch the fuel recipe via the recipe autocomplete (second VAutocomplete)
@@ -142,7 +152,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         // Liquid fuel generator consumes 20/min per building, so 80 => 4 buildings
         const fuel = subject.find(`[id="${factory.id}-${producer.id}-fuel-quantity"]`)
         await fuel.setValue('80')
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(producer.buildingCount).toBe(4)
         expect(producer.buildingGroups[0].buildingCount).toBe(4)
@@ -152,12 +162,12 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         // Set up at 4 buildings first
         const fuel = subject.find(`[id="${factory.id}-${producer.id}-fuel-quantity"]`)
         await fuel.setValue('80')
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(producer.buildingGroups[0].buildingCount).toBe(4)
 
         // Now decrease to 40 => 2 buildings
         await fuel.setValue('40')
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(producer.buildingCount).toBe(2)
         expect(producer.buildingGroups[0].buildingCount).toBe(2)
@@ -169,7 +179,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
 
         const buildingCount = subject.find(`[id="${factory.id}-${producer.id}-building-count"]`)
         await buildingCount.setValue(6)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(producer.buildingCount).toBe(6)
         expect(producer.buildingGroups[0].buildingCount).toBe(6)
@@ -187,7 +197,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         // Get to 4 buildings, then add a second group
         const fuel = subject.find(`[id="${factory.id}-${producer.id}-fuel-quantity"]`)
         await fuel.setValue('80')
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         const addBuildingGroupButton = subject.find(`[id="${factory.id}-add-building-group"]`)
         await addBuildingGroupButton.trigger('click')
@@ -203,7 +213,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         // rebalance evenly across the two groups (4 + 4)
         const buildingCount = subject.find(`[id="${factory.id}-${producer.id}-building-count"]`)
         await buildingCount.setValue(8)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(producer.buildingCount).toBe(8)
         expect(producer.buildingGroups[0].buildingCount).toBe(4)
@@ -227,7 +237,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         const water = subject.find(`[id="${factory.id}-${producer.id}-Water"]`)
         expect(water.exists()).toBe(true)
         await water.setValue(240 * 4)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(producer.buildingCount).toBe(4)
         expect(producer.buildingGroups[0].buildingCount).toBe(4)
@@ -256,7 +266,7 @@ describe('TDD: BG-I-E-POW: Power Producer Building Groups', () => {
         // 960 Water => 4 buildings, rebalanced evenly across two groups (2 + 2)
         const water = subject.find(`[id="${factory.id}-${producer.id}-Water"]`)
         await water.setValue(240 * 4)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(producer.buildingCount).toBe(4)
         expect(producer.buildingGroups[0].buildingCount).toBe(2)

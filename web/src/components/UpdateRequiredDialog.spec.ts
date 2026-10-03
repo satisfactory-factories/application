@@ -38,6 +38,30 @@ describe('UpdateRequiredDialog', () => {
     expect(dialogText()).not.toContain('Discord')
   })
 
+  // Two clients for one fact: this reads a header off a raw fetch, VersionPrompt reads the 426
+  // body and the socket's 4426 close. Where both could fire the banner wins placement, because a
+  // modal over it would hide the notice the sync engine's own state is driving.
+  describe('when the version gate has already spoken', () => {
+    it('should close a dialog that was already open', async () => {
+      eventBus.emit('clientOutdated', { minimumVersion: '0.7.0' })
+      await nextTick()
+      expect(isOpen()).toBe(true)
+
+      eventBus.emit('versionMismatch', { source: 'rest' })
+      await nextTick()
+
+      expect(isOpen()).toBe(false)
+    })
+
+    it('should not open for a later refusal', async () => {
+      eventBus.emit('versionMismatch', { source: 'ws' })
+      eventBus.emit('clientOutdated', { minimumVersion: '0.7.0' })
+      await nextTick()
+
+      expect(isOpen()).toBe(false)
+    })
+  })
+
   it('should reload the page, and do nothing else, when asked', async () => {
     const reload = vi.fn()
     Object.defineProperty(window, 'location', {

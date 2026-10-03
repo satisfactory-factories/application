@@ -6,17 +6,30 @@ import { setSyncState } from '@/utils/factory-management/syncState'
 import { mockPowerProducer } from '@/utils/factory-management/status-fixtures'
 import eventBus from '@/utils/eventBus'
 import {
+  acknowledgeChecklistDesyncs,
+  applyLinkedImportTick,
+  checklistDesyncChange,
+  checklistDesyncReason,
+  checklistExportDesync,
   checklistExportKey,
   checklistSummaryState,
+  checklistTickTitle,
   countChecklistCompleted,
+  countChecklistDesynced,
   countChecklistTotal,
   hasChecklistDesync,
+  inputChecklistDesync,
   isChecklistComplete,
   isChecklistExportComplete,
   isChecklistExportDesynced,
   isInputChecklistDesynced,
   isPowerProducerChecklistDesynced,
   isProductChecklistDesynced,
+  linkedImportsForExport,
+  linkedImportTickOffer,
+  listChecklistDesyncs,
+  powerProducerChecklistDesync,
+  productChecklistDesync,
   resetChecklistState,
   setChecklistEnabled,
   setChecklistPanelHidden,
@@ -47,6 +60,152 @@ describe('checklist', () => {
 
       toggleChecklistExport(factory, 2, 'IronPlate', 60)
       expect(isChecklistExportComplete(factory, 2, 'IronPlate')).toBe(false)
+    })
+  })
+
+  describe('linked import ticks', () => {
+    const buildDestination = () => {
+      const destination = newFactory('Phase Three', 0, 2)
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 120 })
+      destination.inputs.push({ factoryId: 1, outputPart: 'Wire', amount: 60 })
+      destination.inputs.push({ factoryId: 7, outputPart: 'Cable', amount: 30 })
+      return destination
+    }
+
+    it('matches only the imports of that part from that source', () => {
+      const destination = buildDestination()
+
+      expect(linkedImportsForExport(destination, 1, 'Cable')).toEqual([destination.inputs[0]])
+      // Ids arrive as strings from some call sites; the match must not care.
+      expect(linkedImportsForExport(destination, '1', 'Cable')).toEqual([destination.inputs[0]])
+      expect(linkedImportsForExport(destination, 1, 'IronPlate')).toEqual([])
+    })
+
+    it('matches every row when the same import is split across several', () => {
+      const destination = buildDestination()
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 40 })
+
+      expect(linkedImportsForExport(destination, 1, 'Cable')).toHaveLength(2)
+    })
+
+    it('ignores half-configured imports with no source yet', () => {
+      const destination = newFactory('Phase Three', 0, 2)
+      destination.inputs.push({ factoryId: null, outputPart: 'Cable', amount: 0 })
+
+      expect(linkedImportsForExport(destination, 1, 'Cable')).toEqual([])
+    })
+
+    it('offers to tick the import, and to turn the checklist on when it is off', () => {
+      const destination = buildDestination()
+
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)).toEqual({
+        completed: true,
+        importCount: 1,
+        offerEnableChecklist: true,
+      })
+
+      destination.checklistEnabled = true
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)?.offerEnableChecklist).toBe(false)
+    })
+
+    it('offers nothing when there is no matching import, or it already agrees', () => {
+      const destination = buildDestination()
+
+      expect(linkedImportTickOffer(destination, 1, 'IronPlate', true)).toBeNull()
+      // Unticking an export whose import was never ticked has nothing to clear.
+      expect(linkedImportTickOffer(destination, 1, 'Cable', false)).toBeNull()
+
+      destination.inputs[0].completed = true
+      destination.checklistEnabled = true
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)).toBeNull()
+    })
+
+    it('still offers the checklist when the import already agrees but the checklist is off', () => {
+      const destination = buildDestination()
+      destination.inputs[0].completed = true
+
+      expect(linkedImportTickOffer(destination, 1, 'Cable', true)).toEqual({
+        completed: true,
+        importCount: 0,
+        offerEnableChecklist: true,
+      })
+    })
+
+    it('offers to untick a ticked import, without offering to turn the checklist on', () => {
+      const destination = buildDestination()
+      destination.inputs[0].completed = true
+
+      expect(linkedImportTickOffer(destination, 1, 'Cable', false)).toEqual({
+        completed: false,
+        importCount: 1,
+        offerEnableChecklist: false,
+      })
+    })
+
+    it('stores the tick and its baseline even when the checklist stays off', () => {
+      const destination = buildDestination()
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: false })
+
+      expect(destination.checklistEnabled).toBe(false)
+      expect(destination.inputs[0].completed).toBe(true)
+      expect(destination.inputs[0].checklistSyncedAmount).toBe(120)
+      expect(isInputChecklistDesynced(destination.inputs[0])).toBe(false)
+      // Neighbouring imports are untouched.
+      expect(destination.inputs[1].completed).toBeUndefined()
+      expect(destination.inputs[2].completed).toBeUndefined()
+      // Turning the checklist on later finds it already ticked.
+      setChecklistEnabled(destination, true)
+      expect(countChecklistCompleted(destination)).toBe(1)
+    })
+
+    it('turns the checklist on when asked', () => {
+      const destination = buildDestination()
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: true })
+
+      expect(destination.checklistEnabled).toBe(true)
+      expect(destination.inputs[0].completed).toBe(true)
+    })
+
+    it('turns the checklist on without touching the import when only that is chosen', () => {
+      const destination = buildDestination()
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: false, enableChecklist: true })
+
+      expect(destination.checklistEnabled).toBe(true)
+      expect(destination.inputs[0].completed).toBeUndefined()
+    })
+
+    it('changes nothing and saves nothing when both are declined', () => {
+      const destination = buildDestination()
+      const emit = vi.spyOn(eventBus, 'emit')
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: false, enableChecklist: false })
+
+      expect(destination.inputs[0].completed).toBeUndefined()
+      expect(emit).not.toHaveBeenCalled()
+      emit.mockRestore()
+    })
+
+    it('unticks the import', () => {
+      const destination = buildDestination()
+      destination.inputs[0].completed = true
+
+      applyLinkedImportTick(destination, 1, 'Cable', false, { tickImports: true, enableChecklist: false })
+
+      expect(destination.inputs[0].completed).toBe(false)
+    })
+
+    it('leaves the baseline of an import that already agrees alone', () => {
+      const destination = buildDestination()
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 40, completed: true, checklistSyncedAmount: 30 })
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: false })
+
+      // Re-stamping it would silently acknowledge a desync the player has not looked at.
+      expect(destination.inputs[3].checklistSyncedAmount).toBe(30)
+      expect(destination.inputs[0].checklistSyncedAmount).toBe(120)
     })
   })
 
@@ -183,6 +342,119 @@ describe('checklist', () => {
       expect(isChecklistExportComplete(provider, consumer.id, 'IronPlate')).toBe(true)
     })
   })
+  // The point of keeping the baseline is being able to say WHAT moved, not just that something
+  // did: "Coal export 560 -> 720/min" is actionable, "desynced" is not.
+  describe('desync reasons', () => {
+    it('reports the pair of numbers behind each kind of desync, with the right unit', () => {
+      const factory = newFactory('Provider', 0, 1)
+
+      const product: FactoryItem = { id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true }
+      toggleChecklistProduct(factory, product)
+      expect(productChecklistDesync(product)).toBeNull()
+      product.amount = 150
+      expect(productChecklistDesync(product)).toEqual({ from: 100, to: 150, unit: 'perMin' })
+
+      const input = { factoryId: 99, outputPart: 'IronIngot', amount: 400 }
+      toggleChecklistInput(factory, input)
+      input.amount = 380
+      expect(inputChecklistDesync(input)).toEqual({ from: 400, to: 380, unit: 'perMin' })
+
+      // A generator's baseline is a building count, not a rate. The unit travels with the numbers
+      // so a chip cannot label four generators as 4/min.
+      const producer = mockPowerProducer('generatorcoal', { buildingAmount: 4 })
+      toggleChecklistPowerProducer(factory, producer)
+      producer.buildingAmount = 6
+      expect(powerProducerChecklistDesync(producer)).toEqual({ from: 4, to: 6, unit: 'buildings' })
+
+      toggleChecklistExport(factory, 2, 'Coal', 560)
+      expect(checklistExportDesync(factory, 2, 'Coal', 560)).toBeNull()
+      expect(checklistExportDesync(factory, 2, 'Coal', 720)).toEqual({ from: 560, to: 720, unit: 'perMin' })
+      // Never ticked: no reason to report, whatever the amount does.
+      expect(checklistExportDesync(factory, 3, 'Coal', 720)).toBeNull()
+    })
+
+    it('phrases the change for a chip and the reason for a tooltip', () => {
+      // Both sides carry the unit: "560 → 720/min" reads as though only the second were a rate.
+      expect(checklistDesyncChange({ from: 560, to: 720, unit: 'perMin' })).toBe('560/min → 720/min')
+      expect(checklistDesyncChange({ from: 4, to: 6, unit: 'buildings' })).toBe('4 buildings → 6 buildings')
+      expect(checklistDesyncChange({ from: 2, to: 1, unit: 'buildings' })).toBe('2 buildings → 1 building')
+
+      const reason = checklistDesyncReason({ from: 560, to: 720, unit: 'perMin' })
+      expect(reason).toContain('560/min')
+      expect(reason).toContain('720/min')
+
+      // The inline ticks have no room for a chip, so they carry the same sentence — and their
+      // ordinary label when there is nothing to say.
+      expect(checklistTickTitle(null, 'Mark this product as built')).toBe('Mark this product as built')
+      expect(checklistTickTitle({ from: 560, to: 720, unit: 'perMin' }, 'Mark this product as built')).toBe(reason)
+    })
+
+    it('lists every desynced row in the factory, tagged with what it is and what it points at', () => {
+      const provider = newFactory('Provider', 0, 1)
+      const consumer = newFactory('Consumer', 1, 2)
+
+      provider.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
+      provider.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200 })
+      provider.powerProducers.push(mockPowerProducer('generatorcoal', { buildingAmount: 4 }))
+      updateDependency(consumer, provider, { factoryId: consumer.id, outputPart: 'IronPlate', amount: 60 })
+
+      toggleChecklistProduct(provider, provider.products[0])
+      toggleChecklistInput(provider, provider.inputs[0])
+      toggleChecklistPowerProducer(provider, provider.powerProducers[0])
+      toggleChecklistExport(provider, consumer.id, 'IronPlate', 60)
+
+      expect(listChecklistDesyncs(provider)).toEqual([])
+      expect(countChecklistDesynced(provider)).toBe(0)
+
+      provider.products[0].amount = 120
+      provider.inputs[0].amount = 240
+      provider.powerProducers[0].buildingAmount = 5
+      provider.dependencies.requests[consumer.id][0].amount = 45
+
+      expect(listChecklistDesyncs(provider)).toEqual([
+        { kind: 'product', part: 'IronPlate', desync: { from: 100, to: 120, unit: 'perMin' } },
+        { kind: 'power', building: 'generatorcoal', desync: { from: 4, to: 5, unit: 'buildings' } },
+        { kind: 'import', part: 'IronIngot', factoryId: 99, desync: { from: 200, to: 240, unit: 'perMin' } },
+        { kind: 'export', part: 'IronPlate', factoryId: consumer.id, desync: { from: 60, to: 45, unit: 'perMin' } },
+      ])
+      expect(countChecklistDesynced(provider)).toBe(4)
+    })
+
+    it('acknowledgeChecklistDesyncs re-baselines every moved row and leaves untouched ones alone', () => {
+      const provider = newFactory('Provider', 0, 1)
+      const consumer = newFactory('Consumer', 1, 2)
+
+      provider.products.push(
+        { id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true },
+        { id: 'IronRod', recipe: 'IronRod', amount: 50, displayOrder: 1, requirements: {}, buildingRequirements: { name: 'constructormk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true },
+      )
+      provider.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200 })
+      provider.powerProducers.push(mockPowerProducer('generatorcoal', { buildingAmount: 4 }))
+      updateDependency(consumer, provider, { factoryId: consumer.id, outputPart: 'IronPlate', amount: 60 })
+
+      toggleChecklistProduct(provider, provider.products[0])
+      toggleChecklistInput(provider, provider.inputs[0])
+      toggleChecklistPowerProducer(provider, provider.powerProducers[0])
+      toggleChecklistExport(provider, consumer.id, 'IronPlate', 60)
+
+      provider.products[0].amount = 120
+      provider.inputs[0].amount = 240
+      provider.powerProducers[0].buildingAmount = 5
+      provider.dependencies.requests[consumer.id][0].amount = 45
+
+      acknowledgeChecklistDesyncs(provider)
+
+      expect(hasChecklistDesync(provider)).toBe(false)
+      // Acknowledging is not ticking: the never-ticked product stays unticked and unbaselined, so
+      // it cannot start reading as desynced later off a baseline it never asked for.
+      expect(provider.products[1].completed).toBeFalsy()
+      expect(provider.products[1].checklistSyncedAmount).toBeUndefined()
+      // And the ticks that were already there stay ticked.
+      expect(provider.products[0].completed).toBe(true)
+      expect(isChecklistExportComplete(provider, consumer.id, 'IronPlate')).toBe(true)
+    })
+  })
+
   // Every checklist mutation has to dirty the plan. Nothing else does it for them: the cloud
   // dirty flag and the local persist both hang off `factoryUpdated`, and checklist mode is the
   // one feature where a whole session can be nothing but ticks. Without this a build session
@@ -201,7 +473,7 @@ describe('checklist', () => {
       vi.restoreAllMocks()
     })
 
-    it('every checklist mutation emits factoryUpdated', () => {
+    it('every checklist mutation declares payload and intent', () => {
       const factory = newFactory('Provider', 0, 1)
       factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
       factory.inputs.push({ factoryId: 99, outputPart: 'IronIngot', amount: 200 })
@@ -214,7 +486,44 @@ describe('checklist', () => {
       setChecklistEnabled(factory, true)
       setChecklistPanelHidden(factory, true)
 
-      expect(emitted).toEqual(Array(6).fill('factoryUpdated'))
+      // Payload alone schedules the save; only the intent survives a rebase, and a build
+      // session made of nothing but ticks has no other edit to ride back on.
+      expect(emitted).toEqual(Array(6).fill(['factoryUpdated', 'factoryEdited']).flat())
+    })
+
+    /**
+     * Acknowledging arrived while the intent layer was being built on another branch, so
+     * it emitted payload only. Re-baselining every moved row is a write like any other:
+     * without the intent a rebase carries the plan over without the new baselines, and
+     * every row the player just acknowledged reads as desynced all over again.
+     */
+    it('acknowledging a set of desyncs declares them too', () => {
+      const factory = newFactory('Provider', 0, 1)
+      factory.products.push({ id: 'IronPlate', recipe: 'IronPlate', amount: 100, displayOrder: 0, requirements: {}, buildingRequirements: { name: 'assemblermk1', amount: 1 }, buildingGroups: [], buildingGroupsTrayOpen: false, buildingGroupsHaveProblem: false, buildingGroupItemSync: true })
+
+      toggleChecklistProduct(factory, factory.products[0])
+      factory.products[0].amount = 120
+      emitted = []
+
+      acknowledgeChecklistDesyncs(factory)
+
+      expect(factory.products[0].checklistSyncedAmount).toBe(120)
+      expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
+    })
+
+    it('a linked import tick declares the destination edited', () => {
+      const destination = newFactory('Phase Three', 0, 2)
+      destination.inputs.push({ factoryId: 1, outputPart: 'Cable', amount: 120 })
+      const declared: unknown[] = []
+      vi.spyOn(eventBus, 'emit').mockImplementation(((event: any, payload: any) => {
+        emitted.push(event)
+        declared.push(payload)
+      }) as any)
+
+      applyLinkedImportTick(destination, 1, 'Cable', true, { tickImports: true, enableChecklist: false })
+
+      expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
+      expect(declared).toEqual([destination, destination])
     })
 
     it('unticking dirties the plan too, not only ticking', () => {
@@ -226,7 +535,7 @@ describe('checklist', () => {
       toggleChecklistInput(factory, factory.inputs[0])
 
       expect(factory.inputs[0].completed).toBe(false)
-      expect(emitted).toEqual(['factoryUpdated'])
+      expect(emitted).toEqual(['factoryUpdated', 'factoryEdited'])
     })
   })
 

@@ -36,5 +36,9 @@ export const downloadPlan = (blob: PlanBlob, now = new Date()) => {
   link.href = url
   link.download = fileNameFor(blob.name, now)
   link.click()
-  URL.revokeObjectURL(url)
+  // Revoked on the next tick rather than in this one. The click starts the save,
+  // and a URL revoked before the browser has finished reading the blob behind it
+  // cancels the download it just started. Nothing observes the difference on a
+  // machine with time to spare, which is exactly why it is worth not relying on.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }

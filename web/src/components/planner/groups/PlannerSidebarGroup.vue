@@ -309,7 +309,7 @@
 
   const commitName = () => {
     if (!group.value || draftName.value === group.value.name) return
-    renameGroup(group.value.id, draftName.value)
+    if (!renameGroup(group.value.id, draftName.value)) draftName.value = group.value.name
   }
 
   // Enter has always committed, but it left the caret sitting in the field with nothing to say the

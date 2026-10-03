@@ -1,5 +1,6 @@
 // Calculates what buildings are required to produce the products.
-import { BuildingRequirement, Factory } from '@/interfaces/planner/FactoryInterface'
+import { emptyBuildingRequirement } from 'common'
+import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { getPowerRecipe, getRecipe } from '@/utils/factory-management/common'
 import { formatNumberFully } from '@/utils/numberFormatter'
@@ -25,7 +26,7 @@ export const calculateProductBuildings = (factory: Factory, gameData: DataInterf
       const productInRecipe = recipe.products.filter(p => p.part === product.id)[0]
 
       if (!productInRecipe) {
-        product.buildingRequirements = {} as BuildingRequirement
+        product.buildingRequirements = { ...emptyBuildingRequirement }
         return
       }
 
@@ -79,7 +80,7 @@ export const calculateProductBuildings = (factory: Factory, gameData: DataInterf
       facBuilding.amount += Math.ceil(buildingCount)
       facBuilding.powerConsumed = Number(powerConsumed.toFixed(3)) // Fucky wuky floating point numbers
     } else {
-      product.buildingRequirements = {} as BuildingRequirement
+      product.buildingRequirements = { ...emptyBuildingRequirement }
     }
   })
 }

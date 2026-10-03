@@ -1,5 +1,5 @@
+import { emptyBuildingRequirement } from 'common'
 import {
-  BuildingRequirement,
   ByProductItem,
   Factory,
   FactoryItem,
@@ -61,7 +61,9 @@ export const addProductToFactory = (
     recipe: options.recipe ?? '',
     displayOrder: options.displayOrder ?? factory.products.length,
     requirements: options.requirements ?? {},
-    buildingRequirements: {} as BuildingRequirement,
+    // Zeroed rather than `{}`: a blank row is stored content and goes over the wire
+    // like any other, and the schema on the far side wants both fields.
+    buildingRequirements: { ...emptyBuildingRequirement },
     byProducts: [],
     buildingGroups: [],
     buildingGroupsTrayOpen: false,

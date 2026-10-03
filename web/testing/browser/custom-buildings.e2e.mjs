@@ -37,6 +37,7 @@ await page.evaluateOnNewDocument(() => {
   localStorage.setItem('dismissed-introduction', 'true')
   localStorage.setItem('seenV51Splash', 'true')
   localStorage.setItem('seenV6Splash', 'true')
+  localStorage.setItem('seenV7Splash', 'true')
   localStorage.setItem('buildingGroupTutorialOpened', 'true')
 })
 await page.goto(`${BASE}/?setupDemo=true`, { waitUntil: 'networkidle2' })

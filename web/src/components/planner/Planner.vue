@@ -2,23 +2,23 @@
   <introduction source="planner" />
   <world-import :show-import-world-popup @close-world-import="closeWorldImport" />
   <world-data v-if="showWorldData" />
-  <planner-too-many-factories-open :factories="getFactories()" @hide-all="showHideAll('hide')" />
 
   <building-group-tutorial />
   <awesome-sink-tutorial />
   <dimensional-depot-tutorial />
   <checklist-tutorial />
+  <linked-import-tick-dialog />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
-    <!-- Navigation Drawer for Mobile -->
-    <Teleport v-if="navigationReady" defer to="#navigationDrawer">
+    <!-- Navigation Drawer for Mobile. Only ever one copy of the sidebar is mounted: the drawer
+         cannot open at desktop widths, and the docked one is not shown below them, so the copy
+         that is not on screen was a second render of every factory row for nothing. -->
+    <Teleport v-if="navigationReady && !lgAndUp" defer to="#navigationDrawer">
       <planner-sidebar-content
         :factories="getFactories()"
         loaded-from="navigation"
         @clear-all="clearAll"
         @create-factory="createFactory"
-        @hide-all="showHideAll('hide')"
         @import-world="importWorld"
-        @show-all="showHideAll('show')"
         @update-factories="updateFactoriesList"
       />
     </Teleport>
@@ -27,7 +27,8 @@
     <v-row class="ma-0">
       <!-- Sticky Sidebar for Desktop -->
       <v-col
-        class="d-none d-lg-flex sticky-sidebar"
+        v-if="lgAndUp"
+        class="d-flex sticky-sidebar"
         :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar, nudge: sidebarNudge }"
         :style="{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }"
         @animationend.self="onNudgeEnd"
@@ -39,9 +40,7 @@
             loaded-from="planner"
             @clear-all="clearAll"
             @create-factory="createFactory"
-            @hide-all="showHideAll('hide')"
             @import-world="importWorld"
-            @show-all="showHideAll('show')"
             @update-factories="updateFactoriesList"
           />
         </v-container>
@@ -53,65 +52,88 @@
         />
       </v-col>
       <!-- Main Content Area -->
+      <!-- Between a load clearing the page and the plan going back on, an outline of a factory. -->
       <v-col v-if="!planVisible" class="border-s-lg-lg pa-3 main-content">
-        <planner-factory-placeholder-list />
+        <planner-factory-skeleton :factory="null" />
       </v-col>
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
-        <statistics v-if="getFactories().length !== 0" :factories="getFactories()" />
-        <!-- The bottom gap rides on whichever section is last, so the run of top-level sections
-             is evenly spaced however many of them are showing. -->
-        <statistics-factory-summary
-          v-if="getFactories().length !== 0"
-          :class="{ 'mb-4': !usesDimensionalDepot }"
-          :factories="getFactories()"
-        />
-        <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
-             permanent advert for a feature the satisfaction table already offers in place. -->
-        <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" />
-        <template v-for="section in groupSections" :key="section.group?.id ?? 'ungrouped'">
-          <!-- A plan that has never used groups is one Ungrouped section, and a band over the
-               whole plan says nothing — so it only appears once there is something to divide. -->
-          <planner-group-band
-            v-if="groupSections.length > 1"
-            :collapsed="sectionCollapsed(section)"
-            :count="section.factories.length"
-            :factories="section.factories"
-            :group="section.group"
-            @toggle="toggleSection(section)"
-          />
-          <!-- Hidden rather than removed once the group has been open: rebuilding forty cards on
-               every collapse is what made the toggle take seconds. A group already shut when the
-               plan loads never mounts them at all.
-
-               The wrapper is load-bearing: PlannerFactory renders a row AND the divider that
-               follows it, and v-show on a two-root component is silently dropped, so collapsing
-               hid nothing at all. -->
-          <template v-if="sectionMounted(section)">
-            <!-- The tree the sidebar draws, brought over to the cards: without it a group's
-                 members are only distinguishable by the band above them and the group chip on each
-                 header, which is not enough to see where a group starts and stops while scrolling.
-                 Ungrouped is deliberately left flat — indenting everything distinguishes nothing. -->
-            <div
-              v-for="(factory, index) in section.factories"
-              v-show="!sectionCollapsed(section)"
-              :key="factory.id"
-              :class="section.group ? ['group-tree-item', { first: index === 0, last: index === section.factories.length - 1 }] : undefined"
-              :style="section.group ? groupColorVars(section.group.color) : undefined"
-            >
-              <planner-factory
-                :factory="factory"
-                :total-factories="getFactories().length"
-              />
+        <!-- One page at a time: a single factory, or the overview when none is open. Mounting
+             every card at once is what made a big plan lag and crash the tab; the sidebar and the
+             pagers either side of the card are how the rest of the plan is reached. -->
+        <!-- Switching page drops a curtain over the pane at once, showing the outline of a factory
+             while the new page is built behind it, then fades the curtain away. The curtain is only
+             as big as the visible pane, so it costs the same whatever the page holds (see
+             swapPage). Sticky, so it covers the pane wherever it is scrolled. -->
+        <div class="page-curtain-anchor">
+          <div class="page-curtain" :class="{ 'page-curtain-shown': curtainShown }">
+            <!-- Laid out like the page it stands in for: the real pager, which costs next to
+                 nothing, then a ghost of the card, so nothing moves when the page replaces it. -->
+            <div v-if="skeletonOn" class="pa-3">
+              <template v-if="currentFactory">
+                <planner-factory-pager
+                  direction="previous"
+                  :from="currentFactory"
+                  :target="neighboursOf(factoryOrder, currentFactory.id).previous"
+                />
+              </template>
+              <planner-factory-skeleton :factory="currentFactory" />
             </div>
+          </div>
+        </div>
+        <div class="planner-page">
+          <template v-if="shownFactory">
+            <planner-factory-pager
+              v-if="neighbours"
+              direction="previous"
+              :from="shownFactory"
+              :target="neighbours.previous"
+              @go="goToNeighbour"
+            />
+            <planner-factory
+              :key="shownFactory.id"
+              :factory="shownFactory"
+              :reveal-rest="revealRest"
+              :total-factories="getFactories().length"
+              @rendered="onFactoryRendered"
+            />
+            <planner-factory-pager
+              v-if="neighbours?.next"
+              direction="next"
+              :from="shownFactory"
+              :target="neighbours.next"
+              @go="goToNeighbour"
+            />
           </template>
-        </template>
-        <div class="mt-4 text-center">
-          <v-btn
-            color="primary"
-            prepend-icon="fas fa-plus"
-            size="large"
-            @click="createFactory()"
-          >Add Factory</v-btn>
+          <template v-else-if="shownView === OVERVIEW">
+            <statistics v-if="getFactories().length !== 0" :factories="getFactories()" />
+            <!-- The bottom gap rides on whichever section is last, so the run of top-level sections
+                 is evenly spaced however many of them are showing. -->
+            <statistics-factory-summary
+              v-if="getFactories().length !== 0"
+              :class="{ 'mb-4': !usesDimensionalDepot }"
+              :factories="getFactories()"
+            />
+            <!-- Only once the plan actually uses the Depot. An empty section on every plan would be a
+                 permanent advert for a feature the satisfaction table already offers in place. -->
+            <dimensional-depot v-if="usesDimensionalDepot" class="mb-4" :factories="getFactories()" />
+            <planner-factory-pager
+              v-if="factoryOrder.length"
+              direction="next"
+              :from="null"
+              :target="factoryOrder[0]"
+              @go="goToNeighbour"
+            />
+          </template>
+          <!-- Inside the page, so it fades with it rather than jumping up while the pane is empty. -->
+          <div class="mt-4 text-center">
+            <v-btn
+              color="primary"
+              data-testid="add-factory"
+              prepend-icon="fas fa-plus"
+              size="large"
+              @click="createFactory()"
+            >Add Factory</v-btn>
+          </div>
         </div>
       </v-col>
     </v-row>
@@ -119,8 +141,9 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
+  import { computed, nextTick, onMounted, onUnmounted, provide, reactive, ref, toRaw, watch } from 'vue'
   import { useDisplay } from 'vuetify'
+  import { useRouter } from 'vue-router'
 
   import {
     Factory,
@@ -144,16 +167,29 @@
   import { usePlannerOptions } from '@/composables/usePlannerOptions'
   import { useFactoryDrag } from '@/composables/useFactoryDrag'
   import { useGroupCollapse } from '@/composables/useGroupCollapse'
-  import { FactoryGroupSection } from '@/utils/factory-management/factory-groups'
+  import { useJumpHistory } from '@/composables/useJumpHistory'
+  import { useFactoryView } from '@/composables/useFactoryView'
+  import {
+    neighboursOf,
+    OVERVIEW,
+    parseView,
+    serialiseView,
+    sidebarOrder,
+    viewAfterRemoving,
+  } from '@/utils/factory-management/planner-view'
   import eventBus from '@/utils/eventBus'
+  import { dismissBootLoader } from '@/utils/bootLoader'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
+  import { captureOrder, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
   import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
   import ChecklistTutorial from '@/components/planner/ChecklistTutorial.vue'
-  import PlannerGroupBand from '@/components/planner/groups/PlannerGroupBand.vue'
+  import LinkedImportTickDialog from '@/components/planner/LinkedImportTickDialog.vue'
+  import PlannerFactoryPager from '@/components/planner/PlannerFactoryPager.vue'
   import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
-  import { groupColorVars } from '@/utils/colors'
   import { flashElement } from '@/utils/navigation-highlight'
+  import { canAddFactory } from '@/utils/plan-size'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -162,22 +198,141 @@
 
   const { sections: groupSections, moveFactoryToGroup } = useFactoryGroups()
   const plannerOptions = usePlannerOptions()
-  const { isCollapsed, isMounted, setCollapsed, toggleCollapsed, usePlan } = useGroupCollapse()
+  const { setCollapsed, usePlan } = useGroupCollapse()
+  const { view, setView, usePlan: useViewPlan } = useFactoryView()
 
-  // Which plan's collapse state is in play. Group ids survive a copied plan, and Ungrouped has no
-  // id at all, so without this two tabs would drive each other's sections.
+  // Which plan's collapse state and open factory are in play. Group ids survive a copied plan, and
+  // factory ids are only unique within one, so without this two tabs would drive each other.
   const appStore = useAppStore()
   watch(
     () => appStore.getCurrentTab()?.id,
     id => {
-      if (id) usePlan(id)
+      if (!id) return
+      usePlan(id)
+      useViewPlan(id)
     },
     { immediate: true },
   )
 
-  const sectionCollapsed = (section: FactoryGroupSection) => isCollapsed(section.group?.id ?? null)
-  const sectionMounted = (section: FactoryGroupSection) => isMounted(section.group?.id ?? null)
-  const toggleSection = (section: FactoryGroupSection) => toggleCollapsed(section.group?.id ?? null)
+  // ==== THE PAGE ON SCREEN
+  // The pane shows one factory or the overview, never the whole plan. Next and previous walk the
+  // plan in the order the sidebar lists it.
+  const factoryOrder = computed(() => sidebarOrder(groupSections.value))
+
+  // Null means the overview. A remembered factory that has gone — deleted on another device, or a
+  // plan replaced by an import — falls back to it rather than leaving the pane empty.
+  const currentFactory = computed<Factory | null>(() => {
+    const open = view.value
+    if (open === OVERVIEW) return null
+    return factoryOrder.value.find(factory => factory.id === open) ?? null
+  })
+
+  // The page actually rendered, which trails the one asked for by a fade: the old page stays
+  // until it has faded out, and the new one goes in while the pane is invisible.
+  const shownView = ref<typeof OVERVIEW | number>(currentFactory.value?.id ?? OVERVIEW)
+
+  // A factory deleted while on screen renders nothing for the fade out, rather than a card for a
+  // factory the engine no longer holds.
+  const shownFactory = computed<Factory | null>(() => {
+    const shown = shownView.value
+    if (shown === OVERVIEW) return null
+    return factoryOrder.value.find(factory => factory.id === shown) ?? null
+  })
+
+  const neighbours = computed(() =>
+    shownFactory.value ? neighboursOf(factoryOrder.value, shownFactory.value.id) : null
+  )
+
+  // Work that has to wait for the page being switched to: positioning it on the row a jump is
+  // aiming at. Run once the page has rendered and before it fades in, so it arrives already in
+  // place rather than scrolling there in front of the user.
+  let pendingArrival: (() => void) | null = null
+
+  // Matches the opacity transition on .page-curtain.
+  const PAGE_FADE_MS = 150
+  // The longest a new page waits for the browser to go quiet before fading in anyway.
+  const PAGE_SETTLE_MS = 150
+  // The longest a jump waits for the whole factory to render before positioning on what is there.
+  const PAGE_RENDER_LIMIT_MS = 2000
+
+  // The curtain over the pane, which hides it while the page underneath is swapped.
+  const curtainShown = ref(false)
+  let swapToken = 0
+
+  const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+  const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  // A freshly mounted factory keeps the main thread busy for a while after it is in the DOM
+  // (images, observers, layout); fading in on top of that is what stutters.
+  const settled = () => new Promise<void>(resolve => {
+    if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: PAGE_SETTLE_MS })
+    else setTimeout(resolve, 50)
+  })
+
+  // Whether the factory on screen may mount the sections below Products. Held back while it fades
+  // in, so the long task of mounting them does not land inside the fade.
+  const revealRest = ref(true)
+  // The skeleton outlives the curtain by its fade out, so it does not vanish mid-fade.
+  const skeletonOn = ref(false)
+  let resolveRendered: (() => void) | null = null
+  const onFactoryRendered = () => {
+    resolveRendered?.()
+    resolveRendered = null
+  }
+
+  // Drop the curtain over the old page, swap the content behind it, let the new page render,
+  // position it, then fade the curtain away. A plain switch lifts it once the top of the factory is
+  // ready and mounts the rest afterwards, below the fold; a jump aiming at a row waits for the whole card,
+  // since the row may be anywhere in it. Each stage checks it is still the latest switch, so
+  // clicking through several factories quickly lands on the last one without replaying the rest.
+  const swapPage = async () => {
+    const token = ++swapToken
+    // At once rather than faded in: the skeleton is what says the click landed.
+    curtainShown.value = true
+    skeletonOn.value = true
+    // Two frames, so the skeleton (and the clicked row's flash) is painted before the mount that
+    // follows holds the main thread.
+    await nextFrame()
+    await nextFrame()
+    if (token !== swapToken) return
+    document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'auto' })
+    const target = currentFactory.value?.id ?? OVERVIEW
+    // A page already on screen keeps what it has rendered, so only a fresh one is waited on.
+    const needsWholeCard = pendingArrival !== null && target !== OVERVIEW && target !== shownView.value
+    const rendered = needsWholeCard
+      ? new Promise<void>(resolve => { resolveRendered = resolve })
+      : null
+    revealRest.value = target === OVERVIEW
+    shownView.value = target
+    await nextTick()
+    // Still staged when the whole card is needed, just without waiting for the fade: a stage per
+    // frame keeps the page responsive, where mounting it all at once would freeze it.
+    if (rendered) {
+      revealRest.value = true
+      await Promise.race([rendered, wait(PAGE_RENDER_LIMIT_MS)])
+    }
+    await nextFrame()
+    await settled()
+    if (token !== swapToken) return
+    const arrive = pendingArrival
+    pendingArrival = null
+    arrive?.()
+    await nextFrame()
+    if (token !== swapToken) return
+    curtainShown.value = false
+    await wait(PAGE_FADE_MS)
+    if (token !== swapToken) return
+    skeletonOn.value = false
+    revealRest.value = true
+  }
+
+  watch(() => currentFactory.value?.id ?? OVERVIEW, target => {
+    if (target !== shownView.value || curtainShown.value) void swapPage()
+  })
+
+  const goToNeighbour = (target: Factory | typeof OVERVIEW) => {
+    if (target === OVERVIEW) navigateToSection('statistics')
+    else navigateToFactory(target.id)
+  }
 
   const worldRawResources = reactive<{ [key: string]: WorldRawResource }>({})
 
@@ -339,9 +494,9 @@
 
   // ### EVENT BUS LISTENERS ###
   // When we are starting a new load we need to unload all the DOM elements
-  eventBus.on('plannerShow', (show: boolean) => {
+  useEventBusListener('plannerShow', (show: boolean) => {
     if (!show) {
-      console.log('Planner: Received plannerShow(false) event, marked as unloaded, showing placeholders')
+      console.log('Planner: Received plannerShow(false) event, clearing the page')
       hidePlan()
     } else {
       console.log('Planner: Received plannerShow(true) event, showing content')
@@ -350,21 +505,26 @@
   })
 
   // When everything is loaded and ready to go, then we are ready to start loading things.
-  eventBus.on('loadingCompleted', () => {
+  useEventBusListener('loadingCompleted', () => {
     console.log('Planner: Received loadingCompleted event, booting planner')
     showPlan()
   })
 
-  eventBus.on('worldDataShow', (value: boolean) => {
+  // The planner asks for its plan; the loading overlay used to, off its CSS transition.
+  // Mounting is the honest ask, since nothing here is on screen until a chain reports
+  // back — and a transition fires on a schedule the store cannot reason about.
+  onMounted(() => eventBus.emit('readyForData'))
+
+  useEventBusListener('worldDataShow', (value: boolean) => {
     showWorldData.value = value
   })
 
-  eventBus.on('navigationReady', () => {
+  useEventBusListener('navigationReady', () => {
     console.log('Planner: Received navigationReady event, teleporting factory list')
     navigationReady.value = true
   })
 
-  eventBus.on('toggleSidebar', () => {
+  useEventBusListener('toggleSidebar', () => {
     showSidebar.value = !showSidebar.value
     sidebarPeek.value = false
     console.log('Planner: Received toggleSidebar event, toggling sidebar visibility', showSidebar.value)
@@ -414,22 +574,22 @@
   }
 
   const updateActiveFactory = () => {
+    // A factory page is one card, so the sidebar marks that factory however far it is scrolled.
+    if (currentFactory.value) {
+      activeFactoryId.value = currentFactory.value.id
+      return
+    }
+
+    // The overview's sections, in document order — so once an entry starts below the line, no
+    // later one can span it.
     const activationLine = getActivationLine()
-    // Sections then factories, matching document order — so once an entry starts
-    // below the line, no later one can span it.
-    // Group bands are in the list too: a collapsed group contributes no cards, so without its
-    // band there is a stretch of the page nothing claims and the highlight sticks behind.
-    const entries: (number | string)[] = [
+    const entries: string[] = [
       'statistics',
       'factory-summary',
       ...(usesDimensionalDepot.value ? ['dimensional-depot'] : []),
-      ...groupSections.value.flatMap(section => [
-        `group-${section.group?.id ?? 'ungrouped'}`,
-        ...(sectionCollapsed(section) ? [] : section.factories.map(factory => factory.id)),
-      ]),
     ]
     for (const entry of entries) {
-      const rect = document.getElementById(`${entry}`)?.getBoundingClientRect()
+      const rect = document.getElementById(entry)?.getBoundingClientRect()
       if (!rect) continue
       if (rect.top > activationLine) break
       if (rect.bottom > activationLine) {
@@ -437,9 +597,12 @@
         return
       }
     }
-    // Nothing spans the line — it's sitting in the gap/divider between cards.
+    // Nothing spans the line — it's sitting in the gap/divider between sections.
     // Stay sticky on the previous entry rather than dropping the highlight.
   }
+
+  // The highlight follows the page as soon as it changes, rather than waiting for a scroll.
+  watch(currentFactory, () => updateActiveFactory(), { flush: 'post' })
 
   // Keeps the sidebar's own scroll position following the scroll-spy indicator: as the
   // highlighted row changes, bring it back into the sidebar's view. `block: 'nearest'`
@@ -448,6 +611,34 @@
   // motion at all, so this doesn't fight the user's own scrolling of the sidebar.
   // `flush: 'post'` so the row's `.active-view` class has already been painted by the
   // time this queries for it.
+  // Back and forward return to where a jump was made from. Anchored on the scroll-spy's entry,
+  // refreshed first because the last scroll event's scan may still be waiting on its frame.
+  const router = useRouter()
+  const jumpHistory = useJumpHistory({
+    container: () => document.querySelector<HTMLElement>('.main-content'),
+    anchorId: () => {
+      updateActiveFactory()
+      return activeFactoryId.value === null ? null : String(activeFactoryId.value)
+    },
+    // Through the router, forced because the location is unchanged, so its record of where the
+    // user is in history stays true for the next real page change.
+    push: state => {
+      const { path, query, hash } = router.currentRoute.value
+      return router.push({ path, query, hash, state, force: true })
+    },
+    // Back and forward cross pages as well as scroll positions, so each place carries the page it
+    // was on and returning to it opens that page first.
+    view: () => serialiseView(currentFactory.value?.id ?? OVERVIEW),
+    showView: (stored, onShown) => {
+      const target = parseView(stored)
+      if (target === null) return
+      pendingArrival = onShown
+      setView(target)
+    },
+  })
+  onMounted(jumpHistory.start)
+  onUnmounted(jumpHistory.stop)
+
   watch(activeFactoryId, () => {
     document.querySelectorAll('.sidebar-content .factory-card.active-view, #navigationDrawer .factory-card.active-view')
       .forEach(el => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
@@ -456,6 +647,8 @@
   const showPlan = () => {
     resyncWorldResources()
     planVisible.value = true
+    // After the flush that mounts the plan, so the screen and the plan swap in one paint.
+    nextTick(dismissBootLoader)
 
     // Restore the indicator once the cards have had a beat to render.
     setTimeout(updateActiveFactory, 300)
@@ -464,7 +657,9 @@
     const pendingNav = sessionStorage.getItem('navigateToFactory')
     if (pendingNav) {
       sessionStorage.removeItem('navigateToFactory')
-      setTimeout(() => navigateToFactory(pendingNav), 250)
+      // Not a jump point: back from here should return to the page the jump was asked from, not
+      // to the top of a plan the user never saw.
+      setTimeout(() => goToFactory(pendingNav, undefined, undefined, false), 250)
     }
   }
 
@@ -477,13 +672,25 @@
   const createFactory = (groupId: string | null = null) => {
     const factory = newFactory()
     factory.displayOrder = getFactories().length
-    addFactory(factory)
+    if (!addFactory(factory)) return
     // Grouped after the fact rather than born into it: addFactory cannot see where the click came
     // from, and seats every new factory at the end of the Ungrouped block. The move re-seats it at
     // the end of its group and re-sorts the plan, so the card lands where the sidebar row is.
     if (groupId) moveFactoryToGroup(factory.id, groupId)
     // Reads the factory's group, so it opens the right one — hence after the move, not before.
     navigateToFactory(factory.id)
+    focusFactoryName(factory.id)
+  }
+
+  // A fresh card starts with the cursor in its name, ready to type over. Focus is
+  // also the one client-local marker of "my card" while a collaborator's identical
+  // default-named factory can arrive at any moment.
+  const focusFactoryName = (factoryId: number) => {
+    const focus = () =>
+      document.getElementById(String(factoryId))?.querySelector<HTMLInputElement>('input.factory-name')?.focus()
+    if (typeof requestAnimationFrame === 'undefined') focus()
+    // The card mounts on the next render; the second frame covers slower mounts.
+    else requestAnimationFrame(() => requestAnimationFrame(focus))
   }
 
   // This function calculates the world resources available after each group has consumed Raw Resources.
@@ -558,11 +765,13 @@
 
   // Proxy method so we don't have to pass the gameData and getFactories() around to every single subcomponent
   const updateFactory = (factory: Factory, modes: CalculationModes = {}) => {
-    calculateFactory(factory, getFactories(), gameData, modes)
+    calculateFactory(factory, getFactories(), gameData, { ...modes, intent: 'userEdit' })
   }
 
   const copyFactory = (originalFactory: Factory) => {
+    if (!canAddFactory(getFactories().length)) return
     // Make a deep copy of the factory with a new ID, unique against the rest of the plan.
+    const before = captureOrder(getFactories())
     const newId = generateFactoryId(getFactories())
     const newFactory: Factory = {
       ...structuredClone(toRaw(originalFactory)),
@@ -596,6 +805,10 @@
     // Now call calculateFactories in case the clone's imports cause a deficit
     calculateFactories(getFactories(), gameData)
 
+    // The clone itself is structural, so the engine infers it. Everything the reindex above
+    // pushed down is not, and would be taken back off the server without this.
+    markReorderedFactories(before, getFactories())
+
     navigateToFactory(newId)
   }
 
@@ -604,9 +817,15 @@
     const index = getFactories().findIndex(fac => fac.id === factory.id)
 
     if (index !== -1) {
+      const before = captureOrder(getFactories())
+      // Worked out before the factory leaves the order it is measured against.
+      const nextView = viewAfterRemoving(factoryOrder.value, factory.id)
       removeFactoryDependants(factory, getFactories())
 
       getFactories().splice(index, 1) // Remove the factory at the found index
+      // Declared, not just inferred: deletes coalescing into one op behind a slow ack
+      // must still pass the server's bulk-removal threshold.
+      markFactoryRemoved(factory)
       updateWorldRawResources(gameData) // Recalculate the world resources
 
       // After deleting the factory, loop through all factories and update them as inputs / exports have likely changed.
@@ -614,6 +833,10 @@
 
       // Regenerate the sort orders
       regenerateSortOrders(getFactories())
+      // The removal is structural; the records the reindex shifted up are not.
+      markReorderedFactories(before, getFactories())
+
+      if (view.value === factory.id) setView(nextView)
     } else {
       console.error('Factory not found to delete?!')
     }
@@ -633,27 +856,35 @@
     updateWorldRawResources(gameData)
   }
 
-  const showHideAll = (mode: 'show' | 'hide') => {
-    getFactories().forEach(factory => factory.hidden = mode === 'hide')
-  }
-
   // `subsection` may name a row that isn't on screen (a status chip jumping to the product that
   // owns the problem), so callers pass the section as a fallback rather than the jump silently
   // doing nothing. Several rows can be named at once — a chip reading "3 shortages" is about
   // three of them — in which case the jump lands on the topmost and lights all three.
-  const navigateToFactory = (factoryId: number | string, subsection?: string | string[], fallback?: string) => {
+  const navigateToFactory = (factoryId: number | string, subsection?: string | string[], fallback?: string) =>
+    goToFactory(factoryId, subsection, fallback, true)
+
+  // `jumpPoint` leaves the place being left in the browser's history, so back returns to it.
+  const goToFactory = (
+    factoryId: number | string,
+    subsection: string | string[] | undefined,
+    fallback: string | undefined,
+    jumpPoint: boolean
+  ) => {
     const facId = Number.parseInt(factoryId.toString(), 10)
     const factory = findFac(facId, getFactories())
     if (!factory) {
       console.error(`navigateToFactory: Factory ${factoryId} not found!`)
       return
     }
-    // Unhide the factory which makes more sense than the user being scrolled to it than having to open it.
-    factory.hidden = false
+    // Before the page switch and group reveal below, which change the content the place is
+    // measured in. The row named first is what forward will light up again; the card when none is
+    // named.
+    if (jumpPoint) jumpHistory.record([subsection ?? []].flat()[0] ?? `${factoryId}`)
 
-    // Same reasoning one step out: a card inside a collapsed group is hidden and has nothing to
-    // scroll to, so every jump into one — a status chip, a pending session navigation, a link from
-    // another page — would silently do nothing. Open the group first.
+    const switching = currentFactory.value?.id !== facId
+    setView(facId)
+
+    // Open the factory's group in the sidebar, so the row the pane now shows is visible there.
     setCollapsed(factory.group?.id ?? null, false)
 
     const requested = Array.isArray(subsection) ? subsection : subsection ? [subsection] : []
@@ -663,11 +894,29 @@
     // taken to the factory beats being taken nowhere.
     const fallbacks = fallback ? [fallback, `${factoryId}`] : [`${factoryId}`]
 
-    // Wait a bit for the factory to unhide fully. Hack but works well.
-    setTimeout(() => scrollToElement(
-      requested.length ? requested : [`${factoryId}`],
-      fallbacks
-    ), 50)
+    if (switching) {
+      // A different factory fades in at the top, or already sitting on the row the jump names.
+      // Nothing to scroll to otherwise: the new page is what says the jump happened.
+      pendingArrival = requested.length ? () => scrollToElement(requested, fallbacks, 0, [], true) : null
+      return
+    }
+
+    pendingArrival = null
+    // The factory already open: scroll within it, as any jump inside the page does.
+    void nextTick(() => setTimeout(() => {
+      if (requested.length) scrollToElement(requested, fallbacks)
+      else showFactoryTop(facId)
+    }, 50))
+  }
+
+  // A jump to the factory already open takes it back to the top, where the way back to the
+  // previous one is, and pulses the card so the eye finds it.
+  const showFactoryTop = (factoryId: number) => {
+    document.querySelector<HTMLElement>('.main-content')?.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => {
+      const card = document.getElementById(String(factoryId))
+      if (card) flashElement(card)
+    }, 350)
   }
 
   // Scrolls to the target, then corrects for layout shifts: factory cards materialize as they
@@ -682,11 +931,13 @@
   //
   // `flashed` carries the ids already pulsed down those passes, so a row that turns up late gets
   // its flash without re-flashing what the user is already looking at.
+  // `instant` is for a page that has just been switched to: it is placed rather than scrolled.
   const scrollToElement = (
     candidates: string | string[],
     fallbacks: string | string[] = [],
     attempt = 0,
-    flashed: string[] = []
+    flashed: string[] = [],
+    instant = false,
   ) => {
     const targets = Array.isArray(candidates) ? candidates : [candidates]
     const standIns = Array.isArray(fallbacks) ? fallbacks : [fallbacks]
@@ -700,7 +951,7 @@
 
     // Corrections snap instantly - re-running the smooth animation would chase a moving target.
     document.getElementById(anchorId)!.scrollIntoView({
-      behavior: attempt === 0 ? 'smooth' : 'auto',
+      behavior: attempt === 0 && !instant ? 'smooth' : 'auto',
       block: 'start',
     })
 
@@ -712,7 +963,7 @@
     // Give the smooth scroll a beat to land first. Pulsing the moment it sets off means the flash
     // is half over by the time the target is on screen — the correction passes below arrive
     // mid-pulse, which is exactly when the user is looking at it.
-    if (attempt === 0) setTimeout(flashAll, 350)
+    if (attempt === 0 && !instant) setTimeout(flashAll, 350)
     else flashAll()
 
     if (attempt >= 4) return
@@ -730,13 +981,16 @@
       // showing only some of the rows the jump is about, and settling for either would leave the
       // rest unlit.
       if (scrolledShort || present.length < targets.length) {
-        scrollToElement(targets, standIns, attempt + 1, [...flashed, ...pending])
+        scrollToElement(targets, standIns, attempt + 1, [...flashed, ...pending], instant)
       }
     }, 600)
   }
 
   const moveFactory = (factory: Factory, direction: string) => {
+    // The reindex runs over the whole plan; mark exactly the records whose order moved.
+    const before = captureOrder(getFactories())
     reorderFactory(factory, direction, getFactories())
+    markReorderedFactories(before, getFactories())
   }
 
   // Scroll to a non-factory section (Statistics, Factories Summary, Dimensional Depot) by its id.
@@ -746,6 +1000,23 @@
   // Right after page load the section components may not be mounted yet, so a single
   // emit can vanish into the void — keep re-emitting until the element exists (bounded).
   const navigateToSection = (sectionId: string, attempt = 0) => {
+    if (attempt === 0) {
+      jumpHistory.record(sectionId)
+      // Every section lives on the overview, which is not on screen while a factory is. Coming
+      // from a factory, the overview fades in already on the section rather than scrolling to it.
+      if (currentFactory.value) {
+        pendingArrival = () => {
+          eventBus.emit('openSection', sectionId)
+          // A section still revealing itself is not there yet; the usual polling finds it.
+          void nextTick(() => document.getElementById(sectionId)
+            ? scrollToElement(sectionId, [], 0, [], true)
+            : navigateToSection(sectionId, 1))
+        }
+        setView(OVERVIEW)
+        return
+      }
+      pendingArrival = null
+    }
     eventBus.emit('openSection', sectionId)
     if (!document.getElementById(sectionId)) {
       if (attempt < 20) {
@@ -757,11 +1028,11 @@
   }
 
   // A dialog cannot call navigateToSection itself, so it asks for the jump by id.
-  eventBus.on('jumpToSection', sectionId => navigateToSection(sectionId))
+  useEventBusListener('jumpToSection', sectionId => navigateToSection(sectionId))
 
   // Same for the tab bar's search: it sits above the planner in the layout, so it cannot inject
   // navigateToFactory and asks over the bus instead.
-  eventBus.on('jumpToFactory', ({ factoryId, targets, fallback }) =>
+  useEventBusListener('jumpToFactory', ({ factoryId, targets, fallback }) =>
     navigateToFactory(factoryId, targets, fallback))
 
   const forceSort = () => {
@@ -797,80 +1068,34 @@ $header-height: 65px;
 $tab-bar-height: 52px;
 $chrome-height: $header-height + $tab-bar-height; // 117px
 
-// The group tree over the cards. Same shape and the same geometry names as the sidebar's, so the
-// two read as one idea seen at two sizes — see PlannerSidebarGroup.
-$tree-indent: 20px;
-$tree-line: 3px;
-// Where the elbow meets the card. The sidebar aims at the middle of a row; a factory card is
-// hundreds or thousands of pixels tall, so a midpoint elbow would point at nothing. This aims at
-// the card's title line, measured in the browser at a constant 56px from the top of the wrapper
-// whatever the card holds. The min() is for a collapsed card shorter than that, so the elbow and
-// the corner stay inside it rather than hanging off the bottom.
-$tree-elbow-top: 56px;
-// The breathing room between a band and its first card. Carried as that card's padding rather
-// than the band's margin, so it falls inside the trunk and the line arrives unbroken.
-$band-gap: 8px;
+// A zero-height sticky anchor at the top of the scrolling pane, so the curtain hangs over whatever
+// part of the page is in view. Negative insets cover the pane's own pa-3 padding too.
+.page-curtain-anchor {
+  position: sticky;
+  top: 0;
+  height: 0;
+  z-index: 5;
+}
 
-.group-tree-item {
-  position: relative;
-  padding-left: $tree-indent;
-  // Contains the card's own margins — the divider that ends each one carries my-6, whose bottom
-  // margin otherwise escapes the wrapper and leaves a 12px hole in the trunk between cards. Same
-  // reason the sidebar's .tree-item does it.
-  display: flow-root;
+// Shown at once and faded away over PAGE_FADE_MS. Pointer events only while shown, so a click
+// mid-switch lands on nothing rather than on the page being swapped out.
+.page-curtain {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  height: calc(100vh - #{$chrome-height});
+  overflow: hidden;
+  background: rgb(var(--v-theme-background));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    background-color: var(--sf-group, #6c6c6c);
-  }
-
-  // Trunk, one segment per card, meeting the segment above and below so the group reads as one
-  // line down its edge. The last card stops it at its own elbow, which draws the corner.
-  &::before {
-    top: 0;
-    bottom: 0;
-    width: $tree-line;
-  }
-
-  &.last::before {
-    bottom: auto;
-    height: min(#{$tree-elbow-top + $tree-line}, 100%);
-  }
-
-  &::after {
-    top: min(#{$tree-elbow-top}, calc(100% - #{$tree-line}));
-    width: $tree-indent;
-    height: $tree-line;
-  }
-
-  // Padding shifts the card but not the pseudo-elements, which resolve against the padding box,
-  // so the first card's elbow has to come down by the same amount to stay on its title line.
-  &.first {
-    padding-top: $band-gap;
-
-    &::after {
-      top: $tree-elbow-top + $band-gap;
-    }
-
-    // A group of one is both ends of the tree at once, so its trunk has to end at the elbow the
-    // rule above just moved. Left at the shared height it stopped short of it and the corner came
-    // away from the line.
-    &.last::before {
-      height: min(#{$tree-elbow-top + $band-gap + $tree-line}, 100%);
-    }
-  }
-
-  // The rule each card ends with divides cards inside a group; at the end of one it divides
-  // nothing, since the corner of the tree and the next band already say the group has finished,
-  // and left in it draws straight across that corner. Hidden rather than removed — the rule
-  // carries the my-6 that spaces the next band off the last card, and display: none takes the
-  // gap with it.
-  &.last :deep(.factory-divider) {
-    border-color: transparent;
-  }
+.page-curtain-shown {
+  opacity: 1;
+  pointer-events: auto;
+  transition: none;
 }
 
 .planner-container {
@@ -936,6 +1161,7 @@ $band-gap: 8px;
   }
 
   .main-content {
+    position: relative;
     width: 100%;
     max-height: calc(100vh - #{$chrome-height});
     overflow-y: auto;

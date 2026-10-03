@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { useAppStore } from '@/stores/app-store'
+import { markTabEdited } from '@/utils/sync-intent'
 
 // The user's arbitrary grid generation target (MW). It exists because the plan can
 // never model every in-game power consumer, so users aim for a number instead.
@@ -23,6 +24,9 @@ export const usePowerTarget = () => {
       const tab = appStore.getCurrentTab()
       if (tab) {
         tab.powerTarget = Number.isFinite(value) ? value : 0
+        // Nothing recalculates when the target moves, so without this it saves only on the
+        // periodic sweep and syncs only on the back of some later, unrelated edit.
+        markTabEdited('powerTarget')
       }
     },
   })

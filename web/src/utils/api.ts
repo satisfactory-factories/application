@@ -1,10 +1,12 @@
+import { APP_VERSION_HEADER, PROTOCOL_VERSION } from 'common'
 import { config } from '@/config/config'
 import { ClientTooOldError } from '@/errors/ClientTooOldError'
 import eventBus from '@/utils/eventBus'
 
-// Sent on every request to the API so the backend can refuse writes from a tab too old to know
-// the current save shape. A request without it is a build from before the gate existed.
-export const CLIENT_VERSION_HEADER = 'X-Planner-Version'
+// The gate's header, as `api/client.ts` sends it. Anything else is refused by the CORS
+// preflight before it is even sent, so the raw fetches left outside that client — the share
+// page, the release poll — have to agree with it.
+export const CLIENT_VERSION_HEADER = APP_VERSION_HEADER
 
 // Set by the API on any response to a client it considers stale. Reads carry it too, so an idle
 // tab finds out it is out of date without having to try a save first.
@@ -19,7 +21,7 @@ export const CLIENT_TOO_OLD_CODE = 'CLIENT_TOO_OLD'
 export const apiHeaders = (token?: string): Record<string, string> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    [CLIENT_VERSION_HEADER]: config.appVersion,
+    [CLIENT_VERSION_HEADER]: PROTOCOL_VERSION,
   }
 
   if (token !== undefined) {

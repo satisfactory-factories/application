@@ -52,13 +52,6 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '/error': RouteRecordInfo<
-      '/error',
-      '/error',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
     '/graph': RouteRecordInfo<
       '/graph',
       '/graph',
@@ -78,6 +71,13 @@ declare module 'vue-router/auto-routes' {
       '/recipes',
       Record<never, never>,
       Record<never, never>,
+      | never
+    >,
+    '/room/[slug]': RouteRecordInfo<
+      '/room/[slug]',
+      '/room/:slug',
+      { slug: ParamValue<true> },
+      { slug: ParamValue<false> },
       | never
     >,
     '/share/[id]': RouteRecordInfo<
@@ -124,14 +124,6 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
-    'src/pages/error.vue': {
-      routes:
-        | '/error'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
     'src/pages/graph.vue': {
       routes:
         | '/graph'
@@ -155,6 +147,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | never
+    }
+    'src/pages/room/[slug].vue': {
+      routes:
+        | '/room/[slug]'
+      views:
+        | never
+      pathParamNames:
+        | 'slug'
     }
     'src/pages/share/[id].vue': {
       routes:

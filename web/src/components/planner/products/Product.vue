@@ -1,10 +1,11 @@
 <template>
   <div
-    v-for="(product, productIndex) in factory.products"
+    v-for="(product, productIndex) in shownProducts"
     :id="productRowId(factory.id, product.id)"
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
     :class="{ warning: hasUnhandledByproduct(product) }"
+    data-testid="product-row"
   >
     <!-- A status chip names the part, so a byproduct needs an anchor of its own or the jump has
          nowhere to land. Zero-height and at the top of the row, so it scrolls to the row. -->
@@ -53,7 +54,7 @@
           :checked="!!product.completed"
           class="checklist-tick"
           :class="{ desynced: isProductChecklistDesynced(product) }"
-          :title="isProductChecklistDesynced(product) ? 'Built amount no longer matches the plan — click to re-confirm' : 'Mark this product as built'"
+          :title="checklistTickTitle(productChecklistDesync(product), 'Mark this product as built')"
           type="checkbox"
           @click.prevent="toggleChecklistProduct(factory, product)"
         >
@@ -320,7 +321,12 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
-  import { isProductChecklistDesynced, toggleChecklistProduct } from '@/utils/factory-management/checklist'
+  import {
+    checklistTickTitle,
+    isProductChecklistDesynced,
+    productChecklistDesync,
+    toggleChecklistProduct,
+  } from '@/utils/factory-management/checklist'
   import { getPartDisplayName } from '@/utils/helpers'
   import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { Factory, FactoryItem, ItemType } from '@/interfaces/planner/FactoryInterface'
@@ -328,12 +334,20 @@
   import { useDisplay } from 'vuetify'
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { getGroupExtractor, isExtractionRecipe, isPlainExtraction } from '@/utils/factory-management/building-groups/extraction'
-  import { inject } from 'vue'
+  import { computed, inject, ref } from 'vue'
+  import type { Ref } from 'vue'
+  import { FACTORY_RENDER_STAGE, FIRST_PRODUCT_ROWS } from '@/components/planner/factory-render-stage'
   import { debounce } from '@/components/planner/products/ItemCommon'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
   import eventBus from '@/utils/eventBus'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
+  // While the planner is fading a factory in, only the first few rows mount; the rest follow on
+  // the next frame after the fade (see PlannerFactory's stages). Anywhere else, every row at once.
+  const renderStage = inject<Ref<number>>(FACTORY_RENDER_STAGE, ref(Infinity))
+  const shownProducts = computed(() =>
+    renderStage.value >= 1 ? props.factory.products : props.factory.products.slice(0, FIRST_PRODUCT_ROWS)
+  )
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
 
   const debouncing = ref('')

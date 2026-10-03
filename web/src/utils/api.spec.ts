@@ -7,6 +7,7 @@ import {
   clientTooOldError,
   isClientTooOldResponse,
 } from '@/utils/api'
+import { PROTOCOL_VERSION } from 'common'
 import { config } from '@/config/config'
 import eventBus from '@/utils/eventBus'
 
@@ -20,8 +21,10 @@ describe('the build version', () => {
 })
 
 describe('apiHeaders', () => {
+  // The protocol version, not the release version: it is what the API's gate compares and the
+  // only version header its CORS allowlist lets through.
   it('sends the client version on every request', () => {
-    expect(apiHeaders()[CLIENT_VERSION_HEADER]).toBe(config.appVersion)
+    expect(apiHeaders()[CLIENT_VERSION_HEADER]).toBe(PROTOCOL_VERSION)
   })
 
   it('adds the Authorization header when a token is given', () => {

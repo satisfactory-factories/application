@@ -8,14 +8,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { setupLayouts } from 'virtual:generated-layouts'
 import { routes } from 'vue-router/auto-routes'
 import { useGameDataStore } from '@/stores/game-data-store'
-import { useSyncStore } from '@/stores/sync-store'
+import { armBootLoaderFallback, dismissBootLoader } from '@/utils/bootLoader'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: setupLayouts(routes),
 })
 
-// Add a global navigation guard to load game data and set up data sync before every route
+// Add a global navigation guard to load game data before every route
 router.beforeEach(async (to, from, next) => {
   const gameDataStore = useGameDataStore()
 
@@ -29,10 +29,6 @@ router.beforeEach(async (to, from, next) => {
     next(false) // Cancel the navigation if loading fails
     return
   }
-
-  // Need to load the game data first before sync store
-  const syncStore = useSyncStore()
-  syncStore.setupTick()
 
   // Proceed to the route if data is loaded
   next()
@@ -51,6 +47,14 @@ router.onError((err, to) => {
   } else {
     console.error(err)
   }
+})
+
+armBootLoaderFallback()
+
+// The planner takes the loading screen down itself, once its plan has painted. Any other page,
+// or a navigation that failed, has nothing more to wait for.
+router.afterEach((to, _from, failure) => {
+  if (failure || to.path !== '/') requestAnimationFrame(dismissBootLoader)
 })
 
 router.isReady().then(() => {

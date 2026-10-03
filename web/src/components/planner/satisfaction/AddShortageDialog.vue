@@ -71,6 +71,7 @@
   import { calculateFactories } from '@/utils/factory-management/factory'
   import { addShortageToFactory } from '@/utils/factory-management/satisfaction'
   import { getProduct } from '@/utils/factory-management/products'
+  import { markFactoryEdited } from '@/utils/sync-intent'
   import { useAppStore } from '@/stores/app-store'
   import { useGameDataStore } from '@/stores/game-data-store'
   import eventBus from '@/utils/eventBus'
@@ -119,6 +120,11 @@
         getDefaultRecipeForPart(props.partId),
         Math.abs(props.factory.parts[props.partId]?.amountRemaining ?? 0),
       )
+      // Both records the user just changed, and neither is inferable: the product lands on a
+      // factory that already exists and so does the import. `calculateFactories` is payload
+      // only — the singular form is what declares intent, and this is not it.
+      markFactoryEdited(targetFactory)
+      markFactoryEdited(props.factory)
       calculateFactories(appStore.getFactories(), gameDataStore.getGameData())
       eventBus.emit('toast', { message: `Added "${getPartDisplayName(props.partId)}" production to ${targetFactory.name}!` })
     } finally {

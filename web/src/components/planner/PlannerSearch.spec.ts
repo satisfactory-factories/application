@@ -10,6 +10,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { gameData } from '@/utils/gameData'
 import eventBus from '@/utils/eventBus'
+import { useEventsStore } from '@/stores/events-store'
 
 // The route is only read to decide whether the planner is on screen to receive the jump; the
 // component is mounted on its own here, so there is no router to ask.
@@ -37,7 +38,9 @@ const buildPlan = (): Factory[] => {
 
 // The menu teleports its panel to the body, so everything is read from there.
 const body = () => document.body
-const rows = () => [...body().querySelectorAll<HTMLElement>('.result-row')]
+// Factory-name hits are laid out inline rather than as full-width rows, so the walkable result
+// list is both shapes; document order still puts the factories first.
+const rows = () => [...body().querySelectorAll<HTMLElement>('.result-row, .result-inline')]
 const rowLabels = () => rows().map(row => [
   row.querySelector('.row-name')?.textContent?.trim(),
   row.querySelector('.row-usage')?.textContent?.replace(/\s+/g, ' ').trim(),
@@ -149,6 +152,17 @@ describe('PlannerSearch', () => {
       targets: ['1-products-item-IronIngot'],
       fallback: '1-products',
     })
+  })
+
+  it('counts a jump as a search used, and typing as nothing', async () => {
+    await search('iron ingot')
+    // After the render, which is what installs this test's Pinia.
+    const events = useEventsStore()
+    expect(events.pendingUsage()).toEqual({})
+
+    await fireEvent.click(rows().find(row => row.textContent?.includes('Ingot Smelter'))!)
+
+    expect(events.pendingUsage()).toEqual({ search_jump: 1 })
   })
 
   it('jumps to the import row when an import result is clicked', async () => {

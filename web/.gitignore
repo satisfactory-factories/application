@@ -4,6 +4,10 @@ node_modules
 
 # Test
 /coverage
+/test-results
+/playwright-report
+/blob-report
+/.playwright
 
 # local env files
 .env.local

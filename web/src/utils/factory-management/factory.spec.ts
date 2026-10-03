@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { factorySchema } from 'common'
 import { countActiveTasks, newFactory, regenerateSortOrders, reorderFactory } from '@/utils/factory-management/factory'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
@@ -10,6 +11,14 @@ describe('Factory Management', () => {
       expect(fac.name).toBe('My new factory')
       expect(fac.products.length).toBe(0)
       expect(fac.tasks.length).toBe(0)
+    })
+
+    // Nothing recalculates on add, so this is the shape the first sync op carries. An
+    // empty power object is not a valid factory on the wire and the op was refused.
+    it('should be valid against the sync schema before anything calculates it', () => {
+      const fac = newFactory('My new factory')
+      expect(fac.power).toEqual({ consumed: 0, produced: 0, difference: 0 })
+      expect(factorySchema.safeParse(fac).success).toBe(true)
     })
   })
 

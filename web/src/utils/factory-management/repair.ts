@@ -8,6 +8,7 @@ import {
   hasFractionalClock,
 } from '@/utils/factory-management/common'
 import { snapDriftedInteger } from '@/utils/numberFormatter'
+import type { EventReason } from 'common'
 
 // Plans saved before #485 hold quantities a rounding hair off the number they mean —
 // 2400.002 Rocket Fuel/min for 2400. Fixing the game data corrects everything the planner
@@ -41,6 +42,9 @@ export interface StructuralRepair {
   factoryName: string
   // What was corrected, phrased for someone who has never read the code.
   summary: string
+  // The same fact as `summary`, as something a metric can count. Carried here rather than
+  // mapped at the call sites so the dialog and the counter can never drift apart.
+  reason: EventReason
 }
 
 // Every automatic correction made to a loaded plan, whatever found it. They are collected

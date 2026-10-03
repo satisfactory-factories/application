@@ -110,13 +110,15 @@
                 v-for="source in product.sources"
                 :key="source.id"
                 class="factory-group-chip clickable"
+                :class="{ grouped: !!groupColour(source.id) }"
+                :style="groupStripe(source.id)"
                 @click="navigateToFactory(source.id)"
               >
                 <factory-icon-display class="ml-1" :icon="source.icon" size="20" />
                 <span class="mx-2"><b>{{ source.name }}</b></span>
-                <v-chip class="sf-chip small" :class="source.amount > 0 ? 'green' : 'red'">
+                <span class="source-amount mr-2" :class="amountClass(source.amount)">
                   {{ formatNumber(source.amount) }}/min
-                </v-chip>
+                </span>
               </div>
             </div>
           </td>
@@ -197,6 +199,24 @@
     return amount < 0 ? 'red' : 'grey'
   }
 
+  // The group each factory belongs to, so its chip can wear that colour the way the search
+  // results already do. Ungrouped factories get nothing rather than a grey stand-in: a colour
+  // that means "no group" still reads as a group at a glance.
+  const groupColours = computed(() => {
+    const map: Record<string, string> = {}
+    for (const factory of props.factories) {
+      if (factory.group?.color) map[String(factory.id)] = factory.group.color
+    }
+    return map
+  })
+
+  const groupColour = (id: string | number) => groupColours.value[String(id)]
+
+  const groupStripe = (id: string | number) => {
+    const colour = groupColour(id)
+    return colour ? { '--group-color': colour } : undefined
+  }
+
   const navigateToFactory = inject('navigateToFactory') as (id: string | number) => void
 
   // Section visibility, persisted. Hidden by default until explicitly shown.
@@ -207,6 +227,13 @@
 </script>
 
 <style lang="scss" scoped>
+// The per-factory figure inside a chip. Plain text rather than a nested pill: a pill inside a
+// pill reads as two controls when it is one.
+.source-amount {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 // Matches the `product` chip colour used throughout the app (items flowing through a factory).
 .section-icon {
   color: var(--sf-product);

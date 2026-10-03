@@ -19,7 +19,16 @@ const factoryTabs = [...document.querySelectorAll('.v-tabs')].find(t => !t.textC
 const wrapper = factoryTabs.parentElement
 wrapper.querySelector(':scope > button.v-btn--icon').click() // the + add-tab button
 ```
-`addTab()` names it "New Tab" and switches to it (empty ⇒ `.main-content .v-card[id]` count drops to 0 — a good "we really switched away" checkpoint).
+Since v7 the + button opens the **new-tab chooser** rather than adding a tab outright, so
+this is now two clicks — the second picks the type:
+```js
+document.querySelector('[data-testid="choose-local-tab"]').click()  // or choose-synced-tab
+```
+"Local tab" runs the old `addTab()`: names it "New Tab" and switches to it (empty ⇒
+`.main-content .v-card[id]` count drops to 0 — a good "we really switched away" checkpoint).
+"Synced tab" is disabled unless signed in. A one-time nudge dot
+(`[data-testid="new-tab-nudge"]`) sits on the + until the chooser is first opened; clear
+`localStorage.newTabChooserSeen` to get it back.
 
 **Switch factory tabs:** click the nth `.v-tab` inside the factory bar (`factoryTabs.querySelectorAll('.v-tab')[i].click()`); tab 0 is the first plan.
 

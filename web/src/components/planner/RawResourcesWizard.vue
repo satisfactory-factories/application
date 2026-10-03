@@ -344,6 +344,8 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { formatNumber } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
+  import { markPlanReplaced } from '@/utils/sync-intent'
   import {
     applyRawWizard,
     choicesForRow,
@@ -361,6 +363,7 @@
   import { downloadPlan } from '@/utils/plan-backup'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { PURITY_LABELS } from '@/utils/factory-management/building-groups/extraction'
+  import { canAddFactory } from '@/utils/plan-size'
 
   const props = defineProps<{ modelValue: boolean }>()
   const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
@@ -369,7 +372,7 @@
   const gameDataStore = useGameDataStore()
   // Via the composable, not tab.powerTarget. A target set before targets were per-plan lives in
   // localStorage only, and the 0 recorded for it would stick: pasting a backup writes the target
-  // back onto the tab (#536). Copy plan reads it the same way, so both produce the same blob.
+  // back onto the tab (#536). Export plan reads it the same way, so both produce the same blob.
   const { powerTarget } = usePowerTarget()
 
   const rows = ref<WizardRow[]>([])
@@ -574,6 +577,11 @@
     const name = editingName.value.trim()
     const factory = pending.value.factories.find(entry => entry.id === factoryId)
     if (!name || !factory || name === factory.name) return
+    const allowed = textFieldRule('name')(name)
+    if (allowed !== true) {
+      eventBus.emit('toast', { message: allowed, type: 'error' })
+      return
+    }
 
     const previous = factory.name
     factory.name = name
@@ -604,10 +612,17 @@
 
   const apply = async () => {
     if (applying.value || !pending.value) return
+    // Each mine it would create is a factory like any other, so they count against the cap.
+    const current = appStore.getFactories().length
+    if (!canAddFactory(current, pending.value.factories.length - current)) return
     applying.value = true
     await afterPaint()
 
     try {
+      // The wizard rewrites the whole plan, and lands on ids it already holds — new mines are
+      // appended but every rebalanced factory keeps its id, so structural inference sees no
+      // change at all. Declared before the swap, while the outgoing plan is still readable.
+      markPlanReplaced(appStore.getFactories(), pending.value.factories)
       appStore.setFactories(pending.value.factories)
       // The plan has now been answered for, whichever door the wizard was opened through —
       // running it from Options never went past the notice that would otherwise stamp it.

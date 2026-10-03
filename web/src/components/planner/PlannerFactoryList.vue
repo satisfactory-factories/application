@@ -4,9 +4,10 @@
        factory up here at the top of the list — moved to sit beside the factory it creates. -->
   <v-row class="pa-0 ma-0">
     <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
-      <tooltip text="Add a new, empty factory to the plan, filed under no group.">
+      <tooltip :text="planFull ? PLAN_FULL_MESSAGE : 'Add a new, empty factory to the plan, filed under no group.'">
         <v-btn
           color="primary"
+          :disabled="planFull"
           prepend-icon="fas fa-plus"
           ripple
           @click="createFactory()"
@@ -62,7 +63,7 @@
     </v-col>
   </v-row>
 
-  <div v-show="show && factories.length > 0" class="factory-list section-links">
+  <div v-show="factories.length > 0" class="factory-list section-links">
     <!-- Statistics jump-link with an at-a-glance power summary. -->
     <div class="mb-1 rounded factory-card" :class="{ problem: powerDeficit, 'active-view': activeFactoryId === 'statistics' }">
       <v-card
@@ -216,7 +217,7 @@
     </div>
   </div>
 
-  <div v-show="show" class="factory-list">
+  <div class="factory-list">
     <!-- Ungrouped is pinned above the groups and is not itself draggable: it is synthesised,
          not stored, so there is no group record to reorder. -->
     <planner-sidebar-group
@@ -274,6 +275,7 @@
   import FactoryGroupDeleteDialog from '@/components/planner/groups/FactoryGroupDeleteDialog.vue'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
+  import { PLAN_FULL_MESSAGE, planIsFull } from '@/utils/plan-size'
 
   const navigateToSection = inject('navigateToSection') as (sectionId: string) => void
   // Scroll-spy from Planner.vue, used by the two jump-link cards above the factory list.
@@ -290,7 +292,9 @@
     totalFactories: number,
     loadedFrom: string
   }>()
-  const show = ref(compProps.loadedFrom !== 'planner')
+
+  // The group rows' own Add factory buttons are refused by the planner with the same message.
+  const planFull = computed(() => planIsFull(compProps.totalFactories))
 
   // At-a-glance power figures for the Statistics jump-link. The difference is the
   // headroom vs the user's power target when one is set (bullseye icon), otherwise
@@ -334,15 +338,6 @@
     ordered.splice(event.moved.newIndex, 0, group)
     setGroupOrder(ordered)
   }
-
-  // "Cheat" here by when a load is requested we hide the list
-  eventBus.on('prepareForLoad', () => {
-    show.value = false
-  })
-
-  eventBus.on('incrementLoad', () => {
-    show.value = true
-  })
 
   // One pass over the plan rather than a call per row per chip — the sidebar renders every factory,
   // so a template-expression call would multiply the predicates by the chip count.

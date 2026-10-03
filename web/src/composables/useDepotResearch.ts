@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { useAppStore } from '@/stores/app-store'
+import { markTabEdited } from '@/utils/sync-intent'
 
 /**
  * How far the player has taken the MAM's Dimensional Depot upload-speed research.
@@ -145,6 +146,9 @@ export const useDepotResearch = () => {
       tab.depotUploadTier = clamped
       // This is tab-level state, so nothing else marks it for saving. See markPlanEdited.
       appStore.markPlanEdited()
+      // And nothing else declares it to a room either: the tier travels with the plan, so a
+      // rebase that never heard of it would take a peer's tier back over the one just set.
+      markTabEdited('depotUploadTier')
     },
   })
 
@@ -167,6 +171,7 @@ export const useDepotResearch = () => {
 
       tab.depotExpansionTier = clamped
       appStore.markPlanEdited()
+      markTabEdited('depotExpansionTier')
     },
   })
 

@@ -4,6 +4,7 @@ import { calculateFactory, findFac } from '@/utils/factory-management/factory'
 import { calculateParts, isAmountSatisfied } from '@/utils/factory-management/parts'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { rawArray } from '@/utils/factory-management/common'
+import { recordEvent } from '@/utils/record-event'
 
 // Adds dependencies between two factories.
 export const updateDependency = (
@@ -17,6 +18,7 @@ export const updateDependency = (
     // Delete the invalid input
     factory.inputs = rawArray(factory.inputs.filter(i => i !== input))
     alert(errorMsg)
+    recordEvent('calc_dependency_error_alert')
     return
   }
 
@@ -123,6 +125,7 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
         console.error(`flushInvalidRequests: Requested factory ${requestedFactoryId} not found!`)
         delete factory.dependencies.requests[requestedFactoryId]
         alert(`The factory ${factory.name} has corrupted data and has been cleaned up. Please refresh the page.`)
+        recordEvent('calc_dependency_corrupt_alert')
         return // Nothing to do as the factory doesn't exist.
       }
 
@@ -392,6 +395,7 @@ export const deleteRequestPair = (
   ))
 
   // Recalculate the both factories now as the part demand has changed likely for both.
-  calculateFactory(factory, factories, gameData)
-  calculateFactory(dependantFactory, factories, gameData)
+  // Derived: the engine prunes these pairs itself, so neither is anyone's edit.
+  calculateFactory(factory, factories, gameData, { intent: 'derived' })
+  calculateFactory(dependantFactory, factories, gameData, { intent: 'derived' })
 }

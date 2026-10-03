@@ -5,6 +5,7 @@ import { config } from '@/config/config'
 import { PowerRecipe, Recipe } from '@/interfaces/Recipes'
 import { loadLocalGameData } from './local-game-data-loader'
 import { getPrimaryProductRecipes } from '@/utils/factory-management/common'
+import { recordEvent } from '@/utils/record-event'
 
 export const useGameDataStore = defineStore('game-data', () => {
   const localData = loadLocalGameData()
@@ -18,28 +19,44 @@ export const useGameDataStore = defineStore('game-data', () => {
   }
 
   const loadGameData = async (): Promise<void> => {
+    // Runs before every route change (router/index.ts), so whatever it decides here it
+    // decides on every navigation. Once this session holds the current version there is
+    // nothing to do: replacing gameData re-renders every component that reads it, which
+    // on a large plan made leaving the planner take seconds.
+    if (localDataVersion.value === dataVersion && gameData.value) {
+      console.log(`Game data V${dataVersion} detected, skipping load.`)
+      return
+    }
+
+    console.log('Game data not detected or outdated, loading it.')
+    let fetchedData: DataInterface
     try {
-      if (localDataVersion.value !== dataVersion || !gameData.value) {
-        console.log('Game data not detected or outdated, loading it.')
-        const response = await fetch(`/gameData_v${dataVersion}.json`)
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`)
-        }
-        const fetchedData: DataInterface = await response.json()
+      const response = await fetch(`/gameData_v${dataVersion}.json`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`)
+      }
+      fetchedData = await response.json()
 
-        if (!fetchedData) {
-          throw new Error('No data received!')
-        }
-
-        gameData.value = fetchedData
-        localStorage.setItem('localDataVersion', dataVersion)
-        localStorage.setItem('gameData', JSON.stringify(gameData.value))
-      } else {
-        console.log(`Game data V${dataVersion} detected, skipping load.`)
+      if (!fetchedData) {
+        throw new Error('No data received!')
       }
     } catch (err) {
       console.error('Error loading game data:', err)
       gameData.value = null
+      return
+    }
+
+    gameData.value = fetchedData
+    localDataVersion.value = dataVersion
+
+    // The cache is only an optimisation for the next visit. A refused write (a full quota)
+    // must not throw away the data this session already has, and the version is written
+    // after the data so the stored pair never claims a version it does not hold.
+    try {
+      localStorage.setItem('gameData', JSON.stringify(fetchedData))
+      localStorage.setItem('localDataVersion', dataVersion)
+    } catch (err) {
+      console.warn('Could not cache game data locally:', err)
     }
   }
 
@@ -50,6 +67,7 @@ export const useGameDataStore = defineStore('game-data', () => {
 
     if (!gameData.value) {
       alert('Could not load the game data! Please report this on Discord!')
+      recordEvent('game_data_load_failed')
       throw new Error('Game data not loaded even after attempting to re-load it!')
     }
     return gameData.value
