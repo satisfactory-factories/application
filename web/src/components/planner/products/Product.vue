@@ -665,6 +665,12 @@
 </script>
 
 <style lang="scss" scoped>
+// The selectors row spaces its children with `ga-3`, so the global .sf-chip right margin would
+// double the gap after every status chip on it.
+.selectors .sf-chip {
+  margin: 0;
+}
+
 // Box and tick are drawn in CSS on a native checkbox. Vuetify's selection controls point their
 // icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
 // nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
