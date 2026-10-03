@@ -1,6 +1,6 @@
 <template>
   <div
-    v-for="(product, productIndex) in factory.products"
+    v-for="(product, productIndex) in shownProducts"
     :id="productRowId(factory.id, product.id)"
     :key="productIndex"
     class="factory-item px-4 my-2 border-md rounded sub-card"
@@ -349,12 +349,20 @@
   import { useDisplay } from 'vuetify'
   import { deleteItem, getBuildingDisplayName, getRecipe } from '@/utils/factory-management/common'
   import { getGroupExtractor, isExtractionRecipe, isPlainExtraction } from '@/utils/factory-management/building-groups/extraction'
-  import { inject } from 'vue'
+  import { computed, inject, ref } from 'vue'
+  import type { Ref } from 'vue'
+  import { FACTORY_RENDER_STAGE, FIRST_PRODUCT_ROWS } from '@/components/planner/factory-render-stage'
   import { debounce } from '@/components/planner/products/ItemCommon'
   import { afterRender, useDebouncedAction } from '@/composables/useDebouncedAction'
   import eventBus from '@/utils/eventBus'
 
   const updateFactory = inject('updateFactory') as (factory: Factory) => void
+  // While the planner is fading a factory in, only the first few rows mount; the rest follow on
+  // the next frame after the fade (see PlannerFactory's stages). Anywhere else, every row at once.
+  const renderStage = inject<Ref<number>>(FACTORY_RENDER_STAGE, ref(Infinity))
+  const shownProducts = computed(() =>
+    renderStage.value >= 1 ? props.factory.products : props.factory.products.slice(0, FIRST_PRODUCT_ROWS)
+  )
   const updateOrder = inject('updateOrder') as (list: any[], direction: string, item: any) => void
 
   const debouncing = ref('')

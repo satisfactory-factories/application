@@ -28,6 +28,7 @@
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { listChecklistDesyncs } from '@/utils/factory-management/checklist'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
+import { isBacklogIgnored } from '@/utils/factory-management/disposal'
 import { isSurplusSignificant } from '@/utils/factory-management/parts'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
 
@@ -180,11 +181,11 @@ export const willBacklog = (factory: Factory, partId: string): boolean => {
 }
 
 /**
- * Whether the row for this part should carry the backlog advisory — the option, the predicate and
- * the suppressions in one place, so the chip on the row and the chip in the section header cannot
- * come to different conclusions about the same part.
+ * Whether the row for this part carries a backlog warning at all, ignored or not — the option, the
+ * predicate and the suppressions in one place, so the row and the section header cannot come to
+ * different conclusions about the same part.
  */
-export const showBacklogAdvisory = (factory: Factory, partId: string): boolean =>
+export const hasBacklogAdvisory = (factory: Factory, partId: string): boolean =>
   usePlannerOptions().value.showBacklogAdvisory &&
   willBacklog(factory, partId) &&
   // Said once. Each of these already names the part and says something more specific about the
@@ -192,6 +193,22 @@ export const showBacklogAdvisory = (factory: Factory, partId: string): boolean =
   !isPotentialBlockage(factory, partId) &&
   !isUnhandledByproduct(factory, partId) &&
   !hasNoDemand(factory, partId)
+
+/**
+ * The live backlog advisory: warned about and not ignored. This is the one the status registry
+ * counts, so ignoring a warning stops the factory turning amber for it.
+ */
+export const showBacklogAdvisory = (factory: Factory, partId: string): boolean =>
+  hasBacklogAdvisory(factory, partId) && !isBacklogIgnored(factory, partId)
+
+/**
+ * The backlog advisory the user has chosen to live with. The row still shows it, dimmed and
+ * retitled, so the choice stays visible and reversible, but it is not a status: nothing outside
+ * the row counts it. Dropping the surplus (a sink, an export) makes `hasBacklogAdvisory` false and
+ * takes the row's chip with it, while the flag stays stored for if the surplus comes back.
+ */
+export const showBacklogIgnored = (factory: Factory, partId: string): boolean =>
+  hasBacklogAdvisory(factory, partId) && isBacklogIgnored(factory, partId)
 
 const count = (list: FactoryStatusSubject[], one: string, many: string) =>
   list.length > 1 ? `${list.length} ${many}` : one

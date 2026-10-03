@@ -16,6 +16,7 @@ import {
   outstandingIntent,
   selectTab,
   setFactoryNote,
+  sidebarFactoryRows,
   waitForRevision,
 } from '../helpers/planner'
 import { showPlan } from '../helpers/rooms'
@@ -80,7 +81,7 @@ const gatedPair = async (
   })
   await showPlan(second, user, roomId)
   await selectTab(second, roomId)
-  await expect(second.locator('input.factory-name')).toHaveCount(seed.length, { timeout: 20_000 })
+  await expect(sidebarFactoryRows(second)).toHaveCount(seed.length, { timeout: 20_000 })
 
   return { user, roomId, first, second, firstGate, secondGate }
 }

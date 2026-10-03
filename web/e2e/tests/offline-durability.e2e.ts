@@ -9,10 +9,12 @@ import type { TestUser } from '../helpers/accounts'
 import {
   addFactory,
   createSyncedTab,
+  expectFactoryNames,
   expectQuiesced,
   factoryNames,
   mirroredFactories,
   mirrorRevision,
+  openOverview,
   openPlanner,
   outstandingIntent,
   selectTab,
@@ -112,12 +114,14 @@ const mirroredPowerTarget = (page: Page, tabId: string): Promise<number | undefi
   }, tabId)
 
 /**
- * The power target strip is on screen whether the statistics are expanded or not, which
+ * The power target is on the overview whether the statistics are expanded or not, which
  * makes it the cheapest tab-level field a test can set. Nothing recalculates when it moves,
- * so it reaches the engine as declared intent or not at all.
+ * so it reaches the engine as declared intent or not at all. Opening the overview from the
+ * sidebar expands the statistics, so it is whichever of the two fields is showing.
  */
 const setPowerTarget = async (page: Page, target: number): Promise<void> => {
-  const field = page.locator('input#stats-power-target-collapsed')
+  await openOverview(page)
+  const field = page.locator('input#stats-power-target-collapsed, input#stats-power-target').first()
   await expect(field).toBeVisible()
   await field.fill(String(target))
   await field.press('Tab')
@@ -180,7 +184,7 @@ test('an edit made with the network gone survives closing the browser, and reach
   await expectQuiesced([page], roomId)
 
   const witness = await witnessOn(browser, user, roomId)
-  await expect(witness.locator('input.factory-name')).toHaveValue('Baseline')
+  await expectFactoryNames(witness, ['Baseline'])
 
   // Airplane mode first, so the client is not mid-backoff when the wire goes; then the
   // wire, for real. `setOffline` is the browser's own network emulation: no socket, no

@@ -128,7 +128,7 @@
     },
     {
       name: 'Mael\'s "MegaPlan"',
-      description: 'A real-life plan created by Maelstrome. 36 factories sorted into seven groups, from the raw mines through to the Phase 5 parts, powered by nuclear, plutonium, rocket fuel, geothermal and Alien Power Augmenters. This is considered a very large plan, and makes use of all features of the planner.',
+      description: 'A real-life plan created by Maelstrome. 46 factories, from dedicated mines for every resource through to the Phase 5 parts, powered by rocket fuel, geothermal and an Alien Power Augmenter. This is considered a very large plan, and makes use of all features of the planner.',
       data: planData(createMaelsBigBoiPlan()),
       show: true,
       isDebug: false,

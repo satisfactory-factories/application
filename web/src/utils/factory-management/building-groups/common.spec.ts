@@ -23,10 +23,13 @@ import {
   checkForItemUpdate,
   deleteBuildingGroup,
   getTotalPowerShards,
+  planSpread,
+  previewSpread,
   remainderToLast,
   remainderToNewGroup,
   solveGroupForRemainder,
   solveGroupTargetOutput,
+  spreadBuildingGroups,
   syncBuildingGroups,
   toggleBuildingGroupTray,
   updateBuildingGroupViaPart,
@@ -258,6 +261,119 @@ describe('buildingGroupsCommon', async () => {
 
             expect(group2.parts.OreIron).toBe(60)
             expect(group2.parts.IronIngot).toBe(60)
+          })
+
+          describe('even balance across capacity states', () => {
+            const effectiveTotal = () =>
+              product.buildingGroups.reduce((acc, group) => acc + group.buildingCount * group.overclockPercent / 100, 0)
+
+            it('should shrink over-capacity groups down to the requirement', () => {
+              group1.buildingCount = 8
+              group2.buildingCount = 6
+              product.buildingRequirements.amount = 4
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(2)
+              expect(group2.buildingCount).toBe(2)
+              expect(group1.overclockPercent).toBe(100)
+              expect(group2.overclockPercent).toBe(100)
+            })
+
+            it('should reset overclocked over-capacity groups back to 100%', () => {
+              group1.buildingCount = 4
+              group1.overclockPercent = 150
+              group2.buildingCount = 4
+              group2.overclockPercent = 150
+              product.buildingRequirements.amount = 4
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(2)
+              expect(group2.buildingCount).toBe(2)
+              expect(group1.overclockPercent).toBe(100)
+              expect(group2.overclockPercent).toBe(100)
+              expect(effectiveTotal()).toBeCloseTo(4, 4)
+            })
+
+            it('should grow under-capacity groups up to the requirement', () => {
+              group1.buildingCount = 1
+              group2.buildingCount = 1
+              product.buildingRequirements.amount = 10
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(5)
+              expect(group2.buildingCount).toBe(5)
+              expect(group1.overclockPercent).toBe(100)
+              expect(group2.overclockPercent).toBe(100)
+            })
+
+            it('should even out lopsided groups regardless of their starting clocks', () => {
+              group1.buildingCount = 1
+              group1.overclockPercent = 250
+              group2.buildingCount = 9
+              group2.overclockPercent = 20
+              product.buildingRequirements.amount = 6
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.buildingCount).toBe(group2.buildingCount)
+              expect(group1.overclockPercent).toBe(group2.overclockPercent)
+              expect(effectiveTotal()).toBeCloseTo(6, 4)
+            })
+
+            it('should clear the user-set clock flag on rebalanced groups', () => {
+              group1.clockSetByUser = true
+              group2.clockSetByUser = true
+              product.buildingRequirements.amount = 4
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              expect(group1.clockSetByUser).toBe(false)
+              expect(group2.clockSetByUser).toBe(false)
+            })
+
+            it('should underclock to a fractional clock when the share is not whole', () => {
+              product.buildingRequirements.amount = 5.5
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              // 5.5 / 2 groups = 2.75 each, so 3 buildings at 91.6667%
+              expect(group1.buildingCount).toBe(3)
+              expect(group2.buildingCount).toBe(3)
+              expect(group1.overclockPercent).toBe(91.6667)
+              expect(group2.overclockPercent).toBe(91.6667)
+              expect(effectiveTotal()).toBeCloseTo(5.5, 3)
+            })
+
+            it('should keep a fractional clock within 4 decimal places', () => {
+              addBuildingGroup(product, ItemType.Product, mockFactory)
+              const group3 = product.buildingGroups[2]
+              product.buildingRequirements.amount = 5
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              // 5 / 3 groups = 1.6667 each, so 2 buildings at 83.3333%
+              for (const group of [group1, group2, group3]) {
+                expect(group.buildingCount).toBe(2)
+                expect(group.overclockPercent).toBe(83.3333)
+              }
+              expect(effectiveTotal()).toBeCloseTo(5, 3)
+            })
+
+            it('should give every group the same share when the groups split into whole numbers', () => {
+              addBuildingGroup(product, ItemType.Product, mockFactory)
+              const group3 = product.buildingGroups[2]
+              product.buildingRequirements.amount = 9
+
+              syncBuildingGroups(product, ItemType.Product, mockFactory, { forceRebalance: true })
+
+              for (const group of [group1, group2, group3]) {
+                expect(group.buildingCount).toBe(3)
+                expect(group.overclockPercent).toBe(100)
+              }
+            })
           })
         })
       })
@@ -971,6 +1087,66 @@ describe('buildingGroupsCommon', async () => {
       toggleBuildingGroupTray(product)
 
       expect(product.buildingGroupsTrayOpen).toBe(false)
+    })
+  })
+
+  describe('spread', () => {
+    // The reporter's plan: 197.547 refineries of Pure Copper Ingot over 10 uneven groups.
+    let copper: FactoryItem
+    beforeEach(() => {
+      addProductToFactory(mockFactory, {
+        id: 'CopperIngot',
+        amount: 7408.0125, // 197.547 refineries
+        recipe: 'Alternate_PureCopperIngot',
+      })
+      copper = mockFactory.products[1]
+      calculateFactories(factories, gameData)
+      for (let i = 1; i < 10; i++) {
+        addBuildingGroup(copper, ItemType.Product, mockFactory)
+      }
+      copper.buildingGroups.forEach((group, index) => {
+        group.buildingCount = index < 7 ? 20 : 19
+        group.overclockPercent = 100
+      })
+      copper.buildingGroups[9].buildingCount = 19.547
+    })
+
+    it('plans one identical group: the fewest buildings, underclocked to one decimal place', () => {
+      expect(planSpread(copper, ItemType.Product)).toEqual({
+        groupCount: 10,
+        buildingCount: 20,
+        overclockPercent: 98.8,
+      })
+    })
+
+    it('makes every group identical and covers demand', () => {
+      spreadBuildingGroups(copper, ItemType.Product, mockFactory)
+
+      copper.buildingGroups.forEach(group => {
+        expect(group.buildingCount).toBe(20)
+        expect(group.overclockPercent).toBe(98.8)
+        expect(group.parts.OreCopper).toBe(296.4)
+        expect(group.parts.Water).toBe(197.6)
+        expect(group.parts.CopperIngot).toBe(741)
+      })
+      expect(calculateEffectiveBuildingCount(copper.buildingGroups, 'oilrefinery', copper.recipe)).toBeCloseTo(197.6, 6)
+      expect(copper.buildingGroupsHaveProblem).toBe(false)
+    })
+
+    it('keeps an exact share at 100% without an extra building', () => {
+      copper.amount = 7500 // 200 refineries, 20 per group
+      calculateFactories(factories, gameData)
+
+      expect(planSpread(copper, ItemType.Product)).toEqual({ groupCount: 10, buildingCount: 20, overclockPercent: 100 })
+    })
+
+    it('previews without touching the real groups', () => {
+      const before = JSON.stringify(copper.buildingGroups)
+      const preview = previewSpread(copper, ItemType.Product, mockFactory)
+
+      expect(preview?.item.buildingGroups[0].buildingCount).toBe(20)
+      expect(preview?.item.buildingGroups[0].parts.CopperIngot).toBe(741)
+      expect(JSON.stringify(copper.buildingGroups)).toBe(before)
     })
   })
 

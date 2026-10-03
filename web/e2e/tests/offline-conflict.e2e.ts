@@ -25,6 +25,7 @@ import {
   setProductAmount,
   settle,
   settledAuthoredFactories,
+  sidebarFactoryRows,
   tabHolding,
 } from '../helpers/planner'
 
@@ -88,7 +89,7 @@ const divergeOffline = async (
   })
   await showPlan(away, user, roomId)
   await selectTab(away, roomId)
-  await expect(away.locator('input.factory-name')).toHaveCount(SEEDS.length, { timeout: 20_000 })
+  await expect(sidebarFactoryRows(away)).toHaveCount(SEEDS.length, { timeout: 20_000 })
   await expectQuiesced([owner, away], roomId)
 
   // The outage happens at a moment the test picks; offline mode then stops the retrying, so

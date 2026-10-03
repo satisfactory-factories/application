@@ -36,10 +36,11 @@
 
 <script lang="ts" setup>
   import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   const openTutorial = ref(false)
 
-  eventBus.on('openDimensionalDepotTutorial', () => {
+  useEventBusListener('openDimensionalDepotTutorial', () => {
     openTutorial.value = true
   })
 
