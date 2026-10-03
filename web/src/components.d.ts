@@ -59,6 +59,7 @@ declare module 'vue' {
     HoverTooltip: typeof import('./components/HoverTooltip.vue')['default']
     ImportPlanDialog: typeof import('./components/planner/ImportPlanDialog.vue')['default']
     Imports: typeof import('./components/planner/imports/Imports.vue')['default']
+    ImportSourceDialog: typeof import('./components/planner/imports/ImportSourceDialog.vue')['default']
     Introduction: typeof import('./components/planner/Introduction.vue')['default']
     JoinDiscord: typeof import('./components/JoinDiscord.vue')['default']
     KoFi: typeof import('./components/ko-fi.vue')['default']

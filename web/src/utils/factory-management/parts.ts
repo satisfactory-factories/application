@@ -6,6 +6,7 @@ import { createNewPart, getPowerRecipe } from '@/utils/factory-management/common
 import { getEndProducts } from '@/utils/factory-management/end-products'
 import { isSinkablePart } from '@/utils/factory-management/sinkable'
 import { isSunk } from '@/utils/factory-management/disposal'
+import { isPartRedistributed } from '@/utils/factory-management/redistribution'
 
 // A building group solved against a target has to express its clock in the four decimal places
 // the game allows, so it can land a hair under and stay there — a 10,000/min line comes out about
@@ -48,8 +49,14 @@ export const calculateParts = (factory: Factory, gameData: DataInterface) => {
 
   // If factory has no products there is nothing for us to do, so mark as satisfied. Custom
   // buildings count as something to do: a portal room makes nothing, but its upkeep is a real
-  // demand and forgiving it would leave the factory green while its portals sit dead.
-  if (factory.products.length === 0 && (factory.customBuildings?.length ?? 0) === 0) {
+  // demand and forgiving it would leave the factory green while its portals sit dead. So do
+  // export requests: a redistribution hub makes nothing either, and promising away more than it
+  // imports is exactly the shortage it has to show.
+  if (
+    factory.products.length === 0 &&
+    (factory.customBuildings?.length ?? 0) === 0 &&
+    getRequestsForFactory(factory).length === 0
+  ) {
     factory.requirementsSatisfied = true
     return
   }
@@ -343,6 +350,11 @@ export const calculateExportable = (factory: Factory) => {
     }
 
     if (partData.amountSuppliedViaProduction > 0) {
+      partData.exportable = true
+    }
+
+    // A redistribution hub passes on what it imports, but only from rows flagged to do so (#46).
+    if (partData.amountSuppliedViaInput > 0 && isPartRedistributed(factory, part)) {
       partData.exportable = true
     }
   }

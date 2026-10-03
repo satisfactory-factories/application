@@ -746,20 +746,28 @@ export const addImport = async (
   const imports = card.locator('[id$="-imports"]')
   await imports.getByRole('button', { name: 'Add Import' }).click()
 
+  // The import dialog: pick the item, then the factory supplying it. "Any surplus" is switched on
+  // so the item is offered whether or not this factory's products consume it.
+  const dialog = page.locator('.v-overlay--active').filter({ has: page.getByTestId('import-item-picker') })
+  await expect(dialog, 'the import dialog never opened').toBeVisible()
+  await dialog.getByTestId('import-any-surplus').locator('input').check()
+
+  const picker = dialog.getByTestId('import-item-picker').locator('input')
+  await picker.click()
+  await picker.fill(item)
+  // Matched on text: each option carries the item's icon, whose alt text joins its accessible name.
+  const exactly = new RegExp(`^\\s*${item}\\s*$`)
+  const option = page.locator('.v-menu .v-list-item').filter({ hasText: exactly }).first()
+  await expect(option, `the item picker never offered ${item}`).toBeVisible()
+  await option.click()
+
+  const source = dialog.locator(`[data-testid="import-source"][data-source-name="${sourceName}"]`)
+  await expect(source, `${sourceName} was never offered as a source of ${item}`).toBeVisible()
+  await source.getByRole('button').click()
+  await expect(dialog).toBeHidden()
+
   const row = imports.locator('.selectors').last()
   await expect(row, 'the new import row never appeared').toBeVisible()
-
-  const pick = async (label: string, value: string) => {
-    const field = row.getByLabel(label, { exact: true })
-    await field.click()
-    await field.fill(value)
-    const option = page.getByRole('option', { name: value, exact: true }).first()
-    await expect(option, `the ${label} picker never offered ${value}`).toBeVisible()
-    await option.click()
-  }
-
-  await pick('Factory', sourceName)
-  await pick('Item', item)
 
   const qty = row.getByLabel('Qty /min', { exact: true })
   await qty.fill(String(amount))
@@ -773,7 +781,7 @@ export const addImport = async (
 /** The items the factory at `index` is importing, read off its own inputs. */
 export const importedItems = async (page: Page, index: number): Promise<string[]> => {
   const card = await factoryCard(page, index)
-  return (await card.locator('[id$="-imports"] .selectors .v-autocomplete__selection-text')
+  return (await card.locator('[id$="-imports"] .selectors [data-testid="import-item-name"]')
     .allTextContents()).map(text => text.trim())
 }
 
