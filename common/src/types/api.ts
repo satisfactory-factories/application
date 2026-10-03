@@ -1,6 +1,7 @@
 import type { Factory, FactoryGroup } from './factory'
 import type { RoomListEntry } from './protocol'
 import type { SyncedPreferences } from '../schemas/preferences'
+import type { TextIssue } from '../text-rules'
 
 /**
  * The REST half of the contract. `protocol.ts` covers the socket; these are the
@@ -109,11 +110,14 @@ export type RoomErrorCode =
   | 'too_many_rooms'
   | 'too_many_memberships'
   | 'invalid_payload'
+  /** A name, note or task broke a text rule. The body carries `textIssue`. */
+  | 'invalid_text'
   | 'revision_mismatch'
 
 export interface RoomErrorBody {
   code: RoomErrorCode
   message: string
+  textIssue?: TextIssue
 }
 
 // ===== Legacy blob adoption =====

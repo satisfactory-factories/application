@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, toRaw, watch } from 'vue'
+import { textFieldRule } from 'common'
 import type { LegacyImportResult, RoomListEntry } from 'common'
 import * as api from '@/api/client'
 import { ApiError, ApiNetworkError, VersionMismatchError } from '@/api/client'
@@ -495,7 +496,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   /** The toast, the list refresh and the mount every recovered plan needs. */
   const landRecoveredPlan = async (result: LegacyImportResult) => {
     legacyImported = true
-    // A cloud plan holds 150 factories, and an old save could be bigger. Saying how
+    // A cloud plan holds CAPS.factoriesPerRoom factories, and an old save could be bigger. Saying how
     // many were left behind is the difference between a partial recovery and a
     // silent one.
     const dropped = result.dropped ?? 0
@@ -721,6 +722,8 @@ export const useRoomsStore = defineStore('rooms', () => {
   const renameTab = async (tabId: string, name: string): Promise<true | string> => {
     const trimmed = name.trim()
     if (trimmed === '') return 'A tab needs a name.'
+    const allowed = textFieldRule('name')(trimmed)
+    if (allowed !== true) return allowed
 
     const state = appStore.getTabState(tabId)
     if (state.kind === 'local') {

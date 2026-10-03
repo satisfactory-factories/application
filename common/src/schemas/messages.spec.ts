@@ -10,6 +10,7 @@ import {
   parseFactoryTab,
   roomDiffSchema,
 } from './messages'
+import { firstTextIssue } from './text'
 
 const helloMessage = { type: 'hello', protocolVersion: PROTOCOL_VERSION }
 const opMessage = {
@@ -90,40 +91,39 @@ describe('roomDiffSchema', () => {
   })
 })
 
-describe('the truncate-then-reject boundary', () => {
-  it('truncates an over-long factory name instead of rejecting it', () => {
-    const result = parseFactory(makeFactory({ name: 'x'.repeat(500) }))
-    expect(result.success).toBe(true)
-    expect(result.data?.name).toHaveLength(CAPS.name)
+describe('the text rules at the boundary', () => {
+  it('rejects an over-long factory name and names the rule', () => {
+    const result = parseFactory(makeFactory({ name: 'x'.repeat(CAPS.name + 1) }))
+    expect(result.success).toBe(false)
+    expect(result.error && firstTextIssue(result.error)).toMatchObject({ path: 'name', rule: 'too_long' })
   })
 
-  it('truncates through a tab', () => {
+  it('stores names cleaned', () => {
+    const result = parseFactory(makeFactory({ name: '  Caterium\t' }))
+    expect(result.data?.name).toBe('Caterium')
+  })
+
+  it('finds a link in a note through a tab', () => {
     const result = parseFactoryTab(makeFactoryTab({
-      name: 'T'.repeat(400),
-      factories: [makeFactory({ notes: 'n'.repeat(4000) })],
+      factories: [makeFactory(), makeFactory({ notes: 'see www.example.test' })],
     }))
-    expect(result.success).toBe(true)
-    expect(result.data?.name).toHaveLength(CAPS.name)
-    expect(result.data?.factories[0].notes).toHaveLength(CAPS.notes)
+    expect(result.error && firstTextIssue(result.error)).toMatchObject({ path: 'factories.1.notes', rule: 'link' })
   })
 
-  it('still rejects a cap that is not a truncation', () => {
+  it('checks task titles and the room name an op carries', () => {
+    const tasks = [{ title: '{bad}', completed: false }]
+    expect(parseFactory(makeFactory({ tasks })).success).toBe(false)
+
+    const result = parseClientMessage({ ...opMessage, diff: { name: 'go to example.com' } })
+    expect(result.error && firstTextIssue(result.error)).toMatchObject({ path: 'diff.name', rule: 'link' })
+  })
+
+  it('still rejects a cap that is not a text rule, without a text issue', () => {
     const factories = Array.from({ length: CAPS.factoriesPerRoom + 1 }, (_, index) =>
       makeFactory({ id: index }))
-    expect(parseFactoryTab(makeFactoryTab({ factories })).success).toBe(false)
-  })
-
-  it('truncates the factories inside an op before validating it', () => {
-    const message = {
-      ...opMessage,
-      diff: { name: 'T'.repeat(400), factories: [makeFactory({ name: 'x'.repeat(500) })] },
-    }
-    const result = parseClientMessage(message)
-
-    expect(result.success).toBe(true)
-    const diff = result.success && result.data.type === 'op' ? result.data.diff : undefined
-    expect(diff?.name).toHaveLength(CAPS.name)
-    expect(diff?.factories?.[0].name).toHaveLength(CAPS.name)
+    const result = parseFactoryTab(makeFactoryTab({ factories }))
+    expect(result.success).toBe(false)
+    expect(result.error && firstTextIssue(result.error)).toBeNull()
   })
 
   it('rejects junk', () => {

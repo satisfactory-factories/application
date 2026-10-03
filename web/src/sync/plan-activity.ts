@@ -1,5 +1,5 @@
 import type { Factory, RoomDiff } from 'common'
-import { stableStringify } from '@/sync/room-state'
+import { stableStringify, UNKNOWN_CONTENT } from '@/sync/room-state'
 
 /**
  * What counts as the plan changing, for the "last updated" line in the tab bar.
@@ -36,4 +36,17 @@ export const diffChangesContent = (diff: RoomDiff, current: Factory[]): boolean 
 
   const prints = new Map(current.map(factory => [factory.id, contentPrint(factory)]))
   return diff.factories.some(factory => prints.get(factory.id) !== contentPrint(factory))
+}
+
+/**
+ * Whether an outgoing op changes what the plan says, measured against the baseline it was
+ * built from — the server's records, as this client last had them acked.
+ */
+export const sentDiffChangesContent = (diff: RoomDiff, acked: Map<number, string>): boolean => {
+  const before = (diff.factories ?? []).flatMap(factory => {
+    const record = acked.get(factory.id)
+    // A record the baseline cannot vouch for is compared against nothing, so it counts.
+    return record === undefined || record === UNKNOWN_CONTENT ? [] : [JSON.parse(record) as Factory]
+  })
+  return diffChangesContent(diff, before)
 }

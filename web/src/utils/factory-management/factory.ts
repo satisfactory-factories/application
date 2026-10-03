@@ -127,7 +127,7 @@ export const newFactory = (name = 'A new factory', order?: number, id?: number):
     power: emptyFactoryPower(),
     requirementsSatisfied: true, // Until we do the first calculation nothing is wrong
     usingRawResourcesOnly: false,
-    hidden: false,
+    hidden: false, // Retired; kept for the wire (see Factory.hidden)
     hasProblem: false,
     inSync: null,
     syncState: {},

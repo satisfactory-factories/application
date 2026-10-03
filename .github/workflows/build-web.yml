@@ -8,14 +8,15 @@ on:
   push:
     branches:
       - main
-      # The v0.7.0 integration line: sync work lands here for beta testing first.
-      - beta7
+      # The beta line, moved by hand to whatever needs beta testing before main.
+      - beta
     paths:
       - 'web/**'
+      - '!**/*.md'
   pull_request:
     branches:
       - main
-      - beta7
+      - beta
 permissions:
   contents: read
 jobs:
@@ -32,6 +33,9 @@ jobs:
         pnpm-lock.yaml
         .github/workflows/build-web.yml
         .github/workflows/changed-paths.yml
+      # Nothing in web/ imports or lints Markdown, so a docs edit cannot break the build.
+      ignore: |
+        *.md
 
   build-web:
     name: Build & Test Web
@@ -67,5 +71,7 @@ jobs:
       - name: Build Web
         run: pnpm build
 
+      # No coverage here: nothing reads the web report in CI, and instrumenting costs about a
+      # quarter of the run. `pnpm test` still reports it locally.
       - name: Test Web
-        run: pnpm test
+        run: pnpm exec vitest run --silent

@@ -134,6 +134,52 @@ describe('plan-activity-store', () => {
     expect(store.lastUpdatedAt(tabId())).toBeNull()
   })
 
+  describe('a synced tab', () => {
+    beforeEach(() => {
+      appStore.setTabState(tabId(), { kind: 'synced', shared: true, role: 'owner', revision: 1 })
+    })
+
+    // Typing a note would otherwise restamp the plan at every keystroke, long before any
+    // of it had left this device.
+    it('does not bump while an edit is still being made', () => {
+      const tab = seedPlan()
+
+      tab.factories[0].notes = 'Feeds the line'
+      eventBus.emit('factoryUpdated', tab.factories[0])
+      settle()
+
+      expect(store.lastUpdatedAt(tabId())).toBeNull()
+    })
+
+    it('does not bump for a tab field edited on its own either', () => {
+      seedPlan()
+
+      eventBus.emit('tabEdited', 'powerTarget')
+
+      expect(store.lastUpdatedAt(tabId())).toBeNull()
+    })
+
+    it('bumps when the edit is sent', () => {
+      const tab = seedPlan()
+
+      tab.factories[0].notes = 'Feeds the line'
+      eventBus.emit('factoryUpdated', tab.factories[0])
+      settle()
+      vi.setSystemTime(5_000)
+      eventBus.emit('planContentSent', { tabId: tabId() })
+
+      expect(store.lastUpdatedAt(tabId())).toBe(5_000)
+    })
+
+    it('still bumps for a peer\'s change', () => {
+      seedPlan()
+
+      eventBus.emit('planContentApplied', { tabId: tabId() })
+
+      expect(store.lastUpdatedAt(tabId())).not.toBeNull()
+    })
+  })
+
   it('keeps a stamp per tab, and remembers them across a reload', async () => {
     seedPlan()
     store.bump('other-tab', 1_000)

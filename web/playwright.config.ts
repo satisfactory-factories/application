@@ -19,7 +19,13 @@ export default defineConfig({
   // One backend process, one mongod and one rate-limit bucket are shared by every
   // test, so serial keeps a failure attributable to the test that caused it.
   workers: 1,
-  fullyParallel: false,
+  // With one worker this changes nothing about how a run executes: tests still go one
+  // at a time in file order. What it changes is `--shard`, which then splits the suite
+  // by test rather than by file. Split by file, one shard drew both of the big files
+  // (loading-tab, live-propagation) and ran 70% longer than the next. No test may
+  // rely on another having run before it, which none does: every one registers its
+  // own accounts and opens its own clients.
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   timeout: 90_000,
   // 30s: worst-case honest convergence under contention is rebase churn plus the

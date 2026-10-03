@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 
 import { expect, test } from '../helpers/fixtures'
-import { addFactory, clearPlan, factoryNames, openPlanner, settle } from '../helpers/planner'
+import { addFactory, clearPlan, factoryNames, openPlanner, settle, sidebarFactoryRows } from '../helpers/planner'
 
 /**
  * A plan leaving the planner and coming back, without an account, a room or a
@@ -30,7 +30,7 @@ test('a plan saved as a file comes back whole through the file half', async ({ c
 
   // Emptied, so the plan on screen afterwards can only have come out of the file.
   await clearPlan(page)
-  await expect(page.locator('input.factory-name')).toHaveCount(0)
+  await expect(sidebarFactoryRows(page)).toHaveCount(0)
 
   await actions.getByTestId('import-plan').click()
   await page.getByTestId('import-file-input').setInputFiles(await file.path())
@@ -38,7 +38,7 @@ test('a plan saved as a file comes back whole through the file half', async ({ c
   // The plan itself is the thing to wait for. A one-factory plan needs no
   // calculation, so it renders straight through without ever raising the loading
   // overlay: `settle` has nothing to observe and returns before the import lands.
-  await expect(page.locator('input.factory-name')).toHaveCount(1)
+  await expect(sidebarFactoryRows(page)).toHaveCount(1)
   await settle(page)
 
   expect(await factoryNames(page)).toEqual(['Saved to disk'])
