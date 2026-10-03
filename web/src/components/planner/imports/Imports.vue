@@ -40,23 +40,18 @@
             @click.prevent="toggleChecklistInput(factory, input)"
           >
         </div>
-        <!-- One button names the whole source, factory and item, and opens the import dialog to
-             change it. The dialog is where the filtering lives (#46). -->
-        <div class="input-row d-flex align-center">
+        <!-- The item comes first, as it did with the old pickers, and the factory supplying it sits
+             beside it in a chip rather than as a second icon, which read as a second import. The item
+             button opens the import dialog, where the filtering lives (#46). -->
+        <div class="input-row d-flex align-center ga-2">
           <v-btn
-            class="import-source-btn rounded text-none justify-start"
+            class="import-item-btn rounded text-none justify-start px-3"
             :class="{ 'text-medium-emphasis': !input.outputPart }"
-            height="48"
+            height="40"
             title="Change where this import comes from"
             variant="outlined"
-            width="360"
             @click="openSourceDialog(inputIndex)"
           >
-            <factory-icon-display
-              class="mr-2"
-              :icon="input.factoryId ? findFactory(input.factoryId)?.icon : undefined"
-              size="28"
-            />
             <game-asset
               v-if="input.outputPart"
               :key="input.outputPart"
@@ -66,19 +61,24 @@
               type="item"
               width="28px"
             />
-            <span v-if="input.outputPart && input.factoryId" class="text-left text-truncate">
-              <span class="d-block text-body-2" data-testid="import-item-name">{{ getPartDisplayName(input.outputPart) }}</span>
-              <span class="d-block text-caption text-medium-emphasis">
-                from {{ findFactory(input.factoryId)?.name }}<template v-if="sourceVia(input).length"> (via {{ sourceVia(input).join(', ') }})</template>
-              </span>
-            </span>
+            <span v-if="input.outputPart" class="text-body-1 text-truncate" data-testid="import-item-name">{{ getPartDisplayName(input.outputPart) }}</span>
             <span v-else>Choose what to import</span>
+            <i class="fas fa-pen ml-3 text-caption text-medium-emphasis" />
           </v-btn>
+          <v-chip
+            v-if="input.factoryId"
+            class="sf-chip import-source import-factory-chip"
+            :title="sourceVia(input).length ? `Redistributed by ${findFactory(input.factoryId)?.name} from ${sourceVia(input).join(', ')}` : undefined"
+          >
+            <factory-icon-display class="mr-2" :icon="findFactory(input.factoryId)?.icon" size="18" />
+            <span class="text-truncate">{{ findFactory(input.factoryId)?.name }}<template v-if="sourceVia(input).length"> (via {{ sourceVia(input).join(', ') }})</template></span>
+          </v-chip>
         </div>
         <div class="input-row d-flex align-center">
           <v-number-input
             v-model="input.amount"
             control-variant="stacked"
+            density="compact"
             :disabled="!input.outputPart"
             hide-details
             label="Qty /min"
@@ -181,9 +181,17 @@
                   density="compact"
                   :disabled="!input.outputPart || !canRedistribute(input)"
                   hide-details
-                  label="Redistribute"
                   @update:model-value="toggleRedistribute(factory, input)"
-                />
+                >
+                  <!-- On, the label becomes the row's "Redistributed" marker, so the row does not
+                       carry a switch and a chip saying the same thing side by side. -->
+                  <template #label>
+                    <span v-if="input.redistribute" class="text-blue">
+                      <i class="fas fa-random mr-1" />Redistributed
+                    </span>
+                    <span v-else>Redistribute</span>
+                  </template>
+                </v-switch>
               </span>
             </template>
             <span v-if="input.outputPart && !canRedistribute(input)">
@@ -196,10 +204,6 @@
               factory into a distribution hub for it.
             </span>
           </v-tooltip>
-          <v-chip v-if="input.redistribute" class="sf-chip blue small flex-shrink-0">
-            <i class="fas fa-random" />
-            <span class="ml-2">Redistributed</span>
-          </v-chip>
           <v-chip v-if="input.amount === 0" class="sf-chip red small">
             <i class="fas fa-exclamation-triangle" />
             <span class="ml-2">No amount set!</span>
@@ -576,9 +580,22 @@
     max-width: 100%;
   }
 
+  .import-item-btn {
+    max-width: 280px;
+    min-width: 200px;
+  }
+
+  .import-factory-chip {
+    max-width: 320px;
+  }
+
   .redistribute-switch {
     flex: 0 0 auto;
     width: auto;
+
+    :deep(.v-selection-control) {
+      min-height: 40px;
+    }
 
     :deep(.v-label) {
       opacity: 1;
