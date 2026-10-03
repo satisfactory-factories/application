@@ -356,7 +356,7 @@
   import GroupProductIcon from '@/components/planner/groups/GroupProductIcon.vue'
   import FactorySummaryTable from '@/components/planner/FactorySummaryTable.vue'
   import { UNGROUPED_ID } from '@/utils/factory-management/factory-groups'
-  import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   // Matches the sidebar row's threshold, so a figure it calls balanced is not a surplus here.
   const ROLLUP_EPSILON = 0.001
@@ -504,7 +504,7 @@
     expanded.value = true
   }
 
-  eventBus.on('openSummaryFullscreen', groupId => openFullscreen(groupId ?? null))
+  useEventBusListener('openSummaryFullscreen', groupId => openFullscreen(groupId ?? null))
 
   // Reset once it is off screen, so nothing changes visibly while it animates out.
   const onDialogClosed = () => {
@@ -515,7 +515,7 @@
 
   // Sidebar jump-link: landing on a collapsed section just to click Show is pointless, so reveal it
   // before the scroll arrives.
-  eventBus.on('openSection', sectionId => {
+  useEventBusListener('openSection', sectionId => {
     if (sectionId === 'factory-summary') {
       hidden.value = false
     }

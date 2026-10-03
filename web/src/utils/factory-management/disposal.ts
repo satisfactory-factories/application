@@ -91,7 +91,13 @@ export const cleanDisposalCount = (count: unknown): number => {
   return Math.floor(value)
 }
 
-const write = (factory: Factory, partId: string, field: keyof FactoryPartDisposal, count: unknown): void => {
+// A record that says nothing is dropped rather than kept at zero, so a plan that has had counts
+// set and cleared saves the same as one that never had them. Exported for load validation, which
+// applies the same rule.
+export const isEmptyDisposal = (record: FactoryPartDisposal): boolean =>
+  record.sinks === 0 && record.depots === 0 && !record.ignoreBacklog
+
+const write = (factory: Factory, partId: string, field: 'sinks' | 'depots', count: unknown): void => {
   if (!partId) return
 
   const value = cleanDisposalCount(count)
@@ -106,15 +112,44 @@ const write = (factory: Factory, partId: string, field: keyof FactoryPartDisposa
 
   existing[field] = value
 
-  // Drop the record once it says nothing, so a plan that has had counts set and cleared saves the
-  // same as one that never had them.
-  if (existing.sinks === 0 && existing.depots === 0) {
+  if (isEmptyDisposal(existing)) {
     delete factory.partDisposal?.[partId]
   }
 }
 
 export const setSinkCount = (factory: Factory, partId: string, count: unknown): void =>
   write(factory, partId, 'sinks', count)
+
+// Whether the user has chosen to live with this part's backlog warning. Says nothing about whether
+// the part is backlogging at all — that is `willBacklog`, and the row only offers the choice while
+// it is.
+export const isBacklogIgnored = (factory: Factory, partId: string): boolean =>
+  getDisposal(factory, partId).ignoreBacklog === true
+
+// Sticky like the counts, so ignoring a warning, then fixing the surplus, then letting it come back
+// finds the choice still made. Only ever stored as `true`: clearing it deletes the key.
+export const setBacklogIgnored = (factory: Factory, partId: string, ignored: boolean): void => {
+  if (!partId) return
+
+  const existing = factory.partDisposal?.[partId]
+
+  if (!existing) {
+    if (!ignored) return
+    factory.partDisposal ??= {}
+    factory.partDisposal[partId] = { ...NONE, ignoreBacklog: true }
+    return
+  }
+
+  if (ignored) {
+    existing.ignoreBacklog = true
+  } else {
+    delete existing.ignoreBacklog
+  }
+
+  if (isEmptyDisposal(existing)) {
+    delete factory.partDisposal?.[partId]
+  }
+}
 
 // Per browser rather than per plan: it is the player who needs telling once, and they need it
 // whichever plan they happen to be in when they first reach for a sink.
@@ -160,7 +195,7 @@ export const setDepotCount = (factory: Factory, partId: string, count: unknown):
 // Only counts entries whose part is still in the factory. The map is sticky on purpose, so a plan
 // that has been reworked can carry counts for parts it no longer makes; charging the user Mercer
 // Spheres or megawatts for those would be wrong.
-const totalFor = (factory: Factory, field: keyof FactoryPartDisposal): number => {
+const totalFor = (factory: Factory, field: 'sinks' | 'depots'): number => {
   let total = 0
   for (const [partId, disposal] of Object.entries(factory.partDisposal ?? {})) {
     if (!factory.parts?.[partId]) continue

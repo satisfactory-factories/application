@@ -4,9 +4,11 @@ import { expect, test } from '../helpers/fixtures'
 import { unique } from '../helpers/accounts'
 import {
   addFactory,
+  expectFactoryNames,
   mirroredFactories,
   mirrorRevision,
   notesField,
+  openFactory,
   readTabBar,
   waitForRevision,
 } from '../helpers/planner'
@@ -27,7 +29,8 @@ test('an edit on one device reaches the account\'s other device within 2s', asyn
   const note = `written on the first device: ${name}`
   await addFactory(first, { name, note })
 
-  await expect(second.locator('input.factory-name')).toHaveValue(name, { timeout: 2_000 })
+  await expectFactoryNames(second, [name], { timeout: 2_000 })
+  await openFactory(second, 0)
   await expect(notesField(second)).toHaveValue(note, { timeout: 2_000 })
   expect(await mirrorRevision(second, roomId)).toBeGreaterThan(0)
 })
@@ -37,7 +40,7 @@ test('both devices hold deep-equal plans once the edits quiesce', async ({ clien
 
   const name = unique('Bravo')
   await addFactory(first, { name, note: `quiesce ${name}` })
-  await expect(second.locator('input.factory-name')).toHaveValue(name)
+  await expectFactoryNames(second, [name])
 
   // Quiesced means both sides acknowledged the same revision, not "we waited".
   await expect.poll(() => mirrorRevision(first, roomId)).toBeGreaterThan(0)

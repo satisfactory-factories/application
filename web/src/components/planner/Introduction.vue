@@ -65,6 +65,7 @@
 </template>
 <script setup lang="ts">
   import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
   import { complexDemoPlan } from '@/utils/factory-setups/complex-demo-plan'
   import { useAppStore } from '@/stores/app-store'
   import { markPlanReplaced, markTabEdited } from '@/utils/sync-intent'
@@ -85,7 +86,7 @@
     }
   })
 
-  eventBus.on('introToggle', (show: boolean) => {
+  useEventBusListener('introToggle', (show: boolean) => {
     console.log('Introduction: Got introToggle event', show)
     if (show) {
       open()

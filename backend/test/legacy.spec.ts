@@ -1,4 +1,4 @@
-import { CAPS } from 'common'
+import { CAPS, LINK_REMOVED } from 'common'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { makeFactory } from 'common/testing'
 import request from 'supertest'
@@ -100,13 +100,31 @@ describe('legacy routes', () => {
       expect(response.body.data.name).toBe('My plan')
     })
 
-    it('applies the caps table: over the factory cap is rejected, a long name is cut', async () => {
+    it('applies the caps table: over the factory cap is rejected', async () => {
       const tooMany = Array.from({ length: CAPS.factoriesPerRoom + 1 }, (_, id) => makeFactory({ id }))
       expect((await create(tab(tooMany))).status).toBe(400)
+    })
 
-      const { body } = await create({ ...tab(), name: 'x'.repeat(CAPS.name + 50) })
-      const stored = await connection.collection('shares').findOne({ id: body.shareId })
-      expect(JSON.parse(stored?.data as string).name).toHaveLength(CAPS.name)
+    it('refuses a note with a link, naming the field and the rule', async () => {
+      const response = await create(tab([makeFactory({ notes: 'see https://example.test' })]))
+
+      expect(response.status).toBe(400)
+      expect(response.body.code).toBe('invalid_text')
+      expect(response.body.textIssue).toMatchObject({ path: 'factories.0.notes', rule: 'link' })
+    })
+
+    it('repairs links in a share saved before the text rules', async () => {
+      await connection.collection('shares').insertOne({
+        id: 'old-share',
+        data: JSON.stringify(tab([makeFactory({ notes: 'guide www.example.test/x', name: 'Iron\t' })])),
+        createdBy: 'someone',
+      })
+
+      const response = await request(context.app.getHttpServer()).get('/share/old-share')
+
+      expect(response.status).toBe(200)
+      expect(response.body.data.factories[0].notes).toBe(`guide ${LINK_REMOVED}`)
+      expect(response.body.data.factories[0].name).toBe('Iron')
     })
 
     it('is behind the version gate, unlike reading a link', async () => {
