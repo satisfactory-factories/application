@@ -1,4 +1,4 @@
-import { APP_VERSION_HEADER } from 'common'
+import { APP_VERSION_HEADER, PROTOCOL_VERSION } from 'common'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -95,7 +95,7 @@ describe('the /health rate limiter', () => {
     // The global bucket is untouched, so ordinary traffic still works.
     const login = await request(server)
       .post('/login')
-      .set(APP_VERSION_HEADER, '7.0')
+      .set(APP_VERSION_HEADER, PROTOCOL_VERSION)
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
   })

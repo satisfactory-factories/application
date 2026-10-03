@@ -1,4 +1,4 @@
-import { ACCEPTED_VERSION_HEADERS, APP_VERSION_HEADER } from 'common'
+import { ACCEPTED_VERSION_HEADERS, APP_VERSION_HEADER, PROTOCOL_VERSION } from 'common'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -55,7 +55,7 @@ describe('CORS', () => {
     const response = await request(context.app.getHttpServer())
       .post('/login')
       .set('Origin', PRODUCTION_ORIGIN)
-      .set(APP_VERSION_HEADER, '7.0')
+      .set(APP_VERSION_HEADER, PROTOCOL_VERSION)
       .send({ username: 'nobody', password: 'nobody' })
 
     expect(response.headers['access-control-allow-origin']).toBe(PRODUCTION_ORIGIN)

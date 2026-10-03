@@ -29,8 +29,8 @@ describe('CAPS', () => {
 })
 
 describe('protocol constants', () => {
-  it('starts at 7.0', () => {
-    expect(PROTOCOL_VERSION).toBe('7.0')
+  it('is 7.3, raised with v0.7.3 so pre-text-rules tabs reload', () => {
+    expect(PROTOCOL_VERSION).toBe('7.3')
   })
 
   it('carries the three close codes the client branches on', () => {

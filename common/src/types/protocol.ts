@@ -2,10 +2,12 @@ import type { Factory, FactoryGroup } from './factory'
 import type { TextIssue } from '../text-rules'
 
 /**
- * Bumped whenever a client and a server stop being able to understand each other.
- * Tracks the app's major/minor, not its patch: a patch never changes the wire.
+ * Bumped whenever a client and a server stop being able to understand each other, or
+ * whenever every open tab must reload onto a new build. Usually tracks the app's
+ * major/minor; 7.3 is the exception, raised with v0.7.3 so tabs from before the text
+ * rules (#756) refresh onto a build that checks them before sending.
  */
-export const PROTOCOL_VERSION = '7.0'
+export const PROTOCOL_VERSION = '7.3'
 
 /**
  * Header every REST call must carry, matched against `PROTOCOL_VERSION`. Only
