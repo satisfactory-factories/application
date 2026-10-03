@@ -289,6 +289,11 @@
     border-color: var(--sf-import-border) !important;
   }
 
+  &.import-source {
+    color: var(--sf-import-source) !important;
+    border-color: var(--sf-import-source-border) !important;
+  }
+
   &.yellow {
     color: var(--sf-yellow) !important;
     border-color: var(--sf-yellow-border) !important;
