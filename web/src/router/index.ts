@@ -8,6 +8,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { setupLayouts } from 'virtual:generated-layouts'
 import { routes } from 'vue-router/auto-routes'
 import { useGameDataStore } from '@/stores/game-data-store'
+import { armBootLoaderFallback, dismissBootLoader } from '@/utils/bootLoader'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -46,6 +47,14 @@ router.onError((err, to) => {
   } else {
     console.error(err)
   }
+})
+
+armBootLoaderFallback()
+
+// The planner takes the loading screen down itself, once its plan has painted. Any other page,
+// or a navigation that failed, has nothing more to wait for.
+router.afterEach((to, _from, failure) => {
+  if (failure || to.path !== '/') requestAnimationFrame(dismissBootLoader)
 })
 
 router.isReady().then(() => {

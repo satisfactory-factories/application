@@ -662,7 +662,6 @@
   const teardownLoadListeners = () => {
     clearTimeout(showTimer)
     eventBus.off('loadingCompleted', onLoadingCompleted)
-    eventBus.off('prepareForLoad', onLoadStarted)
     eventBus.off('loaderInit', onLoadStarted)
   }
 
@@ -671,7 +670,6 @@
     // now is someone seeing the planner for the first time, and this deck is not their welcome.
     if (!seen() && introWasDismissed) {
       eventBus.on('loadingCompleted', onLoadingCompleted)
-      eventBus.on('prepareForLoad', onLoadStarted)
       eventBus.on('loaderInit', onLoadStarted)
     }
     // Manual re-show via the header's "Show changes" button, which works even after dismissal

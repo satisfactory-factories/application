@@ -12,7 +12,7 @@
         label="New Task"
         outlined
         placeholder="Add a task..."
-        :rules="[newTaskRules.length]"
+        :rules="[newTaskRules.length, taskRule]"
         @blur="addTask"
         @keyup.enter="addTask"
       />
@@ -50,8 +50,9 @@
                   v-model="task.title"
                   auto-grow
                   density="compact"
-                  hide-details
+                  hide-details="auto"
                   rows="1"
+                  :rules="[taskRule]"
                   variant="plain"
                   @blur="titleDone"
                   @change="validateTaskLength(task)"
@@ -85,6 +86,7 @@
   import { Factory, FactoryTask } from '@/interfaces/planner/FactoryInterface'
   import { markFactoryEdited } from '@/utils/sync-intent'
   import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
 
   const props = defineProps <{
     factory: Factory;
@@ -132,6 +134,8 @@
     taskEdited()
   }
 
+  const taskRule = textFieldRule('task')
+
   const newTaskRules = {
     length: () => {
       if (newTask.value.length >= 200) {
@@ -151,6 +155,8 @@
       newTask.value = ''
       return
     }
+    // The field shows why; the text stays so it can be fixed.
+    if (taskRule(title) !== true) return
     if (props.factory.tasks.length >= 50) {
       alert('You have reached the maximum number of tasks allowed (50).')
       return

@@ -16,7 +16,7 @@
         :messages="lockHint"
         placeholder="Add some notes!"
         rows="1"
-        :rules="[rules.length]"
+        :rules="[rules.length, notesRule]"
         @blur="finishEditing"
         @focus="claim"
         @update:model-value="noteEdited"
@@ -37,6 +37,7 @@
   import { useFieldLock } from '@/composables/useFieldLock'
   import { useAppStore } from '@/stores/app-store'
   import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
 
   const props = defineProps <{
     factory: Factory;
@@ -55,6 +56,8 @@
   }
 
   const charLimit = 1000
+  // Shown under the field; the sync holds the note back until it passes.
+  const notesRule = textFieldRule('notes')
 
   const appStore = useAppStore()
 

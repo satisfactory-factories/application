@@ -9,8 +9,10 @@
   <checklist-tutorial />
   <linked-import-tick-dialog />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
-    <!-- Navigation Drawer for Mobile -->
-    <Teleport v-if="navigationReady" defer to="#navigationDrawer">
+    <!-- Navigation Drawer for Mobile. Only ever one copy of the sidebar is mounted: the drawer
+         cannot open at desktop widths, and the docked one is not shown below them, so the copy
+         that is not on screen was a second render of every factory row for nothing. -->
+    <Teleport v-if="navigationReady && !lgAndUp" defer to="#navigationDrawer">
       <planner-sidebar-content
         :factories="getFactories()"
         loaded-from="navigation"
@@ -25,7 +27,8 @@
     <v-row class="ma-0">
       <!-- Sticky Sidebar for Desktop -->
       <v-col
-        class="d-none d-lg-flex sticky-sidebar"
+        v-if="lgAndUp"
+        class="d-flex sticky-sidebar"
         :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar, nudge: sidebarNudge }"
         :style="{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }"
         @animationend.self="onNudgeEnd"
@@ -49,8 +52,9 @@
         />
       </v-col>
       <!-- Main Content Area -->
+      <!-- Between a load clearing the page and the plan going back on, an outline of a factory. -->
       <v-col v-if="!planVisible" class="border-s-lg-lg pa-3 main-content">
-        <planner-factory-placeholder-list />
+        <planner-factory-skeleton :factory="null" />
       </v-col>
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <!-- One page at a time: a single factory, or the overview when none is open. Mounting
@@ -174,6 +178,8 @@
     viewAfterRemoving,
   } from '@/utils/factory-management/planner-view'
   import eventBus from '@/utils/eventBus'
+  import { dismissBootLoader } from '@/utils/bootLoader'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
   import { captureOrder, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
@@ -183,6 +189,7 @@
   import PlannerFactoryPager from '@/components/planner/PlannerFactoryPager.vue'
   import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
   import { flashElement } from '@/utils/navigation-highlight'
+  import { canAddFactory } from '@/utils/plan-size'
 
   const { getGameData } = useGameDataStore()
   const gameData = getGameData()
@@ -487,9 +494,9 @@
 
   // ### EVENT BUS LISTENERS ###
   // When we are starting a new load we need to unload all the DOM elements
-  eventBus.on('plannerShow', (show: boolean) => {
+  useEventBusListener('plannerShow', (show: boolean) => {
     if (!show) {
-      console.log('Planner: Received plannerShow(false) event, marked as unloaded, showing placeholders')
+      console.log('Planner: Received plannerShow(false) event, clearing the page')
       hidePlan()
     } else {
       console.log('Planner: Received plannerShow(true) event, showing content')
@@ -498,7 +505,7 @@
   })
 
   // When everything is loaded and ready to go, then we are ready to start loading things.
-  eventBus.on('loadingCompleted', () => {
+  useEventBusListener('loadingCompleted', () => {
     console.log('Planner: Received loadingCompleted event, booting planner')
     showPlan()
   })
@@ -508,16 +515,16 @@
   // back — and a transition fires on a schedule the store cannot reason about.
   onMounted(() => eventBus.emit('readyForData'))
 
-  eventBus.on('worldDataShow', (value: boolean) => {
+  useEventBusListener('worldDataShow', (value: boolean) => {
     showWorldData.value = value
   })
 
-  eventBus.on('navigationReady', () => {
+  useEventBusListener('navigationReady', () => {
     console.log('Planner: Received navigationReady event, teleporting factory list')
     navigationReady.value = true
   })
 
-  eventBus.on('toggleSidebar', () => {
+  useEventBusListener('toggleSidebar', () => {
     showSidebar.value = !showSidebar.value
     sidebarPeek.value = false
     console.log('Planner: Received toggleSidebar event, toggling sidebar visibility', showSidebar.value)
@@ -640,6 +647,8 @@
   const showPlan = () => {
     resyncWorldResources()
     planVisible.value = true
+    // After the flush that mounts the plan, so the screen and the plan swap in one paint.
+    nextTick(dismissBootLoader)
 
     // Restore the indicator once the cards have had a beat to render.
     setTimeout(updateActiveFactory, 300)
@@ -663,7 +672,7 @@
   const createFactory = (groupId: string | null = null) => {
     const factory = newFactory()
     factory.displayOrder = getFactories().length
-    addFactory(factory)
+    if (!addFactory(factory)) return
     // Grouped after the fact rather than born into it: addFactory cannot see where the click came
     // from, and seats every new factory at the end of the Ungrouped block. The move re-seats it at
     // the end of its group and re-sorts the plan, so the card lands where the sidebar row is.
@@ -760,6 +769,7 @@
   }
 
   const copyFactory = (originalFactory: Factory) => {
+    if (!canAddFactory(getFactories().length)) return
     // Make a deep copy of the factory with a new ID, unique against the rest of the plan.
     const before = captureOrder(getFactories())
     const newId = generateFactoryId(getFactories())
@@ -1018,11 +1028,11 @@
   }
 
   // A dialog cannot call navigateToSection itself, so it asks for the jump by id.
-  eventBus.on('jumpToSection', sectionId => navigateToSection(sectionId))
+  useEventBusListener('jumpToSection', sectionId => navigateToSection(sectionId))
 
   // Same for the tab bar's search: it sits above the planner in the layout, so it cannot inject
   // navigateToFactory and asks over the bus instead.
-  eventBus.on('jumpToFactory', ({ factoryId, targets, fallback }) =>
+  useEventBusListener('jumpToFactory', ({ factoryId, targets, fallback }) =>
     navigateToFactory(factoryId, targets, fallback))
 
   const forceSort = () => {

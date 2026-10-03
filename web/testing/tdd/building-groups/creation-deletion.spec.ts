@@ -1,6 +1,6 @@
 import { VueWrapper } from '@vue/test-utils'
 import { reactive } from 'vue'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
@@ -16,6 +16,16 @@ const gameData = await fetchGameData()
 const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
 }
+
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
   let factory: Factory
@@ -241,10 +251,10 @@ describe('TDD: BG-C-D: Building Groups: Creation and Deletion', () => {
       // Update the product amount to create a balance of 2 groups with 1 building
       const productAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       await productAmountInput.setValue('60')
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
       // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       // Now we delete a group
       const deleteButton = subject.find(`[id="${factory.id}-${buildingGroup.id}-delete"]`)
