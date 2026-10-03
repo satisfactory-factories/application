@@ -8,6 +8,8 @@ metadata:
   lastVerified: 2026-09-01
   originSessionId: 11ae41e3-8e72-499b-a0e3-e526b20af919
   modified: 2026-09-01T14:28:37.622Z
+  lastUsed: 2026-09-24
+  useCount: 1
 ---
 
 `prom-client` (the backend's Prometheus client, added for `GET /metrics`) is **deprecated

@@ -223,6 +223,8 @@
     rememberSnapshotLink,
   } from '@/sync/snapshot-links'
   import eventBus from '@/utils/eventBus'
+  import { describeTextIssue, textIssueOf } from '@/utils/text-issues'
+  import { findTabTextIssue } from 'common'
 
   const props = defineProps<{ tabId: string }>()
   const open = defineModel<boolean>({ default: false })
@@ -266,6 +268,8 @@
   // Plain text: this is rendered as text, and an anchor tag would be shown verbatim.
   const snapshotFailure = (error: unknown): string => {
     if (error instanceof ApiNetworkError) return 'The backend server is offline. Please report this on Discord.'
+    const textIssue = textIssueOf(error)
+    if (textIssue) return describeTextIssue(textIssue, appStore.getTab(props.tabId))
     if (error instanceof ApiError) {
       if (error.status === 429) return 'You are being rate limited. Please wait a little before trying again.'
       return 'Failed to create the snapshot link. Please report this on Discord.'
@@ -313,6 +317,12 @@
     }
     if (roomSync.isSuppressed) {
       snapshotError.value = OFFLINE_MESSAGE
+      return
+    }
+    // Said here rather than after a round trip the server would refuse anyway.
+    const textIssue = findTabTextIssue(tab)
+    if (textIssue) {
+      snapshotError.value = describeTextIssue(textIssue, tab)
       return
     }
 

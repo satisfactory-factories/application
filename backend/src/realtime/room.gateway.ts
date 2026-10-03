@@ -5,7 +5,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { JwtService } from '@nestjs/jwt'
 import { Model } from 'mongoose'
 import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway } from '@nestjs/websockets'
-import { CLOSE_CODES, PROTOCOL_VERSION, WS_PATH, parseClientMessage } from 'common'
+import { CLOSE_CODES, PROTOCOL_VERSION, WS_PATH, firstTextIssue, parseClientMessage } from 'common'
 import type WebSocket from 'ws'
 import type {
   ClientJoinMessage,
@@ -13,6 +13,7 @@ import type {
   ClientOpMessage,
   ClientUnlockMessage,
   ServerMessage,
+  TextIssue,
 } from 'common'
 
 import { ANONYMOUS_ACTOR } from '../rooms/room-activity.service'
@@ -183,7 +184,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
       const parsed = parseClientMessage(raw)
       if (!parsed.success) {
-        await this.rejectUnparsable(connection, raw)
+        await this.rejectUnparsable(connection, raw, firstTextIssue(parsed.error))
         return
       }
 
@@ -547,7 +548,11 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
    * named a room it holds, which is what keeps the client's one-in-flight slot
    * from stalling on a payload the server refuses.
    */
-  private async rejectUnparsable (connection: Connection, raw: unknown): Promise<void> {
+  private async rejectUnparsable (
+    connection: Connection,
+    raw: unknown,
+    textIssue: TextIssue | null,
+  ): Promise<void> {
     const envelope = asOpEnvelope(raw)
     const session = envelope ? connection.rooms.get(envelope.roomId) : undefined
     if (!envelope || !session) {
@@ -581,7 +586,7 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       type: 'op_reject',
       roomId: envelope.roomId,
       opId: envelope.opId,
-      reason: 'invalid',
+      ...(textIssue ? { reason: 'invalid_text', textIssue } : { reason: 'invalid' }),
       snapshot: toRoomSnapshot(access.room),
     })
   }

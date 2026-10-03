@@ -1,12 +1,13 @@
 /**
  * Pins the storage the throttler guard actually runs on.
  *
- * @nestjs/throttler 6.5.0's own storage keeps one list of pending decrements per bucket with no
- * client key in it, and unblocking any client clears the whole list. Every other client in that
- * bucket then keeps its count for good, so an unrelated person can be 429'd out of signing in or
+ * @nestjs/throttler 6.5.0's own storage kept one list of pending decrements per bucket with no
+ * client key in it, and unblocking any client cleared the whole list. Every other client in that
+ * bucket then kept its count for good, so an unrelated person could be 429'd out of signing in or
  * joining a room. PerClientThrottlerStorage gives each client its own timers and its own
- * monotonic deadlines; the last describe here holds the library to the behaviour we left behind,
- * so an upgrade that fixes it upstream is visible rather than silent.
+ * monotonic deadlines. 6.6.0 fixed the cross-client cancellation upstream; the last describe
+ * here pins that fix so a regression is visible. The library still expires blocks on
+ * Date.now(), which throttler-clock-step.spec.ts pins, and is why our storage stays.
  */
 import { ThrottlerStorageService } from '@nestjs/throttler'
 import type { ThrottlerStorage } from '@nestjs/throttler'
@@ -174,17 +175,15 @@ describe('PerClientThrottlerStorage', () => {
 })
 
 describe('the library storage this replaces', () => {
-  // Held to the defect deliberately. If this ever fails, @nestjs/throttler has fixed the
-  // cross-client cancellation and PerClientThrottlerStorage is worth re-reading against it.
-  it('strands a second client when the first unblocks', async () => {
+  // Fixed upstream in 6.6.0: pending decrements are keyed per client, so an unblock no longer
+  // cancels a stranger's. If this fails again the stranding defect is back.
+  it('no longer strands a second client when the first unblocks', async () => {
     const storage = new ThrottlerStorageService()
 
     const b = await oneClientUnblocksWhileAnotherIsCounting(storage)
 
-    // Both of B's earlier hits should have decayed. They were cancelled by A's unblock instead,
-    // so an ordinary third request pushes B over a limit it never actually exceeded.
-    expect(b.totalHits).toBe(LIMIT + 1)
-    expect(b.isBlocked).toBe(true)
+    expect(b.totalHits).toBe(1)
+    expect(b.isBlocked).toBe(false)
     storage.onApplicationShutdown()
   })
 })

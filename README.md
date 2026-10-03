@@ -26,7 +26,7 @@ ___
 This project has the following requirements. We highly recommend you use `nvm` to manage your Node.js version.
 - Node.js version >=24 — `nvm use` in the repo root picks up the version pinned in `.nvmrc`, or `nvm install 24 && nvm use 24`
   - You may want to make 24 the default version with `nvm alias default 24`
-- pnpm version >=11.3 — `corepack enable` is the recommended way to get it, as that activates the exact version pinned by the `packageManager` field in `package.json` (this is what CI does). `npm install -g pnpm` also works, but installs whatever the latest release happens to be.
+- pnpm version >=12 — `corepack enable` is the recommended way to get it, as that activates the exact version pinned by the `packageManager` field in `package.json` (this is what CI does). `npm install -g pnpm` also works, but installs whatever the latest release happens to be.
 - Docker (for the backend) [Docker install docs](https://docs.docker.com/engine/install/)
 
 ### pnpm is the mandatory package manager

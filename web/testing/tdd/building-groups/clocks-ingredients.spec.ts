@@ -1,6 +1,6 @@
 import { VueWrapper } from '@vue/test-utils'
 import { reactive } from 'vue'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
@@ -14,6 +14,16 @@ const gameData = await fetchGameData()
 const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
 }
+
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
   let factory: Factory
@@ -38,10 +48,10 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
   test('BG-E-C-PROD-2: Allows editing', async () => {
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce in BuildingGroup.vue (750ms)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     expect(buildingGroup.overclockPercent).toBe(200)
     // 2 buildings @ 200% = 4 effective buildings
@@ -54,9 +64,9 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // Power scales at (clock/100)^1.321928 (= log2(2.5), so 200% = 2.5x power).
     // 2 smelters (4MW each) @ 200% = 4 * 2.5 * 2 = 20 MW
@@ -70,9 +80,9 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // 2 buildings @ 200% = 4 effective buildings = 120/min
     expect(buildingGroup.parts.IronIngot).toBe(120)
@@ -85,7 +95,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // 2 buildings @ 150% = 1 shard each = 2 total
     expect(subject.find(`[id="${factory.id}-${product.id}-power-shards-total"]`).text()).toBe('2')
@@ -95,9 +105,9 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     product.buildingGroupItemSync = true
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // 2 buildings @ 150% = 3 effective buildings
     expect((subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element as HTMLInputElement).value).toBe('3')
@@ -109,9 +119,9 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     product.buildingGroupItemSync = false
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // Product building count should stay at 2
     expect((subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element as HTMLInputElement).value).toBe('2')
@@ -135,7 +145,7 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     // After the debounce, it updates: 2 smelters @ 200% = 20 MW
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('20\u00A0MW')
   })
 
@@ -147,10 +157,10 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(200)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // Factory power is the sum of the group power usages: 2 smelters @ 200% = 20 MW
     expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('20\u00A0MW')
@@ -161,10 +171,10 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     // A 4-decimal-place clock (the game's maximum precision) should be preserved exactly
     await clockInput.setValue(133.3333)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     expect(buildingGroup.overclockPercent).toBe(133.3333)
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`).element.value).toBe('133.3333')
@@ -180,10 +190,10 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // 2 buildings @ 150% = 3 effective vs 2 required = over-producing, so the red flag is set
     expect(subject.find(`[id="${factory.id}-${product.id}-buildings-status-indicator"]`).attributes().isred).toBe('true')
@@ -194,10 +204,10 @@ describe('TDD: BG-E-C-PROD: Building Groups: Clocks (Products)', () => {
 
     const clockInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-clock"]`)
     await clockInput.setValue(150)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // The physical building count of the group is untouched by a clock edit
     expect(buildingGroup.buildingCount).toBe(2)
@@ -231,10 +241,10 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     // Change OreIron to 120 (needs 4 buildings)
     await oreInput.setValue(120)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce (750ms)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // Should have updated building count to 4 (defaulting to 100% clock if possible)
     expect(buildingGroup.buildingCount).toBe(4)
@@ -249,7 +259,7 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     // Change OreIron to a non-multiple of 30, e.g., 40
     await oreInput.setValue(40)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // Clock should have adjusted to match 40
     // 40 / 30 = 1.333 buildings.
@@ -272,11 +282,11 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
     await oreInput.setValue(120)
 
     // Before the 250ms debounce fires, the group has not been recalculated yet
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await vi.advanceTimersByTimeAsync(100)
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW')
 
     // After the debounce: 4 smelters @ 100% = 16 MW
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16\u00A0MW')
   })
 
@@ -285,10 +295,10 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // 120 OreIron = 4 buildings @ 100% = 4 effective buildings
     expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('4.00')
@@ -301,10 +311,10 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // Group is now 4 effective buildings vs the item's 2 = 2 over
     expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('2.00')
@@ -316,10 +326,10 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // 4 smelters @ 100% = 16 MW
     expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16\u00A0MW')
@@ -333,10 +343,10 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // Factory power is the sum of the group power usages: 4 smelters @ 100% = 16 MW
     expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16\u00A0MW')
@@ -348,10 +358,10 @@ describe('TDD: BG-E-I-PROD: Building Groups: Ingredients (Products)', () => {
 
     const oreInput = subject.find(`[id="${factory.id}-${buildingGroup.id}-parts-OreIron-amount"]`)
     await oreInput.setValue(120)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     // With sync on, the item's building count follows the group: 120 OreIron = 4 buildings
     expect(product.buildingGroups[0].buildingCount).toBe(4)

@@ -165,6 +165,67 @@ describe('events-store', () => {
     })
   })
 
+  describe('usage', () => {
+    it('sends a usage-only report, with no events list at all', async () => {
+      store.recordUsage('search_jump', 3)
+
+      await store.flush()
+
+      expect(sent()).not.toHaveProperty('events')
+      expect(sent()?.usage).toEqual([{ action: 'search_jump', count: 3 }])
+      expect(eventReportSchema.safeParse(sent()).success).toBe(true)
+      expect(store.pendingUsage()).toEqual({})
+    })
+
+    it('sends usage beside faults in one report', async () => {
+      store.record('api_network_error')
+      store.recordUsage('search_jump')
+
+      await store.flush()
+
+      expect(Object.keys(sent() ?? {}).sort()).toEqual(['appVersion', 'events', 'instanceId', 'usage'])
+      expect(api.sendEventReport).toHaveBeenCalledTimes(1)
+    })
+
+    it('refuses an action the server would not accept', () => {
+      store.recordUsage('search_typed' as never)
+      store.recordUsage('search_jump', 0)
+
+      expect(store.pendingUsage()).toEqual({})
+    })
+
+    it('saturates at the cap', () => {
+      store.recordUsage('search_jump', EVENT_CAPS.count)
+      store.recordUsage('search_jump', 5)
+
+      expect(store.pendingUsage()).toEqual({ search_jump: EVENT_CAPS.count })
+    })
+
+    it('keeps usage when the send is deferred and drops it when refused outright', async () => {
+      vi.mocked(api.sendEventReport).mockResolvedValue('deferred')
+      store.recordUsage('search_jump', 2)
+      await store.flush()
+      expect(store.pendingUsage()).toEqual({ search_jump: 2 })
+
+      vi.mocked(api.sendEventReport).mockResolvedValue('rejected')
+      await store.flush()
+      expect(store.pendingUsage()).toEqual({})
+    })
+
+    it('keeps usage recorded while the flush was in flight', async () => {
+      let release: (outcome: 'accepted') => void = () => undefined
+      vi.mocked(api.sendEventReport).mockReturnValue(new Promise(resolve => { release = resolve }))
+      store.recordUsage('search_jump', 2)
+
+      const flushing = store.flush()
+      store.recordUsage('search_jump', 1)
+      release('accepted')
+      await flushing
+
+      expect(store.pendingUsage()).toEqual({ search_jump: 1 })
+    })
+  })
+
   describe('offline mode', () => {
     it('sends nothing while offline mode is on', async () => {
       roomSync.enterOffline()

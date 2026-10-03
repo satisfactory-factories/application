@@ -1,7 +1,31 @@
+import { ACCEPTED_VERSION_HEADERS } from 'common'
 import { ArgumentsHost, Catch, HttpException } from '@nestjs/common'
 import { BaseExceptionFilter } from '@nestjs/core'
+import type { Request } from 'express'
 
-import { EventCountersService } from './event-counters.service'
+import { BackoffException } from './backoff.exception'
+import { EventCountersService, UNMATCHED_ROUTE } from './event-counters.service'
+import type { HttpErrorClient, HttpErrorLabels } from './event-counters.service'
+
+/** Routes the planner calls without a version header, so a headerless hit is still the planner. */
+const BEACON_ROUTES = new Set(['POST /events', 'POST /telemetry'])
+
+/**
+ * Express sets `req.route` when a route layer dispatches, so it is present for anything thrown
+ * from a guard, pipe or handler and absent only when the router found nothing. The pattern is
+ * bounded by the controllers; the raw path is bounded by whoever is probing.
+ */
+export const describeRequest = (request: Request): HttpErrorLabels => {
+  const pattern = (request.route as { path?: unknown } | undefined)?.path
+  const route = typeof pattern === 'string' ? `${request.method} ${pattern}` : UNMATCHED_ROUTE
+
+  const versioned = ACCEPTED_VERSION_HEADERS.some(name => request.header(name) !== undefined)
+  let client: HttpErrorClient = 'unversioned'
+  if (versioned) client = 'versioned'
+  else if (BEACON_ROUTES.has(route)) client = 'beacon'
+
+  return { client, route }
+}
 
 /**
  * Counts every HTTP error response, then hands the exception straight back to Nest.
@@ -29,8 +53,12 @@ export class HttpErrorFilter extends BaseExceptionFilter {
     // Only HTTP. A gateway exception reaching here would otherwise be counted as a response
     // that was never sent.
     if (host.getType() === 'http') {
-      const status = exception instanceof HttpException ? exception.getStatus() : 500
-      this.counters.recordHttpError(status)
+      if (exception instanceof BackoffException) {
+        this.counters.recordBackoff(exception.endpoint, exception.reason)
+      } else {
+        const status = exception instanceof HttpException ? exception.getStatus() : 500
+        this.counters.recordHttpError(status, describeRequest(host.switchToHttp().getRequest<Request>()))
+      }
     }
 
     super.catch(exception, host)

@@ -11,5 +11,4 @@ node_modules
 .claude/worktrees/
 
 # Codex review scratch, never committed
-.codex-build-review.diff
-.codex-build-review-result.md
+.codex-*

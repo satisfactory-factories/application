@@ -3,7 +3,7 @@ import { TELEMETRY_CAPS, telemetryHeartbeatSchema } from 'common'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import * as api from '@/api/client'
-import { TELEMETRY_INSTANCE_KEY, UNKNOWN_VERSION, useTelemetryStore } from '@/stores/telemetry-store'
+import { TELEMETRY_INSTANCE_KEY, TELEMETRY_INTERACTION_KEY, UNKNOWN_VERSION, useTelemetryStore } from '@/stores/telemetry-store'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
@@ -22,6 +22,7 @@ const ALLOWED_FIELDS = [
   'appVersion',
   'cloudTabCount',
   'factoriesTotal',
+  'idle',
   'instanceId',
   'localTabCount',
   'signedIn',
@@ -199,6 +200,119 @@ describe('telemetry-store', () => {
       await useTelemetryStore().send()
 
       expect(sent()?.instanceId).not.toBe(first)
+    })
+  })
+
+  describe('the idle flag', () => {
+    const touch = () => window.dispatchEvent(new Event('pointerdown'))
+
+    it('is false on a freshly loaded page', () => {
+      store.start()
+      expect(store.buildHeartbeat().idle).toBe(false)
+    })
+
+    it('turns true once nobody has touched the page for the idle window', () => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        vi.advanceTimersByTime(TELEMETRY_CAPS.idleAfterMs - 1)
+        expect(store.buildHeartbeat().idle).toBe(false)
+
+        vi.advanceTimersByTime(1)
+        expect(store.buildHeartbeat().idle).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it.each(['pointerdown', 'keydown', 'wheel', 'touchstart'])('is reset by %s', type => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        vi.advanceTimersByTime(TELEMETRY_CAPS.idleAfterMs)
+        expect(store.buildHeartbeat().idle).toBe(true)
+
+        window.dispatchEvent(new Event(type))
+        expect(store.buildHeartbeat().idle).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('goes out on the heartbeat', async () => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        expect(sent()?.idle).toBe(false)
+
+        await vi.advanceTimersByTimeAsync(TELEMETRY_CAPS.idleAfterMs)
+        expect(sent()?.idle).toBe(true)
+
+        touch()
+        await vi.advanceTimersByTimeAsync(TELEMETRY_CAPS.intervalMs)
+        expect(sent()?.idle).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('counts a touch in another tab of the same browser', () => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        vi.advanceTimersByTime(TELEMETRY_CAPS.idleAfterMs)
+        expect(store.buildHeartbeat().idle).toBe(true)
+
+        // Another tab writes the shared timestamp; this one never saw the click.
+        localStorage.setItem(TELEMETRY_INTERACTION_KEY, String(Date.now()))
+        expect(store.buildHeartbeat().idle).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('publishes its own touches for the other tabs, at most every few seconds', () => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        const atStart = localStorage.getItem(TELEMETRY_INTERACTION_KEY)
+        expect(atStart).toBe(String(Date.now()))
+
+        vi.advanceTimersByTime(1_000)
+        touch()
+        expect(localStorage.getItem(TELEMETRY_INTERACTION_KEY)).toBe(atStart)
+
+        vi.advanceTimersByTime(10_000)
+        touch()
+        expect(localStorage.getItem(TELEMETRY_INTERACTION_KEY)).toBe(String(Date.now()))
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('ignores a shared value that is not a timestamp', () => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        localStorage.setItem(TELEMETRY_INTERACTION_KEY, 'soon')
+        vi.advanceTimersByTime(TELEMETRY_CAPS.idleAfterMs)
+        expect(store.buildHeartbeat().idle).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('stops listening once stopped', () => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        store.stop()
+        vi.advanceTimersByTime(TELEMETRY_CAPS.idleAfterMs)
+        touch()
+        expect(store.buildHeartbeat().idle).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 

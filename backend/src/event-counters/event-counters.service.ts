@@ -1,7 +1,27 @@
 import { Counter, Registry } from 'prom-client'
-import { EVENT_REASONS, EVENT_SOURCES } from 'common'
+import { EVENT_REASONS, EVENT_SOURCES, USAGE_ACTIONS } from 'common'
 import { Injectable } from '@nestjs/common'
-import type { EventReason, EventSource } from 'common'
+import type { EventReason, EventSource, UsageAction } from 'common'
+
+/**
+ * Who sent the request that errored, as far as the request itself can say.
+ *
+ * `versioned` carried a planner version header. `beacon` did not, but hit an endpoint only
+ * the planner calls: the event and telemetry reports go out without the header on purpose, so
+ * a 426 can never reach a fire-and-forget fetch. `unversioned` is everything else: scanners,
+ * monitors, curl, and any planner build old enough to predate the header. A heuristic, not
+ * attribution: anything can send the header.
+ */
+export type HttpErrorClient = 'versioned' | 'beacon' | 'unversioned'
+
+/** The route label when the router matched nothing. */
+export const UNMATCHED_ROUTE = 'unmatched'
+
+export interface HttpErrorLabels {
+  client: HttpErrorClient
+  /** `METHOD /route/:pattern` as the router matched it, or `unmatched`. Never the raw path. */
+  route: string
+}
 
 /**
  * The error counters, and nothing else.
@@ -20,12 +40,24 @@ import type { EventReason, EventSource } from 'common'
  * Prometheus already does, and would put a database write on the path that runs fastest when
  * something is already going wrong.
  */
+/** Every back-off the API can answer with, so each series exists from boot. */
+const BACKOFFS = [
+  ['telemetry', 'too_soon'],
+  ['telemetry', 'at_capacity'],
+  ['events', 'too_soon'],
+] as const
+
+export type BackoffEndpoint = typeof BACKOFFS[number][0]
+export type BackoffReason = typeof BACKOFFS[number][1]
+
 @Injectable()
 export class EventCountersService {
   readonly registry = new Registry()
 
   private readonly events: Counter<'source' | 'reason'>
-  private readonly httpErrors: Counter<'status'>
+  private readonly httpErrors: Counter<'status' | 'client' | 'route'>
+  private readonly backoffs: Counter<'endpoint' | 'reason'>
+  private readonly usage: Counter<'action'>
 
   constructor () {
     this.events = new Counter({
@@ -37,8 +69,22 @@ export class EventCountersService {
 
     this.httpErrors = new Counter({
       name: 'sf_http_errors_total',
-      help: 'HTTP error responses by status. A per-response view; sf_events_total is a per-cause view. One incident can appear in both, so do not add them together.',
-      labelNames: ['status'],
+      help: 'HTTP error responses by status, client and route. client is versioned (sent a planner version header), beacon (no header, but an endpoint only the planner calls) or unversioned. route is the matched route pattern or unmatched, never the raw path, so a scanner cannot mint series. A per-response view; sf_events_total is a per-cause view. One incident can appear in both, so do not add them together.',
+      labelNames: ['status', 'client', 'route'],
+      registers: [this.registry],
+    })
+
+    this.backoffs = new Counter({
+      name: 'sf_backoffs_total',
+      help: 'Requests answered "come back later" and dropped on purpose. Rate limits working as designed, kept apart from sf_http_errors_total so they do not read as faults.',
+      labelNames: ['endpoint', 'reason'],
+      registers: [this.registry],
+    })
+
+    this.usage = new Counter({
+      name: 'sf_usage_total',
+      help: 'Things people did in the planner, by action. Arrives over POST /events like the client faults, so it is indicative rather than authoritative: the endpoint is unauthenticated and anonymous.',
+      labelNames: ['action'],
       registers: [this.registry],
     })
 
@@ -48,6 +94,19 @@ export class EventCountersService {
     for (const source of EVENT_SOURCES) {
       for (const reason of EVENT_REASONS) this.events.inc({ source, reason }, 0)
     }
+    for (const [endpoint, reason] of BACKOFFS) this.backoffs.inc({ endpoint, reason }, 0)
+    // The scanner series is seeded too, and it is the one that has to be. A sweep is a burst
+    // that starts and finishes inside one scrape, so Prometheus's first sight of an unseeded
+    // series is already the final count, and increase() never sees it move. Seen on
+    // 2026-09-17: 280 probes in one minute, a flat line on every panel.
+    this.httpErrors.inc({ status: '404', client: 'unversioned', route: UNMATCHED_ROUTE }, 0)
+    for (const action of USAGE_ACTIONS) this.usage.inc({ action }, 0)
+  }
+
+  recordUsage (action: UsageAction, count = 1): void {
+    try {
+      this.usage.inc({ action }, count)
+    } catch { /* as above */ }
   }
 
   /** Never throws: a metric must not be able to break what it is measuring. */
@@ -59,9 +118,15 @@ export class EventCountersService {
     }
   }
 
-  recordHttpError (status: number): void {
+  recordBackoff (endpoint: BackoffEndpoint, reason: BackoffReason): void {
     try {
-      this.httpErrors.inc({ status: String(status) })
+      this.backoffs.inc({ endpoint, reason })
+    } catch { /* as above */ }
+  }
+
+  recordHttpError (status: number, labels: HttpErrorLabels): void {
+    try {
+      this.httpErrors.inc({ status: String(status), client: labels.client, route: labels.route })
     } catch { /* as above */ }
   }
 }

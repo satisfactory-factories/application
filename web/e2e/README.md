@@ -78,17 +78,25 @@ per address.
   a test can hold an op in flight or kill the connection at an exact moment.
 - **No fixed sleeps** — wait on a condition: an element, a stored revision, a poll over
   the two mirrors. The one exception is the quiet period the offline test needs to claim
-  nothing was sent, and it is named as such. `retries` is 0 on purpose.
+  nothing was sent, and it is named as such. `retries` is 0 locally on purpose; CI gets two,
+  and the `github` reporter flags every pass-on-retry as flaky rather than hiding it.
 - `expectQuiesced` is the strongest "it settled" check there is: every client has no
   unsent intent left and they all hold the same bytes at the same revision.
 
 ## In CI
 
-`.github/workflows/e2e.yml` runs the same `pnpm test:e2e` on `ubuntu-latest`, path-filtered
-to `web/`, `backend/`, `common/` and the workspace files. It caches the Chromium download and
-the mongod binary, and uploads `web/test-results/` (traces and screenshots) when the job
-fails. Unlike the three sibling check workflows it is free to path-filter because it is not a
-required status check; making it required means dropping the filter first.
+`.github/workflows/e2e.yml` runs the same `pnpm test:e2e` on `ubuntu-latest` when a PR touches
+`web/`, `backend/`, `common/` or the workspace files; Markdown files never count, so a docs
+edit alone runs nothing. It splits the suite four ways with
+`--shard`, one runner per shard, each booting its own stack, so a test is still alone against
+its API. A shard can be reproduced locally with `pnpm test:e2e --shard=2/4`. It caches the
+Chromium download and the mongod binary, and uploads `web/test-results/` (traces and
+screenshots) as `playwright-traces-<shard>` when a shard fails.
+
+`Playwright E2E` is a required status check, and it is the summary job, not a shard: it passes
+when all four shards pass. Like the other required checks it always triggers on a PR and asks
+the `changed-paths.yml` gate whether to run, so a docs-only PR skips the shards and still gets
+a passing check rather than one that stays pending forever.
 
 ## Environment switches
 

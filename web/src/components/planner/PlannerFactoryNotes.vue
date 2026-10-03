@@ -16,8 +16,8 @@
         :messages="lockHint"
         placeholder="Add some notes!"
         rows="1"
-        :rules="[rules.length]"
-        @blur="release"
+        :rules="[rules.length, notesRule]"
+        @blur="finishEditing"
         @focus="claim"
         @update:model-value="noteEdited"
       />
@@ -37,6 +37,7 @@
   import { useFieldLock } from '@/composables/useFieldLock'
   import { useAppStore } from '@/stores/app-store'
   import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
 
   const props = defineProps <{
     factory: Factory;
@@ -55,6 +56,8 @@
   }
 
   const charLimit = 1000
+  // Shown under the field; the sync holds the note back until it passes.
+  const notesRule = textFieldRule('notes')
 
   const appStore = useAppStore()
 
@@ -80,14 +83,25 @@
    */
   const noteEdited = () => {
     renew()
+    eventBus.emit('textTyped', props.factory)
     eventBus.emit('factoryEdited', props.factory)
+  }
+
+  /**
+   * Leaving the field sends the note now rather than when the typing debounce runs out. The
+   * unlock that follows re-enables the field for everyone else, and it must not reach them
+   * ahead of the text it was guarding.
+   */
+  const finishEditing = () => {
+    eventBus.emit('textTypingDone')
+    release()
   }
 
   const clearNotes = () => {
     props.factory.notes = ''
     noteEdited()
     // Cleared means done: whoever held the field is finished with it.
-    release()
+    finishEditing()
   }
 </script>
 

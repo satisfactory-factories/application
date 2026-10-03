@@ -1,7 +1,7 @@
 import vuetify from '@/plugins/vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PowerProducer from './PowerProducer.vue'
 import TooltipInfo from '@/components/tooltip-info.vue'
 import { calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
@@ -61,6 +61,16 @@ const updateElements = (powerProducer: FactoryPowerProducer) => {
   powerAmount = subject.find(`[id="${factory.id}-${powerProducer.id}-power-amount"]`)
   buildingCount = subject.find(`[id="${factory.id}-${powerProducer.id}-building-count"]`)
 }
+
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('Component: PowerProducer', () => {
   let powerProducer: FactoryPowerProducer
@@ -148,7 +158,7 @@ describe('Component: PowerProducer', () => {
   describe('fuel quantity changes', () => {
     beforeEach(async () => {
       await fuelQuantity.setValue('2')
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
     })
 
     it('should update the power amount itself', () => {
@@ -171,7 +181,7 @@ describe('Component: PowerProducer', () => {
   describe('power amount changes', () => {
     beforeEach(async () => {
       await powerAmount.setValue('10000')
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
     })
 
     it('should update the power amount itself', () => {
@@ -202,7 +212,7 @@ describe('Component: PowerProducer', () => {
     beforeEach(async () => {
       requirementAmount = subject.find(`[id="${factory.id}-${powerProducer.id}-Water"]`)
       requirementAmount.setValue('480')
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
     })
 
     it('should update the data model', () => {
@@ -221,7 +231,7 @@ describe('Component: PowerProducer', () => {
   describe('building count changes', () => {
     beforeEach(async () => {
       await buildingCount.setValue(10) // Was 1
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
     })
 
     it('should update the building count itself', () => {

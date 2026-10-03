@@ -7,10 +7,26 @@ The two dashboards that read `GET /metrics`, and the script that generates them.
 | `generate.py` | The source of truth. Everything else here is output. |
 | `satisfactory-factories.json` | Production, every query pinned to `job="satisfactory-factories"` |
 | `satisfactory-factories-preview.json` | Preview, pinned to `job="satisfactory-factories-preview"` |
+| `prometheus.py` | Generator for the Prometheus server-health dashboard (separate from the two above) |
+| `prometheus.json` | Its output, uid `prometheus-server-health` |
+
+## Prometheus server-health dashboard
+
+Disk, TSDB size, ingest rate, scrape health, process and host resources, and failure counters for
+the Prometheus server itself. It needs the `prometheus` self-scrape job and a `prometheus-node`
+job (node_exporter on the Prometheus host). Disk alerting is Zabbix's job, so there is no alert.
+
+```sh
+python3 prometheus.py > prometheus.json
+python3 prometheus.py --exprs   # every query, to run against Prometheus before applying
+```
+
+Apply it with a `POST` of `prometheus.json` to `/api/dashboards/db` (schema v1, `overwrite` is
+set, so re-posting replaces it). An Editor token is enough.
 
 ## Why a generator rather than hand-edited JSON
 
-The dashboards are 70 panels each and identical apart from one label matcher. Keeping two
+The dashboards are 80-odd panels each and identical apart from one label matcher. Keeping two
 hand-written copies in step would not survive contact with a single edit.
 
 More importantly, **production and preview export the same metric names**. An unfiltered query

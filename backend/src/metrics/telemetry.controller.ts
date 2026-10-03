@@ -1,9 +1,10 @@
-import { BadRequestException, Body, Controller, HttpCode, Post, Req } from '@nestjs/common'
-import { HttpException, HttpStatus, PayloadTooLargeException } from '@nestjs/common'
+import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common'
+import { PayloadTooLargeException } from '@nestjs/common'
 import { TELEMETRY_CAPS, parseTelemetryHeartbeat } from 'common'
 import type { Request } from 'express'
 
 import { SkipVersionGate } from '../common/decorators/skip-version-gate.decorator'
+import { BackoffException } from '../event-counters/backoff.exception'
 import { TelemetryService } from './telemetry.service'
 
 /**
@@ -43,10 +44,10 @@ export class TelemetryController {
     if (!parsed.success) throw new BadRequestException('Malformed telemetry heartbeat.')
 
     const outcome = await this.telemetry.record(parsed.data)
-    if (outcome !== 'accepted') {
-      // Both the per-instance floor and the instance ceiling are "come back later", and
-      // the client's answer to either is the same: drop it and wait for the next tick.
-      throw new HttpException('Too many heartbeats.', HttpStatus.TOO_MANY_REQUESTS)
-    }
+    // Both the per-instance floor and the instance ceiling are "come back later", and the
+    // client's answer to either is the same: drop it and wait for the next tick. Two tabs
+    // share one instance id, so the floor fires in ordinary use; a back-off, not an error.
+    if (outcome === 'too-soon') throw new BackoffException('telemetry', 'too_soon', 'Too many heartbeats.')
+    if (outcome === 'at-capacity') throw new BackoffException('telemetry', 'at_capacity', 'Too many heartbeats.')
   }
 }

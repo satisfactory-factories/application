@@ -531,6 +531,28 @@ describe('ws ops: the consistency contract', () => {
       expect((await readRoom())?.revision).toBe(0)
     })
 
+    it('rejects a note with a link as invalid_text, naming the field', async () => {
+      const a = await joined(owner.token)
+
+      const opId = randomUUID()
+      a.client.sendRaw({
+        type: 'op',
+        roomId,
+        opId,
+        baseRevision: 0,
+        diff: { factories: [makeFactory({ id: 3, notes: 'see www.example.test' })] },
+      })
+
+      const rejected = await a.client.next('op_reject')
+      expect(rejected).toMatchObject({
+        opId,
+        reason: 'invalid_text',
+        textIssue: { path: 'diff.factories.0.notes', rule: 'link' },
+      })
+      expect(rejected.snapshot?.revision).toBe(0)
+      expect((await readRoom())?.revision).toBe(0)
+    })
+
     /**
      * The cheapest frame a client can send and the most expensive the server can answer:
      * a malformed op is ninety bytes and buys a whole-plan read and serialisation. Past
