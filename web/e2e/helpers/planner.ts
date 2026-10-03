@@ -33,17 +33,12 @@ export const openPlanner = async (
 }
 
 /**
- * Nothing here polls a fixed duration: the loader overlay is the app's own
- * statement that a plan is mid-load, and the tab bar only renders once routing
- * has settled.
- *
- * `--active` is that statement; presence is not. Vuetify keeps a dismissed
- * overlay's root mounted until its leave transition reports back, and that root
- * is a full-viewport box, so `:visible` reads a finished load as a running one
- * whenever the callback is late.
+ * Nothing here polls a fixed duration: the loading screen is the app's own statement that the
+ * planner has not yet painted its plan, and the tab bar only renders once routing has settled.
+ * The screen is in index.html and is removed outright, so presence is the whole test.
  */
 export const loadingOverlay = (page: Page): Locator =>
-  page.locator('[data-testid="loading-overlay"].v-overlay--active')
+  page.getByTestId('boot-loader')
 
 export const settle = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('add-tab')).toBeVisible()
@@ -383,9 +378,28 @@ export const addFactory = async (page: Page, edit: FactoryEdit): Promise<void> =
   }
 }
 
-/** The cards in the plan, by id, which is what tells a new record from every other. */
+/**
+ * The factories in the plan, by id, which is what tells a new record from every other. Read from
+ * the docked sidebar, which lists every factory: the planner pane only ever shows one.
+ */
 const factoryCardIds = (page: Page): Promise<string[]> =>
-  page.locator('.factory-card:not(.sub-card)').evaluateAll(cards => cards.map(card => card.id))
+  sidebarFactoryRows(page).evaluateAll(rows => rows.map(row => row.getAttribute('data-factory-id') ?? ''))
+
+/**
+ * Opens the factory at this position in the plan, the way a person does: from its sidebar row.
+ * Anything on a factory's card is only reachable once it is the one on screen.
+ */
+export const openFactory = async (page: Page, index: number): Promise<Locator> => {
+  const row = sidebarFactoryRows(page).nth(index)
+  await expect(row).toBeVisible()
+  const id = await row.getAttribute('data-factory-id')
+  expect(id, 'a sidebar row without a factory id').toBeTruthy()
+  const card = page.locator(`.main-content [id="${id}"]`)
+  // Already open is the common case, and clicking again only scrolls it back to the top.
+  if (await card.count() === 0) await row.locator('.v-card').first().click()
+  await expect(card).toBeVisible()
+  return card
+}
 
 /**
  * Which card the click made. Focus is the better answer where it lands: it is
@@ -445,13 +459,14 @@ export const addNamedFactory = async (page: Page, factoryName: string): Promise<
   return freshId
 }
 
-/** Edits a factory already on screen, addressed by its position in the plan. */
+/** Edits a factory's note, addressed by its position in the plan. */
 export const setFactoryNote = async (
   page: Page,
   index: number,
   note: string,
 ): Promise<void> => {
-  const field = notesField(page).nth(index)
+  const card = await openFactory(page, index)
+  const field = card.locator('[id$="-notes"] textarea:not([aria-hidden="true"])')
   await expect(field).toBeVisible()
   await field.fill(note)
 }
@@ -463,17 +478,24 @@ export const setFactoryNote = async (
 export const clearPlan = async (page: Page): Promise<void> => {
   page.once('dialog', dialog => void dialog.accept())
   await page.locator('.sidebar-content').getByTestId('clear-plan').click()
-  await expect(page.locator('input.factory-name')).toHaveCount(0)
+  await expect(sidebarFactoryRows(page)).toHaveCount(0)
 }
 
 /**
- * The card headers. These hold a *draft* the card only writes back on blur or Enter, so a
- * field still being edited reads as renamed when the plan is not. Every helper that types
- * into one commits it, which is what keeps this read honest.
+ * The plan's factory names, in order, as the sidebar lists them. A card header holds a *draft*
+ * it only writes back on blur or Enter; the sidebar shows what the plan actually says.
  */
 export const factoryNames = (page: Page): Promise<string[]> =>
-  page.locator('input.factory-name')
-    .evaluateAll(inputs => inputs.map(input => (input as HTMLInputElement).value))
+  sidebarFactoryRows(page).evaluateAll(rows => rows.map(row => row.getAttribute('data-factory-name') ?? ''))
+
+/** Waits until the sidebar lists exactly these factories, in this order. */
+export const expectFactoryNames = async (
+  page: Page,
+  names: string[],
+  options: { timeout?: number, message?: string } = {},
+): Promise<void> => {
+  await expect.poll(() => factoryNames(page), options).toEqual(names)
+}
 
 /** Renames a factory in place, addressed by its position in the plan. */
 export const renameFactory = async (
@@ -481,7 +503,8 @@ export const renameFactory = async (
   index: number,
   name: string,
 ): Promise<void> => {
-  const field = page.locator('input.factory-name').nth(index)
+  const card = await openFactory(page, index)
+  const field = card.locator('input.factory-name')
   await expect(field).toBeVisible()
   await field.fill(name)
   await commitName(field)
@@ -499,7 +522,8 @@ const commitName = async (field: Locator): Promise<void> => {
 
 /** The tasks card's "New Task" field; Enter is what commits it. */
 export const addTask = async (page: Page, index: number, title: string): Promise<void> => {
-  const field = page.locator('[id$="-tasks"]').nth(index).locator('input[type="text"]')
+  const card = await openFactory(page, index)
+  const field = card.locator('[id$="-tasks"] input[type="text"]')
   await expect(field).toBeVisible()
   await field.fill(title)
   await field.press('Enter')
@@ -516,14 +540,17 @@ export const mirroredTasks = async (
 
 // ===== Products =====
 
-/** The main-column card for a factory, addressed by its name field's position. */
-export const factoryCard = async (page: Page, index: number): Promise<Locator> => {
-  const name = page.locator('input.factory-name').nth(index)
-  await expect(name).toBeVisible()
-  const id = await name.evaluate(el => el.closest('.factory-card:not(.sub-card)')?.id ?? '')
-  expect(id, 'the factory name field sits outside a factory card').not.toBe('')
-  return page.locator(`[id="${id}"]`)
+/**
+ * Opens the overview (Statistics, the Global Factories Summary and the Dimensional Depot), the
+ * page the planner shows when no factory is open, from its sidebar row.
+ */
+export const openOverview = async (page: Page): Promise<void> => {
+  await page.locator('.sidebar-content').getByText('Statistics', { exact: true }).click()
+  await expect(page.locator('.main-content #statistics')).toBeVisible()
 }
+
+/** The main-column card for a factory, addressed by its position in the plan. */
+export const factoryCard = (page: Page, index: number): Promise<Locator> => openFactory(page, index)
 
 export const productRows = (card: Locator): Locator =>
   card.locator('[data-testid="product-row"]')
@@ -768,8 +795,10 @@ export const moveFactoryDown = async (page: Page, index: number): Promise<void> 
 // ===== Sidebar =====
 
 /**
- * The docked sidebar's factory rows. Scoped to `.sidebar-content`: the navigation
- * drawer renders the same component, so an unscoped id matches every row twice.
+ * The docked sidebar's factory rows, in plan order. The planner pane shows one factory at a
+ * time, so this is where the shape of the whole plan is read from. Scoped to
+ * `.sidebar-content`: the navigation drawer renders the same component, so an unscoped id
+ * matches every row twice.
  */
 export const sidebarFactoryRows = (page: Page): Locator =>
   page.locator('.sidebar-content [data-testid="sidebar-factory-row"]')

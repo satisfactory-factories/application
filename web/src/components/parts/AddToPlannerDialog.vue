@@ -166,7 +166,7 @@
       const factory = newFactory(`${getPartDisplayName(primaryProduct.part)} Factory`)
 
       addRecipeProduct(factory)
-      appStore.addFactory(factory)
+      if (!appStore.addFactory(factory)) return
       calculateFactories(appStore.getFactories(), gameDataStore.getGameData())
       eventBus.emit('toast', { message: `Created "${factory.name}" with "${props.recipe.displayName}"!` })
     })

@@ -26,7 +26,7 @@ const readStamps = (): Record<string, number> => {
 
 /**
  * When each tab's plan last actually changed — the user's own edits and a peer's
- * applied ops alike. Renames and reorders deliberately do not count: the tab bar
+ * applied ops alike. On a synced tab the user's own edits count when they are sent. Renames and reorders deliberately do not count: the tab bar
  * flashes this line, and flashing it because somebody dragged a card is noise.
  */
 export const usePlanActivityStore = defineStore('planActivity', () => {
@@ -57,6 +57,15 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
   const bump = (tabId: string, at = Date.now()) => {
     stamps.value = { ...stamps.value, [tabId]: at }
     persist()
+  }
+
+  /**
+   * A change made on this device. A local plan has nowhere to send it, so it counts as it
+   * settles; a synced plan's edits count when they are sent (`planContentSent`), so a note
+   * being typed does not restamp the plan at every keystroke.
+   */
+  const bumpLocal = (tabId: string) => {
+    if (appStore.getTabState(tabId).kind === 'local') bump(tabId)
   }
 
   /** Re-reads every record, so the tracker knows what "unchanged" looks like from here. */
@@ -98,7 +107,7 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
 
     if (!changed) return
     if (resized) follow(tab.id, tab.factories)
-    bump(tab.id)
+    bumpLocal(tab.id)
   }
 
   // A load half-fills the plan array, so its length says nothing until it finishes.
@@ -119,7 +128,7 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
   const onTabEdited = (field: TabField) => {
     if (!appStore.isLoaded || field === 'name' || field === 'groups') return
     const tab = appStore.getCurrentTab()
-    if (tab) bump(tab.id)
+    if (tab) bumpLocal(tab.id)
   }
 
   /** A peer's op that carried something other than a rename or a reorder. */
@@ -128,11 +137,15 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
     if (tabId === followed) followCurrentTab()
   }
 
+  /** This client's own op left with content in it. */
+  const onContentSent = ({ tabId }: { tabId: string }) => bump(tabId)
+
   const onLoadingCompleted = () => followCurrentTab()
 
   eventBus.on('factoryUpdated', onFactoryUpdated)
   eventBus.on('tabEdited', onTabEdited)
   eventBus.on('planContentApplied', onRemoteContent)
+  eventBus.on('planContentSent', onContentSent)
   eventBus.on('loadingCompleted', onLoadingCompleted)
 
   // Switching tabs is not an edit, so the baseline moves with the user rather than
@@ -156,6 +169,7 @@ export const usePlanActivityStore = defineStore('planActivity', () => {
     eventBus.off('factoryUpdated', onFactoryUpdated)
     eventBus.off('tabEdited', onTabEdited)
     eventBus.off('planContentApplied', onRemoteContent)
+    eventBus.off('planContentSent', onContentSent)
     eventBus.off('loadingCompleted', onLoadingCompleted)
   }
 

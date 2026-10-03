@@ -6,6 +6,7 @@ import {
   mirroredFactories,
   mirrorRevision,
   outstandingIntent,
+  sidebarFactoryRows,
   waitForRevision,
 } from '../helpers/planner'
 import { syncedPair } from '../helpers/rooms'
@@ -25,14 +26,14 @@ const SEED = Array.from(
 
 test('clearing every factory on one device empties the other', async ({ client, request }) => {
   const { roomId, first, second } = await syncedPair(client, request, SEED)
-  await expect(second.locator('input.factory-name')).toHaveCount(SEED.length)
+  await expect(sidebarFactoryRows(second)).toHaveCount(SEED.length)
   const base = await mirrorRevision(first, roomId) as number
 
   await clearPlan(first)
 
   // The removals are an op like any other, so the revision has to move for them.
   await waitForRevision(second, roomId, base + 1)
-  await expect(second.locator('input.factory-name')).toHaveCount(0)
+  await expect(sidebarFactoryRows(second)).toHaveCount(0)
 
   for (const page of [first, second]) {
     await expect.poll(() => mirroredFactories(page, roomId), {

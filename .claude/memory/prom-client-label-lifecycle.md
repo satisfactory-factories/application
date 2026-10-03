@@ -5,6 +5,8 @@ metadata:
   type: project
   volatility: durable
   lastVerified: 2026-09-17
+  lastUsed: 2026-09-24
+  useCount: 1
 ---
 
 `prom-client` emits a series for a label combination only once `.set()` has been called with

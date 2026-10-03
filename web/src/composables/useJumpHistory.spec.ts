@@ -310,6 +310,65 @@ describe('useJumpHistory', () => {
     })
   })
 
+  // The planner shows one page at a time, so a place can be on a page that is no longer on screen.
+  describe('across pages', () => {
+    let page: string
+    let shown: string[]
+    let arrive: (() => void) | null
+
+    beforeEach(() => {
+      jumps.stop()
+      page = 'overview'
+      shown = []
+      arrive = null
+      jumps = useJumpHistory({
+        flash,
+        container: () => main,
+        anchorId: () => anchor,
+        push: state => history.pushState({ ...history.state, ...state }, ''),
+        view: () => page,
+        showView: (view, onShown) => {
+          shown.push(view)
+          page = view
+          arrive = onShown
+        },
+      })
+      jumps.start()
+    })
+
+    it('opens the page the place was on, then sets the place without scrolling to it', () => {
+      main.scrollTop = 1200
+      anchor = 'b'
+      const originId = captureOriginId()
+
+      // The jump opened another page, scrolled to its top.
+      page = '42'
+      main.scrollTop = 0
+      anchor = 'a'
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      expect(shown).toEqual(['overview'])
+      // The page has to be on screen before its place can be measured.
+      expect(main.scrollTo).not.toHaveBeenCalled()
+
+      arrive?.()
+      expect(main.scrollTo).toHaveBeenCalledWith({ top: 1200, behavior: 'auto' })
+    })
+
+    it('leaves the page alone when the place is on the one already showing', () => {
+      main.scrollTop = 1200
+      anchor = 'b'
+      const originId = captureOriginId()
+
+      main.scrollTop = 3000
+      anchor = 'c'
+
+      pop({ [JUMP_STATE_KEY]: originId })
+      expect(shown).toEqual([])
+      expect(main.scrollTop).toBe(1200)
+    })
+  })
+
   // Records a jump and returns the id the entry it left was stamped with.
   function captureOriginId () {
     const replace = vi.spyOn(history, 'replaceState')

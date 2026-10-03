@@ -1,5 +1,5 @@
 import { VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
@@ -13,6 +13,16 @@ const gameData = await fetchGameData()
 const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
 }
+
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('TDD: Building Groups: Editing Buildings (Products)', () => {
   let factory: Factory
@@ -62,11 +72,11 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
     // Enable satisfaction breakdowns
     const satisfactionToggle = satisfactionSubject.find(`[id="${factory.id}-satisfaction-breakdown-toggle"]`)
     await satisfactionToggle.setValue(true)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
     // Set up the building group defaults
     await buildingGroupCount.setValue(3)
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
   })
 
   describe('BG-E-B-PROD: Building Groups Editing - Buildings single group (Products)', () => {
@@ -74,7 +84,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       expect(buildingGroupCount.element.value).toBe('3')
 
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
       expect(buildingGroupCount.element.value).toBe('4')
     })
@@ -85,11 +95,11 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Edit it again to ensure it updates consistently
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('4.00')
       // Reduce it back to 3
       await buildingGroupCount.setValue(3)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('3.00')
     })
 
@@ -103,11 +113,11 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Edit it again to ensure it updates consistently
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('1.00') // Over | It's working via manual testing, just not here. Something to do with calculated values.
       // Reductions
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('1.00') // Short
     })
 
@@ -117,13 +127,13 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increases
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(groupIronIngots.element.value).toBe('120')
       expect(buildingGroup.parts.IronIngot).toBe(120)
 
       // Reductions
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(groupIronIngots.element.value).toBe('60')
       expect(buildingGroup.parts.IronIngot).toBe(60)
     })
@@ -134,13 +144,13 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increases
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(groupOreIron.element.value).toBe('120')
       expect(buildingGroup.parts.OreIron).toBe(120)
 
       // Reductions
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(groupOreIron.element.value).toBe('60')
       expect(buildingGroup.parts.OreIron).toBe(60)
     })
@@ -151,17 +161,17 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Edit it again to ensure it updates consistently
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(itemAmount.element.value).toBe('120')
       expect(product.amount).toBe(120)
       // Reduce it back to 3
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(itemAmount.element.value).toBe('60')
       expect(product.amount).toBe(60)
 
       // Wait a second to see if there's any dangling updates
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
       expect(itemAmount.element.value).toBe('60')
     })
 
@@ -172,18 +182,18 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increase
       await buildingGroupCount.setValue(10)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(itemIngredientAmount.element.value).toBe('300')
       expect(product.requirements.OreIron.amount).toBe(300)
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(itemIngredientAmount.element.value).toBe('60')
       expect(product.requirements.OreIron.amount).toBe(60)
 
       // Wait a second to see if there are any dangling updates
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
       expect(itemIngredientAmount.element.value).toBe('60')
     })
 
@@ -193,14 +203,14 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increase
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-remaining"]`).text()).toBe('120')
       expect(factory.parts.IronIngot.amountSuppliedViaProduction).toBe(120)
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-production"]`).text()).toBe('+120/min')
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-remaining"]`).text()).toBe('60')
       expect(factory.parts.IronIngot.amountSuppliedViaProduction).toBe(60)
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-IronIngot-production"]`).text()).toBe('+60/min')
@@ -212,7 +222,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increase
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       // Nothing mines the ore here, and raw supply is no longer assumed, so the ore reads as a
       // shortage. What this case is about — the building count driving what is CONSUMED — is
       // the required-production line, which is unchanged.
@@ -223,7 +233,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-remaining"]`).text()).toBe('-60')
       expect(factory.parts.OreIron.amountSupplied).toBe(0)
       expect(satisfactionSubject.find(`[id="${factory.id}-satisfaction-OreIron-supply-raw"]`).text()).toBe('+0/min')
@@ -236,12 +246,12 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increase
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('16\u00A0MW') // 4*4 MW
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-group-power"]`).text()).toBe('8\u00A0MW') // 2*4 MW
     })
 
@@ -251,12 +261,12 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increase
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('16\u00A0MW') // 4*4 MW
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(satisfactionSubject.find(`[id="${factory.id}-buildings-power-consumed"]`).text()).toBe('8\u00A0MW') // 2*4 MW
     })
 
@@ -266,12 +276,12 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       // Increase
       await buildingGroupCount.setValue(4)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(satisfactionSubject.find(`[id="${factory.id}-buildings-building-smeltermk1"]`).text()).toBe('4')
 
       // Reduce
       await buildingGroupCount.setValue(2)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
       expect(satisfactionSubject.find(`[id="${factory.id}-buildings-building-smeltermk1"]`).text()).toBe('2')
     })
 
@@ -286,10 +296,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       // Edit the item's building count
       const itemBuildingCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
       await itemBuildingCount.setValue(10)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
       // Wait for any debounce
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       // The group should NOT have been rebalanced to match the item
       expect(buildingGroup.buildingCount).toBe(3)
@@ -299,10 +309,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
     // Test that we can calculate to 0.0001 clock speed, the lowest unit, e.g. 40 iron ingots resulting in 66.6667% clock with two buildings
     test('BG-E-B-PROD-15: It should be possible to use 0.0001 ratios for item amount', async () => {
       await itemAmount.setValue(40)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
       // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(Number(itemAmount.element.value)).toBeCloseTo(40, 1)
       // Product building count stays at 3dp; clocks go to 4dp.
@@ -315,10 +325,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
     // truncated to 3dp. 40 iron ingots over 2 buildings = 66.6667%, NOT 66.667%.
     test('BG-E-B-PROD-16: It should display overclocks at a .0001 precision', async () => {
       await itemAmount.setValue(40)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
       // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(buildingGroupCount.element.value).toBe('2')
       expect(buildingGroupClock.element.value).toBe('66.6667')
@@ -376,14 +386,14 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Simulate a user editing the building count for the second group
         await buildingGroup2Count.setValue(4)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(buildingGroupCount.element.value).toBe('3')
         expect(buildingGroup2Count.element.value).toBe('4')
 
         // Do the same but with bigger numbers and on the first group
         await buildingGroupCount.setValue(41)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         expect(buildingGroupCount.element.value).toBe('41')
         expect(buildingGroup2Count.element.value).toBe('4')
@@ -394,7 +404,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Simulate a user editing the building count for the second group
         await buildingGroup2Count.setValue(4)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Clocks should not have been altered
         expect(buildingGroupClock.element.value).toBe('100')
@@ -403,7 +413,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
       test("BG-E-BMULTI-PROD-3: Editing group building count updates the item's building counts", async () => {
         await buildingGroup2Count.setValue(41)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Item building counts should be the sum of the building groups
         expect(itemBuildingCount.element.value).toBe('44') // 41+3
@@ -412,7 +422,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       test("BG-E-BMULTI-PROD-3.1: Editing group building count updates the item's ingredients", async () => {
         // Simulate a user editing the building count for the second group
         await buildingGroup2Count.setValue(41)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Item ingredients should match expected
         expect(itemIngredientAmount.element.value).toBe('1320') // 44*30
@@ -425,7 +435,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Simulate a user editing the building count for the second group
         await buildingGroup2Count.setValue(42)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Item building counts should be the sum of the building groups
         expect(groupIronIngots.element.value).toBe('90') // 30*3
@@ -437,7 +447,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       test("BG-E-BMULTI-PROD-5: Effective buildings equally match the item's total buildings", async () => {
         // Simulate a user editing the building count for the second group
         await buildingGroup2Count.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Assert that the effective buildings are equal to the item building count
         expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('126.00')
@@ -447,7 +457,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
       test("BG-E-BMULTI-PROD-6: Effective buildings equally match the item's total buildings", async () => {
         // Simulate a user editing the building count for the second group
         await buildingGroup2Count.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Assert that the effective buildings are equal to the item building count
         expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('0.00')
@@ -463,16 +473,16 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         const bCount1 = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
         const bCount2 = subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`)
         await bCount2.setValue(50)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         await bCount1.setValue(50)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         const itemBCount = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
         await itemBCount.setValue(40)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Wait for debounce
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         // Buildings should now be over by 60 (50+50-40), and should be red indicator, and the remainder should be showing
         expect(subject.find(`[id="${factory.id}-${product.id}-buildings-status-indicator"]`).attributes().isred).toBe('true')
@@ -486,9 +496,9 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Change the building groups to not be balanced
         await buildingGroupCount.setValue(10)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         await buildingGroup2Count.setValue(20)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Turn sync back on
         await toggleSyncButton.trigger('click')
@@ -496,7 +506,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Change the item's building count, this should force a rebalance
         await itemBuildingCount.setValue(30)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(buildingGroupCount.element.value).toBe('15')
         expect(buildingGroup2Count.element.value).toBe('15')
       })
@@ -505,14 +515,14 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         expect(product.buildingGroupItemSync).toBe(true)
 
         await itemBuildingCount.setValue(20)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(buildingGroupCount.element.value).toBe('10')
         expect(buildingGroup2Count.element.value).toBe('10')
         expect(itemBuildingCount.element.value).toBe('20')
 
         // Weirdly, going from 20 to 21 causes weird fractional issues
         await itemBuildingCount.setValue(21)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(buildingGroupCount.element.value).toBe('11')
         expect(buildingGroup2Count.element.value).toBe('11')
         expect(itemBuildingCount.element.value).toBe('21') // It was presenting 21.0001, in this case we really should round down
@@ -530,10 +540,10 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         // re-split (see syncBuildingGroups' in-sync guard).
         const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
         await itemAmountInput.setValue(240)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Wait for debounce
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('4')
         expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('4')
@@ -543,9 +553,9 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // A spicy one
         await itemAmountInput.setValue(130)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         // Wait for debounce
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('3')
         expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('3')
@@ -555,9 +565,9 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // A spicy meat-a-balla
         await itemAmountInput.setValue(130.555)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         // Wait for debounce
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('3')
         expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('3')
@@ -581,20 +591,20 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Change one of the building groups, this should NOT update the item
         await buildingGroupCount.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(itemBuildingCount.element.value).toBe('3')
       })
 
       test('BG-E-BMULTI-PROD-10: Editing groups does NOT trigger a rebalance', async () => {
         // Balance the groups
         await buildingGroupCount.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         await buildingGroup2Count.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Now unbalance them
         await buildingGroupCount.setValue(1)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Assert that the groups are not rebalanced
         expect(buildingGroupCount.element.value).toBe('1')
@@ -608,7 +618,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Change the item building count, this should NOT update the groups
         await itemBuildingCount.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`).element.value).toBe('3')
         expect(subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`).element.value).toBe('1')
       })
@@ -619,7 +629,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
 
         // Change one of the building groups, this should NOT update the item
         await buildingGroupCount.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(itemIngredientAmount.element.value).toBe('90')
       })
 
@@ -631,7 +641,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         // Change one of the building groups, this should NOT update the item
         const bCount1 = subject.find(`[id="${factory.id}-${buildingGroup.id}-building-count"]`)
         await bCount1.setValue(123)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('3')
         expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('124.00') // 123 + 1
         expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('121.00') // 124-3
@@ -640,7 +650,7 @@ describe('TDD: Building Groups: Editing Buildings (Products)', () => {
         // Change the 2nd group
         const bCount2 = subject.find(`[id="${factory.id}-${buildingGroup2.id}-building-count"]`)
         await bCount2.setValue(10)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
         expect(subject.find(`[id="${factory.id}-${product.id}-building-count"]`).element.value).toBe('3')
         expect(subject.find(`[id="${factory.id}-${product.id}-effective-buildings"]`).text()).toBe('133.00') // 123 + 10
         expect(subject.find(`[id="${factory.id}-${product.id}-remaining-buildings"]`).text()).toBe('130.00') // 133-3

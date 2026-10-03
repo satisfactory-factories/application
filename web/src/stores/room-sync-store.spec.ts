@@ -10,6 +10,7 @@ import {
   OFFLINE_NOTICE_MS,
   OP_DEBOUNCE_MS,
   REVISION_PROBE_MS,
+  TYPING_DEBOUNCE_MS,
   useRoomSyncStore,
 } from '@/stores/room-sync-store'
 import { useAppStore } from '@/stores/app-store'
@@ -28,6 +29,7 @@ import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { forgetInstanceId, INSTANCE_ID_KEY, recoverJournalRoom } from '@/sync/plan-journal'
 import { resetStorageWarning } from '@/utils/safe-storage'
 import eventBus from '@/utils/eventBus'
+import { MAX_FACTORIES_PER_PLAN } from '@/utils/plan-size'
 import { refuseLocalStorageWrites } from '../../testing/storage'
 
 const ROOM = 'room-1'
@@ -352,23 +354,26 @@ describe('room-sync-store', () => {
     /**
      * The other half of the same rule: a snapshot the user's edits fought with is
      * handed back to the loader, and handing it the live array lets the chain that is
-     * still staggering append its own copy of the plan onto the room's content.
+     * still running append its own copy of the plan onto the room's content.
      */
-    it('does not duplicate the plan when a recalculating snapshot lands mid-stagger', async () => {
+    it('does not duplicate the plan when a recalculating snapshot lands mid-load', async () => {
       const tab = syncAt(fixture, 4)
       appStore.currentFactoryTab = tab
       tab.factories[0].name = 'Mine'
       store.markUserTouched(ROOM, 1)
 
-      // forceRecalc so the chain actually staggers; the first increment is proof it is.
-      const loading = appStore.prepareLoader(tab.factories, true)
-      await new Promise<void>(resolve => {
-        const onIncrement = () => {
-          eventBus.off('incrementLoad', onIncrement)
+      // Hiding the planner is the chain's first step, emitted before prepareLoader returns;
+      // the snapshot lands in the pause after it.
+      const hidden = new Promise<void>(resolve => {
+        const onHide = (show: boolean) => {
+          if (show) return
+          eventBus.off('plannerShow', onHide)
           resolve()
         }
-        eventBus.on('incrementLoad', onIncrement)
+        eventBus.on('plannerShow', onHide)
       })
+      const loading = appStore.prepareLoader(tab.factories, true)
+      await hidden
 
       const server = wire(fixture)
       server[0].name = 'Theirs'
@@ -707,6 +712,118 @@ describe('room-sync-store', () => {
     })
   })
 
+  describe('typing into a free-text field', () => {
+    /** One keystroke, as the notes field and a task's title emit it. */
+    const keystroke = (factory: Factory, notes: string) => {
+      factory.notes = notes
+      eventBus.emit('textTyped', factory)
+      eventBus.emit('factoryEdited', factory)
+      eventBus.emit('factoryUpdated', factory)
+    }
+
+    it('waits for the typing to stop before sending, then sends the note once', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+
+      // Pauses longer than the plan debounce, which used to send at each one.
+      for (const notes of ['F', 'Fe', 'Feeds', 'Feeds the line']) {
+        keystroke(tab.factories[0], notes)
+        vi.advanceTimersByTime(OP_DEBOUNCE_MS + 100)
+      }
+      expect(opsOf()).toHaveLength(0)
+
+      vi.advanceTimersByTime(TYPING_DEBOUNCE_MS - OP_DEBOUNCE_MS - 101)
+      expect(opsOf()).toHaveLength(0)
+
+      vi.advanceTimersByTime(1)
+      expect(opsOf()).toHaveLength(1)
+      expect(lastOp().diff.factories[0].notes).toBe('Feeds the line')
+    })
+
+    it('keeps the plan debounce for every other edit', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+
+      tab.factories[0].name = 'Alpha renamed'
+      eventBus.emit('factoryEdited', tab.factories[0])
+      vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+      expect(opsOf()).toHaveLength(1)
+    })
+
+    it('sends a held note straight away when the field is left', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+      keystroke(tab.factories[0], 'Feeds the line')
+
+      eventBus.emit('textTypingDone')
+
+      expect(opsOf()).toHaveLength(1)
+      // Nothing is left on the timer to send it twice.
+      vi.advanceTimersByTime(TYPING_DEBOUNCE_MS)
+      expect(opsOf()).toHaveLength(1)
+    })
+
+    it('sends a held note when the page is closed', () => {
+      const tab = syncAt(fixture, 4)
+      vi.useFakeTimers()
+      keystroke(tab.factories[0], 'Feeds the line')
+
+      window.dispatchEvent(new Event('pagehide'))
+
+      expect(lastOp().diff.factories[0].notes).toBe('Feeds the line')
+    })
+
+    it('asks nothing of the socket when nothing is held', () => {
+      syncAt(fixture, 4)
+
+      store.flushPending()
+
+      expect(opsOf()).toHaveLength(0)
+    })
+  })
+
+  describe('announcing a sent op', () => {
+    let sent: ReturnType<typeof vi.fn<(payload: { tabId: string }) => void>>
+
+    beforeEach(() => {
+      sent = vi.fn()
+      eventBus.on('planContentSent', sent)
+    })
+
+    afterEach(() => {
+      eventBus.off('planContentSent', sent)
+    })
+
+    it('announces an op that changes what the plan says, when it is sent', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].notes = 'Feeds the line'
+
+      expect(sent).not.toHaveBeenCalled()
+      store.flushRoom(ROOM)
+
+      expect(sent).toHaveBeenCalledWith({ tabId: ROOM })
+    })
+
+    it('says nothing for an op carrying only a rename', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].name = 'Alpha renamed'
+
+      expect(store.flushRoom(ROOM)).toBe(true)
+
+      expect(sent).not.toHaveBeenCalled()
+    })
+
+    it('announces a removal', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories.splice(1, 1)
+
+      store.flushRoom(ROOM)
+
+      expect(sent).toHaveBeenCalledWith({ tabId: ROOM })
+    })
+  })
+
   describe('acknowledgement', () => {
     it('advances the baseline to the sent snapshot and clears matching intent', () => {
       const tab = syncAt(fixture, 4)
@@ -1015,6 +1132,100 @@ describe('room-sync-store', () => {
       expect(store.rooms[ROOM].status).toBe('revoked')
       expect(names(tab)).toEqual(['Mine', 'Beta'])
       expect(readTabMirrorMeta()[ROOM]).toBeUndefined()
+    })
+  })
+
+  describe('a plan over the factory cap', () => {
+    const extras = (count: number, firstId: number) => wire(
+      Array.from({ length: count }, (_unused, index) => newFactory(`Extra ${index}`, index + 2, firstId + index)),
+    )
+
+    // The server refuses the whole op past the cap, so sending it would only buy three
+    // rejects and a pause. The edits wait here until the plan is back under.
+    it('holds a plan over the cap back, and sends it once it is under again', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories.push(...extras(MAX_FACTORIES_PER_PLAN - 1, 100))
+
+      expect(store.flushRoom(ROOM)).toBe(false)
+      expect(opsOf()).toHaveLength(0)
+      expect(store.rooms[ROOM].lastError).toBe('too_large')
+
+      tab.factories.pop()
+
+      expect(store.flushRoom(ROOM)).toBe(true)
+      expect(opsOf()).toHaveLength(1)
+
+      receive({ type: 'op_ack', roomId: ROOM, opId: lastOp().opId, revision: 5 })
+      expect(store.rooms[ROOM].lastError).toBeNull()
+    })
+
+    it('says once that the server refused the plan as too large', () => {
+      const toasts: string[] = []
+      const onToast = (toast: { message: string }) => toasts.push(toast.message)
+      eventBus.on('toast', onToast)
+
+      const tab = syncAt(fixture, 4)
+      for (let revision = 5; revision <= 6; revision++) {
+        tab.factories[0].name = `Mine ${revision}`
+        store.markUserTouched(ROOM, 1)
+        store.flushRoom(ROOM)
+        receive({
+          type: 'op_reject',
+          roomId: ROOM,
+          opId: lastOp().opId,
+          reason: 'too_large',
+          snapshot: snapshotOf(fixture, revision),
+        })
+      }
+      eventBus.off('toast', onToast)
+
+      expect(toasts.filter(message => message.includes('too big to save'))).toHaveLength(1)
+      expect(store.rooms[ROOM].lastError).toBe('too_large')
+    })
+  })
+
+  describe('text rules', () => {
+    it('holds a note the server would refuse, and sends once it is fixed', () => {
+      const tab = syncAt(fixture, 4)
+      tab.factories[0].notes = 'see www.example.test'
+      store.markUserTouched(ROOM, 1)
+
+      expect(store.flushRoom(ROOM)).toBe(false)
+      expect(opsOf()).toHaveLength(0)
+      expect(store.rooms[ROOM].lastError).toBe('invalid_text')
+
+      tab.factories[0].notes = 'see the wiki'
+
+      expect(store.flushRoom(ROOM)).toBe(true)
+      expect(opsOf()).toHaveLength(1)
+
+      receive({ type: 'op_ack', roomId: ROOM, opId: lastOp().opId, revision: 5 })
+      expect(store.rooms[ROOM].lastError).toBeNull()
+    })
+
+    it('says which factory the server refused, once', () => {
+      const toasts: string[] = []
+      const onToast = (toast: { message: string }) => toasts.push(toast.message)
+      eventBus.on('toast', onToast)
+
+      const tab = syncAt(fixture, 4)
+      for (let revision = 5; revision <= 6; revision++) {
+        tab.factories[0].name = `Mine ${revision}`
+        store.markUserTouched(ROOM, 1)
+        store.flushRoom(ROOM)
+        receive({
+          type: 'op_reject',
+          roomId: ROOM,
+          opId: lastOp().opId,
+          reason: 'invalid_text',
+          textIssue: { path: 'diff.factories.0.name', rule: 'link', message: "Names can't contain links." },
+          snapshot: snapshotOf(fixture, revision),
+        })
+      }
+      eventBus.off('toast', onToast)
+
+      expect(toasts.filter(message => message.includes("Names can't contain links."))).toHaveLength(1)
+      expect(toasts[0]).toContain('"Mine 5"')
     })
   })
 
@@ -1889,7 +2100,7 @@ describe('room-sync-store', () => {
 
     beforeEach(() => {
       // The resolution hands a changed plan back to the loader; these specs are about
-      // what it decided, not about the staggered render that follows.
+      // what it decided, not about the render that follows.
       vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
 
       producing = [newFactory('Alpha', 0, 1), newFactory('Beta', 1, 2), newFactory('Gamma', 2, 3)]

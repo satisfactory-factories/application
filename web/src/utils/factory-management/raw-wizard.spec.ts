@@ -302,25 +302,34 @@ describe('raw wizard', async () => {
 
       // The shipped template is the widest real case: several existing mines, several
       // consumers, all defaulting to 'import'. It caught four inflated mines before the fix.
+      // The save itself can carry a hand-edited factory whose groups are already out of step
+      // with its product (flagged as a building group problem in the planner), so this only
+      // fails on drift the wizard introduced.
       it('leaves no mine in the shipped MegaPlan claiming more than it digs', () => {
-        const plan = JSON.parse(JSON.stringify(createMaelsBigBoiPlan().getFactories()))
+        const plan: Factory[] = JSON.parse(JSON.stringify(createMaelsBigBoiPlan().getFactories()))
         calculateFactories(plan, gameData)
+
+        const drifting = (factories: Factory[]) => {
+          const keys = new Set<string>()
+          for (const factory of factories) {
+            for (const product of factory.products) {
+              if (!product.buildingGroups?.length) continue
+              if (Math.abs(mined(product, product.id) - product.amount) > 0.5) {
+                keys.add(`${factory.name}/${product.id}`)
+              }
+            }
+          }
+          return keys
+        }
+        const driftingBefore = drifting(plan)
+
         const megaRows = collectRawWizardRows(plan)
         expect(megaRows.length).toBeGreaterThan(0)
         expect(megaRows.filter(row => row.choice === 'import').length).toBeGreaterThan(0)
 
         const { factories: result } = applyRawWizard(plan, megaRows, gameData)
 
-        const drift: string[] = []
-        for (const factory of result) {
-          for (const product of factory.products) {
-            if (!product.buildingGroups?.length) continue
-            const digs = mined(product, product.id)
-            if (Math.abs(digs - product.amount) > 0.5) {
-              drift.push(`${factory.name}/${product.id}: claims ${product.amount}, groups make ${digs}`)
-            }
-          }
-        }
+        const drift = [...drifting(result)].filter(key => !driftingBefore.has(key))
         expect(drift).toEqual([])
       })
 
