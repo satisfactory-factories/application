@@ -2,6 +2,7 @@ import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import {
   addFactory,
+  expectFactoryNames,
   expectTabKind,
   mirroredNote,
   mirrorRevision,
@@ -25,7 +26,7 @@ test('unsharing leaves the collaborator a local copy of the last state', async (
   const member = await openPlanner(await client({ user: memberUser }), invitePath)
   await waitForTab(member, roomId)
   await selectTab(member, roomId)
-  await expect(member.locator('input.factory-name')).toHaveValue('Handover')
+  await expectFactoryNames(member, ['Handover'])
 
   await selectTab(owner, roomId)
   await stopSharing(owner)

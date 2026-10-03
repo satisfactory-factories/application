@@ -110,6 +110,40 @@ describe('Component: PlannerFactoryTasks', () => {
       subject.unmount()
     })
 
+    // Sync holds typing for longer than any other edit, and sends it the moment the field is left.
+    it('marks a keystroke in the title as typing', async () => {
+      const subject = mountSubject()
+      await titleField(subject, 1).setValue('Bravo edited')
+
+      expect(eventBus.emit).toHaveBeenCalledWith('textTyped', factory)
+    })
+
+    it('says the typing is done when the title loses focus', async () => {
+      const subject = mountSubject()
+      await titleField(subject, 1).trigger('blur')
+
+      expect(eventBus.emit).toHaveBeenCalledWith('textTypingDone')
+    })
+
+    it('says the typing is done on enter, which leaves the field', async () => {
+      const subject = mountSubject({ attachTo: document.body })
+      const field = titleField(subject, 1)
+      field.element.focus()
+
+      await field.trigger('keydown', { key: 'Enter' })
+
+      expect(eventBus.emit).toHaveBeenCalledWith('textTypingDone')
+      subject.unmount()
+    })
+
+    // Only the title is typed into; a tick, a delete or a new task keeps the plan debounce.
+    it('does not mark a tick as typing', async () => {
+      const subject = mountSubject()
+      await subject.findAll('tbody tr')[1].find('td.toggle input').setValue(true)
+
+      expect(eventBus.emit).not.toHaveBeenCalledWith('textTyped', factory)
+    })
+
     it('leaves shift+enter alone so a second line is still possible', async () => {
       const subject = mountSubject()
       const field = titleField(subject, 1)

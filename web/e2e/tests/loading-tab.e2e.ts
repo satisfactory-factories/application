@@ -15,27 +15,30 @@ import {
   createSyncedTab,
   expectConverged,
   expectQuiesced,
-  loadingOverlay,
   mirroredFactories,
   openPlanner,
   selectTab,
   setFactoryNote,
   settle,
+  sidebarFactoryRows,
 } from '../helpers/planner'
 
 /**
- * A client rendering a plan must not write to it. The staggered loader empties the tab's
- * factory array and refills it one record at a time, so for a second or more the plan on
- * that client is a fragment — and every path that read the fragment wrote it back and
+ * A client loading a plan must not write to it. The staggered loader used to empty the tab's
+ * factory array and refill it one record at a time, so for a second or more the plan on
+ * that client was a fragment — and every path that read the fragment wrote it back and
  * then reported the missing records to the server as deletions. The other client's engine
  * then tripped over references to factories that no longer existed.
+ *
+ * The planner now mounts one factory at a time and loads a plan straight through, but the
+ * load is still a window in which the other device's edits arrive, so the line still holds.
  *
  * Every case here is the same shape: one client renders, the other edits, and the wire is
  * read directly. `sent()` is the assertion that matters — a plan that survives because the
  * removals happened to be corrected afterwards has still been broken for everyone else.
  */
 
-/** Over PACED_RENDER_FACTORY_COUNT (10), so opening this plan always stages a real chain. */
+/** Big enough that the plan used to be loaded behind the staggered loader. */
 const PLAN_SIZE = 15
 
 const SOURCE = 'Source'
@@ -111,7 +114,7 @@ const twoDevicesOnABigPlan = async (
   })
   await showPlan(renderer, user, roomId)
   await selectTab(renderer, roomId)
-  await expect(renderer.locator('input.factory-name')).toHaveCount(PLAN_SIZE, { timeout: 30_000 })
+  await expect(sidebarFactoryRows(renderer)).toHaveCount(PLAN_SIZE, { timeout: 30_000 })
   await expectConverged([owner, renderer], roomId)
   await expect(
     renderer.locator('#raw-notice-dismiss'),
@@ -155,15 +158,12 @@ const goTo = async (page: Page, path: string): Promise<void> => {
 }
 
 /**
- * The edit the owner makes while the other device is still putting cards on screen. The
- * wait puts the fan-out inside the stagger: the chain mounts one record every 75ms and a
- * note costs a debounce plus a round trip, so anything under half a second lands early in
- * a fifteen-record chain. A slower machine only makes the window wider.
+ * The edit the owner makes while the other device is loading the plan. There is no paced
+ * render to aim inside any more, so the edit simply follows the return to the plan as closely
+ * as it can, which puts its fan-out in or right after the load.
  */
-const editDuringTheRender = async (scene: Scene, note: string, delay = 300): Promise<void> => {
-  await expect(loadingOverlay(scene.renderer), 'the tab rendered without pacing itself')
-    .toBeVisible()
-  await scene.renderer.waitForTimeout(delay)
+const editDuringTheRender = async (scene: Scene, note: string, delay = 0): Promise<void> => {
+  if (delay > 0) await scene.renderer.waitForTimeout(delay)
   await setFactoryNote(scene.owner, 0, note)
 }
 
@@ -193,9 +193,9 @@ test('a client with unsent edits makes no writes while it renders', async ({ cli
   const held = 'written before the other device came back to this tab'
 
   /**
-   * The last records in the plan, because the stagger mounts them last: the overlay reads
+   * The last records in the plan, because the stagger used to mount them last: the rebase reads
    * "touched, and not in local state" as this client having deleted the record, and a
-   * factory the chain has not reached yet answers that description exactly. Swallowed
+   * factory the chain had not reached yet answered that description exactly. Swallowed
    * rather than sent, so the edits are still outstanding — which is what sends the inbound
    * op down the rebase path rather than the plain apply.
    */

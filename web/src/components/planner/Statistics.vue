@@ -101,7 +101,7 @@
   import { calculateTotalPower } from '@/utils/statistics'
   import { formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
-  import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   const props = defineProps<{
     factories: Factory[];
@@ -134,7 +134,7 @@
 
   // Sidebar jump-link: landing on a collapsed section just to click Show is pointless,
   // so reveal it before the scroll arrives.
-  eventBus.on('openSection', sectionId => {
+  useEventBusListener('openSection', sectionId => {
     // The Mercer Sphere block is inside this section, so a jump aimed at it has to unhide the
     // whole card first or there is nothing on the page to scroll to.
     if (sectionId === 'statistics' || sectionId === 'statistics-mercer-spheres') {

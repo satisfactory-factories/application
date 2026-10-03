@@ -3,8 +3,10 @@
     :id="`${factory.id}-${group.id}-building-group`"
     :key="`${factory.id}-${group.id}`"
     class="d-flex flex-wrap items-center align-center building-group-row"
+    :inert="preview"
   >
-    <div>
+    <!-- A preview (the Spread confirmation) shows a group as it will be, so it has nothing to delete. -->
+    <div v-if="!preview">
       <v-btn
         :id="`${factory.id}-${group.id}-delete`"
         color="red rounded mr-1"
@@ -414,7 +416,7 @@
          change — a trim deeper than the group goes would need a clock below the game's 1%.
          Always-synced buildings never offer it: the group follows the item automatically, so
          any gap here is the sync mid-flight rather than something for the user to close. -->
-    <div v-if="!isBalanced && !isAlwaysSynced" class="ml-auto">
+    <div v-if="!isBalanced && !isAlwaysSynced && !preview" class="ml-auto">
       <!-- Same colours and arrows as the product's own Satisfy/Trim, which does the same job one
            level up. Two buttons rather than one with bound icon and colour: FontAwesome replaces
            the icon element and detaches it from Vue, so a swapped `prepend-icon` never lands. -->
@@ -517,6 +519,8 @@
     // From the caller, which knows what it is iterating. A group's own stored type is data and
     // plans exported from older builds carry power groups labelled Product.
     type: ItemType
+    // Read-only render of a group that does not exist yet (the Spread confirmation).
+    preview?: boolean
   }>()
 
   // Each input gets its own debounce key so only the field being edited spins.

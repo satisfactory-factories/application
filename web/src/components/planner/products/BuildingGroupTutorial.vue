@@ -87,7 +87,7 @@
 
 <script lang="ts" setup>
   import MediaPlayer from '@/components/common/MediaPlayer.vue'
-  import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   // Ids are built from this so the headings and the contents list can never drift apart.
   const TOC_PREFIX = 'building-group-tutorial'
@@ -109,7 +109,7 @@
 
   const openTutorial = ref(false)
 
-  eventBus.on('openBuildingGroupTutorial', () => {
+  useEventBusListener('openBuildingGroupTutorial', () => {
     console.log('openBuildingGroupTutorial')
     openTutorial.value = true
   })

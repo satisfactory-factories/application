@@ -199,6 +199,7 @@
   import { DEPOT_EXPANSION_TIERS, DEPOT_UPLOAD_TIERS, useDepotResearch } from '@/composables/useDepotResearch'
   import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
   import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   const props = defineProps<{
     factories: Factory[];
@@ -258,7 +259,7 @@
   const showMercerStats = () => eventBus.emit('jumpToSection', 'statistics-mercer-spheres')
 
   // Sidebar jump-link: landing on a collapsed section just to click Show is pointless.
-  eventBus.on('openSection', sectionId => {
+  useEventBusListener('openSection', sectionId => {
     if (sectionId === 'dimensional-depot') {
       hidden.value = false
     }

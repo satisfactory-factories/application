@@ -14,11 +14,12 @@ import { EventCountersService } from '../event-counters/event-counters.service'
 
 /**
  * The most a bulk restore point may duplicate. The room document holds the live plan and the
- * stash side by side and Mongo refuses a document over 16MB, so a quarter of that each leaves
- * room for both plus everything else the room carries. At a 150-factory cap it clears every
- * plan the cap allows (`ws-limits.spec.ts`), so it fires only on records the schema never saw.
+ * stash side by side and Mongo refuses a document over 16MB. A room-cap plan of the biggest
+ * real factories is ~4.6MB, so 6MB of stash beside it still leaves room for everything else
+ * the room carries. At the 300-factory cap it clears every plan the cap allows
+ * (`ws-limits.spec.ts`), so it fires only on records the schema never saw.
  */
-export const BULK_RESTORE_MAX_BYTES = 4 * 1024 * 1024
+export const BULK_RESTORE_MAX_BYTES = 6 * 1024 * 1024
 
 export type OpOutcome =
   | { status: 'applied', revision: number }
