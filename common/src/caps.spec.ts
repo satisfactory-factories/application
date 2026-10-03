@@ -16,7 +16,7 @@ describe('CAPS', () => {
       passwordMin: 1,
       passwordMax: 100,
       groupColor: 32,
-      factoriesPerRoom: 150,
+      factoriesPerRoom: 300,
       ownedRoomsPerUser: 10,
       membershipsPerUser: 25,
       string: 10000,

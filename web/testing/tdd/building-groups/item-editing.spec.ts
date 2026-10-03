@@ -1,6 +1,6 @@
 import { VueWrapper } from '@vue/test-utils'
 import { reactive } from 'vue'
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import Product from '../../../src/components/planner/products/Product.vue'
 import { calculateFactories, newFactory } from '../../../src/utils/factory-management/factory'
 import { addProductToFactory } from '../../../src/utils/factory-management/products'
@@ -14,6 +14,16 @@ const gameData = await fetchGameData()
 const mountProduct = (factory: Factory) => {
   return mountItem(factory, Product)
 }
+
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('TDD: BG-I-E-PROD: Item Editing', () => {
   let factory: Factory
@@ -52,7 +62,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       productItem.vm.$emit('update:modelValue', 'CopperIngot')
 
       // Wait for the UI to update
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
       expect(product.id).toBe('CopperIngot')
       expect(product.recipe).toBe('IngotCopper')
       // Building groups should have been reset to 1
@@ -77,10 +87,10 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         // Update the product quantity, after debounce it should have updated the building group and effective buildings
         const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
         await itemAmountInput.setValue(120)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Wait for debounce
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         // Assert the after
         expect(product.buildingGroups[0].buildingCount).toBe(4)
@@ -92,10 +102,10 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         // Update the product building count, after debounce it should have updated the building group and effective buildings
         const itemBCountInput = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
         await itemBCountInput.setValue(4)
-        await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+        await vi.advanceTimersByTimeAsync(500) // Debounced recalc
 
         // Wait for debounce
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         // Assert the after
         expect(product.buildingGroups[0].buildingCount).toBe(4)
@@ -114,9 +124,9 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         // Set amount back to 120 (4 buildings) then back to 60 (2 buildings) to force rebalance
         const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
         await itemAmountInput.setValue(120)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
         await itemAmountInput.setValue(60)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         expect(product.buildingGroups[0].buildingCount).toBe(1)
         expect(product.buildingGroups[1].buildingCount).toBe(1)
@@ -125,7 +135,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       test('BG-I-E-PROD-11: Changing the product quantity triggers a rebalance', async () => {
         const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
         await itemAmountInput.setValue(120) // 4 buildings
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         expect(product.buildingGroups[0].buildingCount).toBe(2)
         expect(product.buildingGroups[1].buildingCount).toBe(2)
@@ -134,7 +144,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       test('BG-I-E-PROD-12: Changing the product building count triggers a rebalance', async () => {
         const itemBCountInput = subject.find(`[id="${factory.id}-${product.id}-building-count"]`)
         await itemBCountInput.setValue(4)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         expect(product.buildingGroups[0].buildingCount).toBe(2)
         expect(product.buildingGroups[1].buildingCount).toBe(2)
@@ -154,7 +164,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       // Alternate_IronIngot_Leached makes 100/min, so 60/min => 0.6 buildings => 1 underclocked building.
       recipeAuto.vm.$emit('update:modelValue', 'Alternate_IronIngot_Leached')
 
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(product.recipe).toBe('Alternate_IronIngot_Leached')
       // A single group is recreated, and it holds exactly one (underclocked) building.
@@ -179,7 +189,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
       expect(product.buildingGroups[0].buildingCount).toBe(2)
 
       // After the debounce elapses, the change is applied.
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
       expect(product.buildingGroups[0].buildingCount).toBe(4)
     })
   })
@@ -218,7 +228,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         test('BG-I-E-PROD-9: Changing the product byproducts changes the building group building count', async () => {
           // Doubling the byproduct (20 -> 40) doubles the product amount, needing 2 buildings.
           await byProductInput().setValue(40)
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await vi.advanceTimersByTimeAsync(1000)
 
           expect(product.amount).toBe(80)
           expect(product.buildingGroups[0].buildingCount).toBe(2)
@@ -227,7 +237,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         test('BG-I-E-PROD-10: Changing the product ingredient changes the building group building count', async () => {
           // Doubling the ingredient (30 -> 60) doubles the product amount, needing 2 buildings.
           await ingredientInput('LiquidOil').setValue(60)
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await vi.advanceTimersByTimeAsync(1000)
 
           expect(product.amount).toBe(80)
           expect(product.buildingGroups[0].buildingCount).toBe(2)
@@ -245,7 +255,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         test('BG-I-E-PROD-13: Changing the product byproducts triggers a rebalance', async () => {
           // Byproduct 20 -> 80 quadruples the product amount to 160/min => 4 buildings split evenly.
           await byProductInput().setValue(80)
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await vi.advanceTimersByTimeAsync(1000)
 
           expect(product.amount).toBe(160)
           expect(product.buildingGroups[0].buildingCount).toBe(2)
@@ -255,7 +265,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         test('BG-I-E-PROD-14: Changing the product ingredient triggers a rebalance', async () => {
           // Ingredient 30 -> 120 quadruples the product amount to 160/min => 4 buildings split evenly.
           await ingredientInput('LiquidOil').setValue(120)
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await vi.advanceTimersByTimeAsync(1000)
 
           expect(product.amount).toBe(160)
           expect(product.buildingGroups[0].buildingCount).toBe(2)
@@ -276,7 +286,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         }))
 
         await byProductInput().setValue(40)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         product.buildingGroups.forEach((group, index) => {
           expect(group.buildingCount).toBe(snapshot[index].buildingCount)
@@ -291,7 +301,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
         }))
 
         await ingredientInput('LiquidOil').setValue(60)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await vi.advanceTimersByTimeAsync(1000)
 
         product.buildingGroups.forEach((group, index) => {
           expect(group.buildingCount).toBe(snapshot[index].buildingCount)
@@ -316,7 +326,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
 
       const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       await itemAmountInput.setValue(120) // Item now wants 4 buildings, groups unchanged.
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(effectiveReadout().text()).toContain('2.00')
     })
@@ -327,7 +337,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
 
       const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       await itemAmountInput.setValue(120) // 4 wanted - 2 effective => 2 short.
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(remainingReadout().text()).toContain('2.00')
     })
@@ -338,7 +348,7 @@ describe('TDD: BG-I-E-PROD: Item Editing', () => {
 
       const itemAmountInput = subject.find(`[id="${factory.id}-${product.id}-amount"]`)
       await itemAmountInput.setValue(120) // Now under producing.
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await vi.advanceTimersByTimeAsync(1000)
 
       expect(statusReadout().classes()).toContain('text-red')
       expect(subject.text()).toContain('Under producing!')
