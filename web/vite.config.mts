@@ -169,10 +169,9 @@ export default defineConfig(() => ({
     globals: true,
     environment: 'jsdom',
     pool: 'forks',
-    // More workers than cores. The ~135s of real debounce waits below leave a worker idle while
-    // it sleeps, so one per core kept CI's 4 vCPUs about 60% busy. At 150% the suite went from
-    // 235s to 167s on 4 cores; 300% was no faster, and sharing a worker across files breaks tests.
-    maxWorkers: '150%',
+    // Every core. Vitest leaves one free by default, and on CI's 4 vCPUs that is a quarter of the
+    // runner idle: 161s against 141s here at 4 cores. More workers than cores is no faster.
+    maxWorkers: '100%',
     setupFiles: ['src/setup-vitest.ts'],
     globalSetup: './testing/global-setup.ts',
     exclude: [...configDefaults.exclude, ...PLAYWRIGHT_FILES],
@@ -180,9 +179,8 @@ export default defineConfig(() => ({
       exclude: [...coverageConfigDefaults.exclude, ...PLAYWRIGHT_FILES],
     },
     css: true,
-    // The suite waits out roughly 135 seconds of real debounce timers across its component specs,
-    // and a jsdom + Vuetify mount on top of that does not fit in Vitest's 5s default once the
-    // files are running in parallel. Tests were failing on the timeout rather than on an
+    // A jsdom + Vuetify mount with a full factory recalc does not fit in Vitest's 5s default once
+    // the files are running in parallel. Tests were failing on the timeout rather than on an
     // assertion, on a different handful each run — worst seen was a 384ms test taking 15.6s.
     // CI runs on 4 vCPUs, so it is permanently in the contended state this only reaches under load.
     testTimeout: 20000,
