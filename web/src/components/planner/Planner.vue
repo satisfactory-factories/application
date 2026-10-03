@@ -9,8 +9,10 @@
   <checklist-tutorial />
   <linked-import-tick-dialog />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
-    <!-- Navigation Drawer for Mobile -->
-    <Teleport v-if="navigationReady" defer to="#navigationDrawer">
+    <!-- Navigation Drawer for Mobile. Only ever one copy of the sidebar is mounted: the drawer
+         cannot open at desktop widths, and the docked one is not shown below them, so the copy
+         that is not on screen was a second render of every factory row for nothing. -->
+    <Teleport v-if="navigationReady && !lgAndUp" defer to="#navigationDrawer">
       <planner-sidebar-content
         :factories="getFactories()"
         loaded-from="navigation"
@@ -25,7 +27,8 @@
     <v-row class="ma-0">
       <!-- Sticky Sidebar for Desktop -->
       <v-col
-        class="d-none d-lg-flex sticky-sidebar"
+        v-if="lgAndUp"
+        class="d-flex sticky-sidebar"
         :class="{ collapsed: !showSidebar, peek: sidebarPeek && !showSidebar, nudge: sidebarNudge }"
         :style="{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, maxWidth: `${sidebarWidth}px` }"
         @animationend.self="onNudgeEnd"
@@ -49,8 +52,9 @@
         />
       </v-col>
       <!-- Main Content Area -->
+      <!-- Between a load clearing the page and the plan going back on, an outline of a factory. -->
       <v-col v-if="!planVisible" class="border-s-lg-lg pa-3 main-content">
-        <planner-factory-placeholder-list />
+        <planner-factory-skeleton :factory="null" />
       </v-col>
       <v-col v-if="planVisible" class="border-s-lg-lg pa-3 main-content" @scroll.passive="onMainContentScroll">
         <!-- One page at a time: a single factory, or the overview when none is open. Mounting
@@ -174,6 +178,7 @@
     viewAfterRemoving,
   } from '@/utils/factory-management/planner-view'
   import eventBus from '@/utils/eventBus'
+  import { dismissBootLoader } from '@/utils/bootLoader'
   import { useEventBusListener } from '@/composables/useEventBusListener'
   import { captureOrder, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
@@ -491,7 +496,7 @@
   // When we are starting a new load we need to unload all the DOM elements
   useEventBusListener('plannerShow', (show: boolean) => {
     if (!show) {
-      console.log('Planner: Received plannerShow(false) event, marked as unloaded, showing placeholders')
+      console.log('Planner: Received plannerShow(false) event, clearing the page')
       hidePlan()
     } else {
       console.log('Planner: Received plannerShow(true) event, showing content')
@@ -642,6 +647,8 @@
   const showPlan = () => {
     resyncWorldResources()
     planVisible.value = true
+    // After the flush that mounts the plan, so the screen and the plan swap in one paint.
+    nextTick(dismissBootLoader)
 
     // Restore the indicator once the cards have had a beat to render.
     setTimeout(updateActiveFactory, 300)

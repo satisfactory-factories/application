@@ -2100,7 +2100,7 @@ describe('room-sync-store', () => {
 
     beforeEach(() => {
       // The resolution hands a changed plan back to the loader; these specs are about
-      // what it decided, not about the staggered render that follows.
+      // what it decided, not about the render that follows.
       vi.spyOn(appStore, 'reloadTabFromMirror').mockResolvedValue()
 
       producing = [newFactory('Alpha', 0, 1), newFactory('Beta', 1, 2), newFactory('Gamma', 2, 3)]

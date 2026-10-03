@@ -50,93 +50,77 @@
             @navigate="target => navigateToStatus(target)"
           />
         </v-spacer>
-        <v-tooltip right>
-          <template #activator="{ props: activatorProps }">
-            <v-col
-              v-if="countActiveTasks(factory)"
-              class="context-icon align-content-center text-center py-0 px-1"
-              cols="auto"
-              v-bind="activatorProps"
-              @click="navigateToFactory(factory.id, `${factory.id}-tasks`)"
-              @click.stop
-            >
-              <i class="d-inline fas fa-tasks mr-1" />
-              <span>{{ countActiveTasks(factory) }}</span>
-            </v-col>
-          </template>
-          <span>Tasks: {{ countActiveTasks(factory) }}</span>
-        </v-tooltip>
-        <v-tooltip right>
-          <template #activator="{ props: activatorProps }">
-            <!-- Desynced, this stops being a plain grey counter and takes a chip's outline. Amber
-                 text alone left the row's only explanation of its amber border sitting in a
-                 tooltip; an outlined pill reads as a state the reader is meant to act on, and
-                 matches the amber Checklist chip on the card the row points at. -->
-            <v-col
-              v-if="factory.checklistEnabled"
-              class="context-icon align-content-center text-center py-0 px-1"
-              :class="[checklistTextClass(factory), { 'checklist-desynced': checklistDesyncCount > 0 }]"
-              cols="auto"
-              v-bind="activatorProps"
-              @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
-              @click.stop
-            >
-              <i class="d-inline fas fa-check mr-1" />
-              <span>{{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
-            </v-col>
-          </template>
-          <span>
-            Checklist: {{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}
-            {{ checklistDesyncCount > 0
-              ? `ticked, ${checklistDesyncCount} of them at a number that has since changed`
-              : 'complete' }}
-          </span>
-        </v-tooltip>
-        <v-tooltip right>
-          <template #activator="{ props: activatorProps }">
-            <v-col
-              v-if="factory.notes"
-              class="context-icon align-content-center text-center py-0 px-1"
-              cols="auto"
-              v-bind="activatorProps"
-              @click="navigateToFactory(factory.id, `${factory.id}-notes`)"
-              @click.stop
-            >
-              <i class="d-inline fas fa-sticky-note" />
-            </v-col>
-          </template>
-          <span>See notes</span>
-        </v-tooltip>
-        <v-tooltip right>
-          <template #activator="{ props: activatorProps }">
-            <v-col
-              class="pa-0 ml-2 align-content-center text-center sync-state"
-              :class="syncStateClass"
-              cols="auto"
-              v-bind="activatorProps"
-            >
-              <div v-if="factory.inSync" class="d-inline">
-                <i class="fas fa-check" />
-              </div>
-              <div v-if="factory.inSync === false" class="d-inline">
-                <i class="fas fa-times" />
-              </div>
-              <div v-if="factory.inSync === null" class="d-inline">
-                <i class="fas fa-question" />
-              </div>
-            </v-col>
-          </template>
-          <span>
-            {{ factory.inSync === true
-              ? 'In sync with game'
-              : factory.inSync === false
-                ? 'Out of sync with game'
-                : 'Game sync unknown'
-            }}
-          </span>
-        </v-tooltip>
+        <!-- The hints share one tooltip, mounted on the first hover: a v-tooltip per icon was four
+             overlay components on every row, and the sidebar renders every factory at once. -->
+        <v-col
+          v-if="countActiveTasks(factory)"
+          class="context-icon align-content-center text-center py-0 px-1"
+          cols="auto"
+          @click="navigateToFactory(factory.id, `${factory.id}-tasks`)"
+          @click.stop
+          @mouseenter="showHint($event, `Tasks: ${countActiveTasks(factory)}`)"
+          @mouseleave="hideHint"
+        >
+          <i class="d-inline fas fa-tasks mr-1" />
+          <span>{{ countActiveTasks(factory) }}</span>
+        </v-col>
+        <!-- Desynced, this stops being a plain grey counter and takes a chip's outline. Amber
+             text alone left the row's only explanation of its amber border sitting in a
+             tooltip; an outlined pill reads as a state the reader is meant to act on, and
+             matches the amber Checklist chip on the card the row points at. -->
+        <v-col
+          v-if="factory.checklistEnabled"
+          class="context-icon align-content-center text-center py-0 px-1"
+          :class="[checklistTextClass(factory), { 'checklist-desynced': checklistDesyncCount > 0 }]"
+          cols="auto"
+          @click="navigateToFactory(factory.id, `${factory.id}-checklist`)"
+          @click.stop
+          @mouseenter="showHint($event, checklistHint)"
+          @mouseleave="hideHint"
+        >
+          <i class="d-inline fas fa-check mr-1" />
+          <span>{{ countChecklistCompleted(factory) }}/{{ countChecklistTotal(factory) }}</span>
+        </v-col>
+        <v-col
+          v-if="factory.notes"
+          class="context-icon align-content-center text-center py-0 px-1"
+          cols="auto"
+          @click="navigateToFactory(factory.id, `${factory.id}-notes`)"
+          @click.stop
+          @mouseenter="showHint($event, 'See notes')"
+          @mouseleave="hideHint"
+        >
+          <i class="d-inline fas fa-sticky-note" />
+        </v-col>
+        <v-col
+          class="pa-0 ml-2 align-content-center text-center sync-state"
+          :class="syncStateClass"
+          cols="auto"
+          @mouseenter="showHint($event, syncHint)"
+          @mouseleave="hideHint"
+        >
+          <div v-if="factory.inSync" class="d-inline">
+            <i class="fas fa-check" />
+          </div>
+          <div v-if="factory.inSync === false" class="d-inline">
+            <i class="fas fa-times" />
+          </div>
+          <div v-if="factory.inSync === null" class="d-inline">
+            <i class="fas fa-question" />
+          </div>
+        </v-col>
       </v-row>
     </v-card>
+    <v-tooltip
+      v-if="hintTarget"
+      v-model="hintOpen"
+      location="right"
+      :open-on-focus="false"
+      :open-on-hover="false"
+      :target="hintTarget"
+    >
+      {{ hintText }}
+    </v-tooltip>
     <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
   </div>
 </template>
@@ -194,6 +178,31 @@
   }
 
   const checklistDesyncCount = computed(() => countChecklistDesynced(props.factory))
+
+  const hintTarget = ref<HTMLElement | null>(null)
+  const hintText = ref('')
+  const hintOpen = ref(false)
+  const showHint = (event: MouseEvent, text: string) => {
+    hintTarget.value = event.currentTarget as HTMLElement
+    hintText.value = text
+    hintOpen.value = true
+  }
+  const hideHint = () => {
+    hintOpen.value = false
+  }
+
+  const checklistHint = computed(() => {
+    const ticked = `Checklist: ${countChecklistCompleted(props.factory)}/${countChecklistTotal(props.factory)}`
+    return checklistDesyncCount.value > 0
+      ? `${ticked} ticked, ${checklistDesyncCount.value} of them at a number that has since changed`
+      : `${ticked} complete`
+  })
+
+  const syncHint = computed(() => props.factory.inSync === true
+    ? 'In sync with game'
+    : props.factory.inSync === false
+      ? 'Out of sync with game'
+      : 'Game sync unknown')
 
   const rowClass = computed(() => ({
     'factory-card': true,
