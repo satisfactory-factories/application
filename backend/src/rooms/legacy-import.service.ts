@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import { CAPS, truncateFactory, truncateString } from 'common'
+import { CAPS, sanitiseFactoryText, sanitiseText, truncateFactory, truncateString } from 'common'
 import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
@@ -50,7 +50,7 @@ const readGroups = (value: unknown): FactoryGroup[] | undefined => {
     .filter(isRecord)
     .slice(0, CAPS.groupsPerPlan)
     .map(group => {
-      if (typeof group.name === 'string') group.name = truncateString(group.name, CAPS.name)
+      if (typeof group.name === 'string') group.name = sanitiseText(group.name, 'name')
       return group as unknown as FactoryGroup
     })
 }
@@ -58,7 +58,7 @@ const readGroups = (value: unknown): FactoryGroup[] | undefined => {
 // A blank name would name the room after nothing, so it falls back like an array save.
 // The tiers and `plannerVersion` stay absent when the save had none: absent is a meaning.
 const readTabState = (tab: Record<string, unknown>): LegacyTabState => {
-  const name = typeof tab.name === 'string' ? truncateString(tab.name, CAPS.name).trim() : ''
+  const name = typeof tab.name === 'string' ? sanitiseText(tab.name, 'name') : ''
 
   return {
     ...(name ? { name } : {}),
@@ -191,7 +191,7 @@ export class LegacyImportService {
   /**
    * Two stored shapes: a bare `Factory[]` up to v0.5, the whole tab from v0.6, which
    * also carries the plan state the array never held. Both predate the zod schema, so
-   * both are truncated and capped but not shape-validated: rejecting one would fail
+   * both have their text repaired and are capped but not shape-validated: rejecting one would fail
    * "Recover server copy" for exactly the saves it exists for, and the client's own
    * migration path fills in whatever a record is missing.
    *
@@ -214,7 +214,11 @@ export class LegacyImportService {
 
     const factories = usable
       .slice(0, CAPS.factoriesPerRoom)
-      .map(factory => truncateFactory(factory))
+      .map(factory => {
+        // Saved before the text rules existed, so repaired rather than refused.
+        sanitiseFactoryText(factory)
+        return truncateFactory(factory)
+      })
 
     return factories.length > 0
       ? { factories, dropped: usable.length - factories.length, tab }

@@ -53,3 +53,4 @@
 - [Nest 12 landed](nest-12-blocked-on-throttler.md) — in since 2026-09-21; the traps are the exports map hiding `@nestjs/common/interfaces` under nodenext and @nestjs/config jumping 4.x to 12.x
 - [E2E concurrency flake](e2e-concurrency-flake.md) — the debounce straddle behind weeks of Playwright failures, why collisions are judged by op id, and why retries are CI-only
 - [Prometheus server config](prometheus-server-config.md) — 180d global retention (not per-target), the unit-file backslash trap, node_exporter, health dashboard; disk alerts are Zabbix
+- [Text sanity rules](text-sanity-rules.md) — one rulebook for names, notes and tasks in planner and server; links banned, old text repaired on load

@@ -90,6 +90,18 @@ describe('app-store', () => {
       factories = [factory]
       calculateFactory(factory, factories, gameData)
     })
+    it('repairs text saved before the text rules on load', () => {
+      factory.notes = 'Guide at https://example.test/guide'
+      factory.name = 'Fuel {gen}\t'
+      factory.tasks = [{ title: 'Read www.example.test', completed: false }]
+
+      appStore.initFactories(factories)
+
+      expect(factory.notes).toBe('Guide at [link removed]')
+      expect(factory.name).toBe('Fuel gen')
+      expect(factory.tasks[0].title).toBe('Read [link removed]')
+    })
+
     // #317 - broken plan loading from v0.2 data
     it('should initialize factories with missing powerProducer keys', () => {
       // Malform the object to remove the powerProducers key for test

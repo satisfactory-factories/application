@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { Factory, FactoryTab, ItemType, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
-import { emptyFactoryPower, PROTOCOL_VERSION } from 'common'
+import { emptyFactoryPower, PROTOCOL_VERSION, sanitiseFactoryText, sanitiseTabText } from 'common'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
@@ -719,6 +719,11 @@ export const useAppStore = defineStore('app', () => {
     // plan needed (a template loaded over another, say) must not ride along with it.
     const repairs: PlanRepair[] = []
     planRepairs.value = []
+
+    // Text saved before the sanity rules existed: links and stray characters are repaired on
+    // load, so the server never refuses an edit over a note nobody has touched since.
+    sanitiseTabText(getCurrentTab())
+    newFactories.forEach(factory => sanitiseFactoryText(factory))
 
     try {
       repairs.push(...validateFactories(newFactories, gameData, getCurrentTab()))

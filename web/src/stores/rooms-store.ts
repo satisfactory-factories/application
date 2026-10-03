@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, toRaw, watch } from 'vue'
+import { textFieldRule } from 'common'
 import type { LegacyImportResult, RoomListEntry } from 'common'
 import * as api from '@/api/client'
 import { ApiError, ApiNetworkError, VersionMismatchError } from '@/api/client'
@@ -721,6 +722,8 @@ export const useRoomsStore = defineStore('rooms', () => {
   const renameTab = async (tabId: string, name: string): Promise<true | string> => {
     const trimmed = name.trim()
     if (trimmed === '') return 'A tab needs a name.'
+    const allowed = textFieldRule('name')(trimmed)
+    if (allowed !== true) return allowed
 
     const state = appStore.getTabState(tabId)
     if (state.kind === 'local') {

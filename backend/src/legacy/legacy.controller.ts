@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Param, Post, UseGuards } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
-import { factoryTabSchema } from 'common'
+import { factoryTabSchema, sanitiseFactoryText, sanitiseTabText } from 'common'
 import type { EndpointRemovedBody, FactoryTab, ShareCreatedResponse, ShareResponse } from 'common'
 
 import { AuthTokenPayload } from '../auth/auth-token'
@@ -75,7 +75,12 @@ export class LegacyController {
 
       if (!share) throw new HttpException({ message: 'Share link not found' }, HttpStatus.NOT_FOUND)
 
-      return { data: JSON.parse(share.data) }
+      // Links shared before the text rules existed are repaired on the way out, so an old
+      // share never hands a link to a new planner.
+      const data: unknown = JSON.parse(share.data)
+      if (Array.isArray(data)) data.forEach(factory => sanitiseFactoryText(factory))
+      else sanitiseTabText(data)
+      return { data } as ShareResponse
     } catch (error) {
       if (error instanceof HttpException) throw error
       console.error(`Failed to fetch shared data: ${error}`)
