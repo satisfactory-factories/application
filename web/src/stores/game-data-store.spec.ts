@@ -1,12 +1,66 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { DataInterface } from '@/interfaces/DataInterface'
+import { createPinia, setActivePinia } from 'pinia'
 import { useGameDataStore } from '@/stores/game-data-store'
+import * as localGameDataLoader from '@/stores/local-game-data-loader'
 
 let gameDataStore: ReturnType<typeof useGameDataStore>
 
 describe('game-data-store', () => {
   beforeEach(() => {
     gameDataStore = useGameDataStore()
+  })
+
+  // The router runs loadGameData before every navigation. It used to compare against the
+  // version read at boot and never updated it, so a session that had to download the data
+  // (a first visit, or the first after a version bump) downloaded it again on every route
+  // change and swapped in a fresh object, re-rendering every component that reads it.
+  describe('loadGameData', () => {
+    let fetchMock: ReturnType<typeof vi.fn>
+    let original: DataInterface
+
+    beforeEach(() => {
+      original = gameDataStore.getGameData()
+      // A fresh store over an empty localStorage: the case that downloads.
+      vi.spyOn(localGameDataLoader, 'loadLocalGameData').mockReturnValueOnce({ gameData: null, version: null })
+      setActivePinia(createPinia())
+      gameDataStore = useGameDataStore()
+      const json = JSON.stringify(original)
+      fetchMock = vi.fn(async () => ({ ok: true, json: async () => JSON.parse(json) }))
+      vi.stubGlobal('fetch', fetchMock)
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      vi.restoreAllMocks()
+    })
+
+    it('downloads the data once per session, not once per navigation', async () => {
+      await gameDataStore.loadGameData()
+      const loaded = gameDataStore.gameData
+
+      await gameDataStore.loadGameData()
+      await gameDataStore.loadGameData()
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(gameDataStore.gameData).toBe(loaded)
+    })
+
+    it('keeps the downloaded data when the browser refuses to cache it', async () => {
+      const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError')
+      })
+
+      try {
+        await gameDataStore.loadGameData()
+      } finally {
+        setItem.mockRestore()
+      }
+
+      expect(gameDataStore.gameData).not.toBeNull()
+      expect(gameDataStore.getRecipeById('IronPlate')).not.toBeNull()
+    })
   })
 
   it('should return the correct recipe for nuclear waste', () => {

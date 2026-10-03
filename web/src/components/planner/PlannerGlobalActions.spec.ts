@@ -124,9 +124,17 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     const subject = mountSubject()
     const hints = subject.findAllComponents(Tooltip).map(t => t.props('text') as string)
 
-    for (const label of ['hide', 'expand', 'clear', 'export', 'recalculate']) {
+    for (const label of ['clear', 'export', 'recalculate']) {
       expect(hints.some(hint => hint.startsWith(`Nothing to ${label} yet`))).toBe(true)
     }
+  })
+
+  // One factory is on screen at a time, so there is nothing left to hide or expand.
+  it('offers no hide all or expand all', () => {
+    const subject = mountSubject()
+
+    expect(subject.text()).not.toContain('Hide all')
+    expect(subject.text()).not.toContain('Expand all')
   })
 
   // The one button here that holds a state rather than firing an action, and it is the only

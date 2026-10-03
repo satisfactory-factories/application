@@ -7,6 +7,7 @@ import type { WsGate } from '../helpers/network'
 import {
   addFactory,
   createSyncedTab,
+  expectFactoryNames,
   expectQuiesced,
   factoryNames,
   openPlanner,
@@ -80,7 +81,7 @@ test('a rename left unsent by a dropped connection survives the reconnect', asyn
   const second = await openPlanner(await client({ user }))
   await showPlan(second, user, roomId)
   await selectTab(second, roomId)
-  await expect(second.locator('input.factory-name')).toHaveValue('Smelters')
+  await expectFactoryNames(second, ['Smelters'])
 
   // Held rather than merely quick: the rename is provably still unsent when the link dies.
   const held = gate.holdOps()

@@ -1,7 +1,7 @@
 import vuetify from '@/plugins/vuetify'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, VueWrapper } from '@vue/test-utils'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Product from './Product.vue'
 import { calculateFactory, CalculationModes, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
@@ -28,6 +28,16 @@ const mountSubject = (factory: Factory) => {
     },
   })
 }
+
+// The debounces under test are stepped through rather than slept on: each
+// advanceTimersByTimeAsync call stands in for a real wait of that length.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('Component: Product', () => {
   let factory = newFactory('test')
@@ -57,7 +67,7 @@ describe('Component: Product', () => {
     expect((ironOreInput.element as HTMLInputElement).value).toBe('30')
 
     await ironOreInput.setValue('60')
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
     expect((productionInput.element as HTMLInputElement).value).toBe('60')
   })
 
@@ -76,7 +86,7 @@ describe('Component: Product', () => {
     expect((byProductInput.element as HTMLInputElement).value).toBe('30')
 
     await byProductInput.setValue('60')
-    await new Promise(resolve => setTimeout(resolve, 500)) // Debounced recalc
+    await vi.advanceTimersByTimeAsync(500) // Debounced recalc
     expect((productionInput.element as HTMLInputElement).value).toBe('80')
   })
 
@@ -85,7 +95,7 @@ describe('Component: Product', () => {
     await productionInput.setValue('-123')
 
     // The amount input is debounced (750ms)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await vi.advanceTimersByTimeAsync(1000)
 
     expect((productionInput.element as HTMLInputElement).value).toBe('1')
   })

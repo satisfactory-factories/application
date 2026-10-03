@@ -4,7 +4,7 @@ import type { VersionMismatchBody } from 'common'
 import { API_URL } from '../config'
 import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
-import { addFactory, openPlanner, settle } from '../helpers/planner'
+import { addFactory, expectFactoryNames, openPlanner, settle } from '../helpers/planner'
 
 /** Anything that is not `PROTOCOL_VERSION`; the gate matches exactly. */
 const STALE_VERSION = '0.0.1-stale'
@@ -41,7 +41,7 @@ test('a 426 from the API raises the refresh prompt and leaves the planner usable
   // Persistent by design: nothing dismisses it, and the planner keeps working
   // underneath it rather than being blocked.
   await addFactory(page, { name: 'Still editable', note: 'made while out of date' })
-  await expect(page.locator('input.factory-name')).toHaveValue('Still editable')
+  await expectFactoryNames(page, ['Still editable'])
   await expect(prompt).toBeVisible()
 })
 

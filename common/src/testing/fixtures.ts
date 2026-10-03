@@ -82,7 +82,7 @@ export const makeFactory = (overrides: Partial<Factory> = {}): Factory => ({
       },
     },
   },
-  partDisposal: { IronIngot: { sinks: 2, depots: 1 } },
+  partDisposal: { IronIngot: { sinks: 2, depots: 1, ignoreBacklog: true } },
   dependencies: { requests: {}, metrics: {} },
   rawResources: {},
   power: { consumed: 4, produced: 0, difference: -4 },

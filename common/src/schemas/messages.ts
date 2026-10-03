@@ -5,6 +5,7 @@ import { truncateFactory, truncateFactoryTab, truncateRoomDiff } from '../trunca
 import type { Factory, FactoryTab } from '../types/factory'
 import type { RoomDiff } from '../types/protocol'
 import { factoryGroupSchema, factorySchema, factoryTabSchema } from './factory'
+import { textSchema } from './text'
 
 const str = z.string().max(CAPS.string)
 const num = z.number()
@@ -13,7 +14,7 @@ const id = z.string().min(1).max(CAPS.string)
 const fieldKey = z.string().min(1).max(CAPS.fieldKey)
 
 export const roomDiffSchema = z.object({
-  name: z.string().max(CAPS.name).optional(),
+  name: textSchema('name').optional(),
   powerTarget: num.optional(),
   depotUploadTier: num.optional(),
   depotExpansionTier: num.optional(),

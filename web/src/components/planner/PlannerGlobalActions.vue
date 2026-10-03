@@ -2,34 +2,10 @@
   <v-row>
     <v-col>
       <!-- Every button here is wrapped rather than carrying a `title`: a native tooltip can't say
-           anything useful about a disabled control, and five of these disable themselves on an
+           anything useful about a disabled control, and several of these disable themselves on an
            empty plan — exactly when someone is most likely to hover one asking why it won't
            click. <tooltip> puts the v-tooltip on a wrapper span, so the hint still appears, and
            each disabled button explains itself instead of just going grey. -->
-      <tooltip :text="isEmpty ? 'Nothing to hide yet — add a factory first.' : 'Collapse every factory down to its header, to see the shape of the whole plan at once.'">
-        <v-btn
-          class="ma-1"
-          color="blue"
-          :disabled="isEmpty"
-          prepend-icon="fas fa-compress-alt"
-          variant="tonal"
-          @click="emit('hide-all')"
-        >
-          Hide all
-        </v-btn>
-      </tooltip>
-      <tooltip :text="isEmpty ? 'Nothing to expand yet — add a factory first.' : 'Open every factory card. Past ten factories this will make the page lag, and you\'ll be warned before it does.'">
-        <v-btn
-          class="ma-1"
-          color="blue"
-          :disabled="isEmpty"
-          prepend-icon="fas fa-expand-alt"
-          variant="tonal"
-          @click="expandAll"
-        >
-          Expand all
-        </v-btn>
-      </tooltip>
       <!-- Flat while on, tonal while off: the label alone ("Full width" / "Normal width") says
            what the next click does, not what the planner is doing now, and this is the only
            button here that holds a state. -->
@@ -145,6 +121,7 @@
   import type { Factory, FactoryTab } from '@/interfaces/planner/FactoryInterface'
   import { markTabEdited } from '@/utils/sync-intent'
   import eventBus from '@/utils/eventBus'
+  import { useEventBusListener } from '@/composables/useEventBusListener'
 
   const appStore = useAppStore()
   const { getFactories, getCurrentTab, getTabState, prepareLoader, forceCalculation } = appStore
@@ -157,7 +134,7 @@
   const importError = ref('')
   const importing = ref(false)
 
-  // Named because it is the reason five of these buttons are disabled, and each says so in its
+  // Named because it is the reason several of these buttons are disabled, and each says so in its
   // own tooltip rather than leaving the reader to guess at a greyed-out control.
   const isEmpty = computed(() => getFactories().length === 0)
 
@@ -168,8 +145,6 @@
   })
 
   const emit = defineEmits<{
-    (event: 'hide-all'): void;
-    (event: 'show-all'): void;
     (event: 'import-world'): void;
     (event: 'clear-all'): void;
   }>()
@@ -203,18 +178,6 @@
     // An empty tab has nothing to lose, cloud or not, so it is replaced in silence.
     if (getFactories().length === 0) return true
     return confirmDialog(replaceWarning())
-  }
-
-  const expandAll = () => {
-    if (getFactories().length > 10) {
-      eventBus.emit('toast', { message: 'You are expanding a lot of factories. Expect performance issues.', type: 'warning' })
-
-      setTimeout(() => {
-        emit('show-all')
-      }, 250)
-    } else {
-      emit('show-all')
-    }
   }
 
   /**
@@ -307,15 +270,6 @@
     tab.depotUploadTier = outgoing.depotUploadTier
     tab.depotExpansionTier = outgoing.depotExpansionTier
     tab.factories = outgoing.factories
-
-    // The store keeps the plan it was loading under this key and picks it up on the next
-    // load as a recovery copy. Left there it would put the import that just failed straight
-    // back over the plan being restored.
-    try {
-      localStorage.removeItem('preLoadFactories')
-    } catch (cause) {
-      console.error('applyPlanBlob: could not clear the recovery copy', cause)
-    }
 
     // The failed load hid the planner, so the restored plan needs drawing or the tab reads
     // empty until the page is reloaded. Guarded on its own: a restore that cannot draw has
@@ -510,7 +464,7 @@
     eventBus.emit('toast', { message: 'Recalculations completed.', type: 'success' })
   }
 
-  eventBus.on('calculationsCompleted', () => {
+  useEventBusListener('calculationsCompleted', () => {
     disableRecalc.value = false
   })
 </script>

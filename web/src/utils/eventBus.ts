@@ -4,7 +4,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import type { TabField } from '@/sync/room-state'
 import type { ToastData } from '@/utils/toast'
 
-type Events = {
+export type Events = {
   factoryUpdated: Factory;
   // The factory the user acted on, as opposed to the ones a recalculation
   // rippled into. Sync treats this as intent and factoryUpdated as payload.
@@ -12,6 +12,11 @@ type Events = {
   // The same statement for a field the tab owns rather than a factory, so a
   // power target or a group list edited on its own still saves and still syncs.
   tabEdited: TabField;
+  // A keystroke in a free-text field (notes, a task's title). Sync waits longer after one of
+  // these before sending, so a paragraph goes out once the typing stops rather than at every pause.
+  textTyped: Factory;
+  // The user left that field: whatever the longer wait is holding is sent now.
+  textTypingDone: undefined;
   // The user replaced the whole plan (clear, paste, template, demo). `removedIds` are the
   // records that went, and they are the only removals the server accepts in bulk.
   planReplaced: { removedIds: number[] };
@@ -22,6 +27,9 @@ type Events = {
   // A peer's op landed and it changed what the plan says — not a rename and not a
   // reorder, both of which arrive as ops like anything else.
   planContentApplied: { tabId: string };
+  // This client sent an op that changed what the plan says. A synced tab's "last updated"
+  // moves on this, not on the keystrokes that led to it.
+  planContentSent: { tabId: string };
   loggedIn: undefined;
   sessionExpired: undefined;
   // The version gate fired: an HTTP 426, or a socket closed 4426. `body` is only
@@ -34,10 +42,8 @@ type Events = {
   // user is offered a reload rather than made to do one.
   updateAvailable: { version: string };
   toast: ToastData;
-  // Initial factory loading dialog
+  // A load has finished and the plan is in place
   loadingCompleted: undefined;
-  incrementLoad: { step: string }; // Payload to denote loading or calculation step
-  prepareForLoad: { count: number, shown: number };
   // Custom loading screen
   loaderInit: { title?: string, steps: number }
   loaderNextStep: { message: string, step?: number, isFinalStep?: boolean }

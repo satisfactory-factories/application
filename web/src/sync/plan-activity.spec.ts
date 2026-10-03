@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { diffChangesContent } from '@/sync/plan-activity'
+import { diffChangesContent, sentDiffChangesContent } from '@/sync/plan-activity'
+import { stableStringify, UNKNOWN_CONTENT } from '@/sync/room-state'
 import { newFactory } from '@/utils/factory-management/factory'
 
 const plan = () => [newFactory('Smelters', 0, 1), newFactory('Constructors', 1, 2)]
@@ -41,5 +42,30 @@ describe('diffChangesContent', () => {
 
   it('is false for a diff carrying nothing but the group list', () => {
     expect(diffChangesContent({ groups: [] }, plan())).toBe(false)
+  })
+})
+
+describe('sentDiffChangesContent', () => {
+  const baseline = (factories = plan()) =>
+    new Map(factories.map(factory => [factory.id, stableStringify(factory)]))
+
+  it('is true for an edited note', () => {
+    const [first] = plan()
+
+    expect(sentDiffChangesContent({ factories: [{ ...first, notes: 'Feeds the line' }] }, baseline())).toBe(true)
+  })
+
+  it('is false for a rename', () => {
+    const [first] = plan()
+
+    expect(sentDiffChangesContent({ factories: [{ ...first, name: 'Renamed' }] }, baseline())).toBe(false)
+  })
+
+  it('is true for a record the baseline cannot vouch for', () => {
+    const [first] = plan()
+    const acked = baseline()
+    acked.set(first.id, UNKNOWN_CONTENT)
+
+    expect(sentDiffChangesContent({ factories: [first] }, acked)).toBe(true)
   })
 })

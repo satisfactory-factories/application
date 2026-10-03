@@ -1,4 +1,5 @@
 import type { Factory, FactoryGroup } from './factory'
+import type { TextIssue } from '../text-rules'
 
 /**
  * Bumped whenever a client and a server stop being able to understand each other.
@@ -268,6 +269,8 @@ export interface ServerOpApplyMessage {
 export type OpRejectReason =
   | 'stale_base'
   | 'invalid'
+  /** The op broke a text rule; `textIssue` says which field and which rule. */
+  | 'invalid_text'
   | 'forbidden'
   | 'room_deleted'
   | 'too_large'
@@ -279,6 +282,8 @@ export interface ServerOpRejectMessage {
   roomId: string
   opId: string
   reason: OpRejectReason
+  /** Present with `invalid_text`: the first field that broke a rule. */
+  textIssue?: TextIssue
   /**
    * The rebase path adopts this, overlays intent and resends. Absent only when
    * the room is no longer readable at all (`forbidden`, `room_deleted`), where

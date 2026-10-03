@@ -10,6 +10,7 @@ import {
   openTabSettings,
   selectTab,
   settle,
+  sidebarFactoryRows,
   waitForTab,
 } from './planner'
 import { closeAccountPanel, openAccountPanel } from './session'
@@ -71,7 +72,7 @@ export const syncedPair = async (
   const second = await openPlanner(await client({ user }))
   await showPlan(second, user, roomId)
   await selectTab(second, roomId)
-  await expect(second.locator('input.factory-name')).toHaveCount(seed.length, { timeout: 20_000 })
+  await expect(sidebarFactoryRows(second)).toHaveCount(seed.length, { timeout: 20_000 })
 
   return { user, roomId, first, second }
 }
