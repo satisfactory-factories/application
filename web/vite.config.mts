@@ -169,6 +169,10 @@ export default defineConfig(() => ({
     globals: true,
     environment: 'jsdom',
     pool: 'forks',
+    // More workers than cores. The ~135s of real debounce waits below leave a worker idle while
+    // it sleeps, so one per core kept CI's 4 vCPUs about 60% busy. At 150% the suite went from
+    // 235s to 167s on 4 cores; 300% was no faster, and sharing a worker across files breaks tests.
+    maxWorkers: '150%',
     setupFiles: ['src/setup-vitest.ts'],
     globalSetup: './testing/global-setup.ts',
     exclude: [...configDefaults.exclude, ...PLAYWRIGHT_FILES],
