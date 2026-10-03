@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { Factory, FactoryTab, ItemType, LegacyRawAssumptionFields } from '@/interfaces/planner/FactoryInterface'
 import { ref, toRaw, watch } from 'vue'
-import { emptyFactoryPower, PROTOCOL_VERSION } from 'common'
+import { emptyFactoryPower, PROTOCOL_VERSION, sanitiseFactoryText, sanitiseTabText } from 'common'
 import { calculateFactories, generateFactoryId, regenerateSortOrders } from '@/utils/factory-management/factory'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { validateFactories } from '@/utils/factory-management/validation'
@@ -27,6 +27,7 @@ import { getHandGatheredParts } from '@/utils/factory-management/parts'
 import { config } from '@/config/config'
 import { recordEvent } from '@/utils/record-event'
 import { writeLocalStorage } from '@/utils/safe-storage'
+import { canAddFactory } from '@/utils/plan-size'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -719,6 +720,11 @@ export const useAppStore = defineStore('app', () => {
     const repairs: PlanRepair[] = []
     planRepairs.value = []
 
+    // Text saved before the sanity rules existed: links and stray characters are repaired on
+    // load, so the server never refuses an edit over a note nobody has touched since.
+    sanitiseTabText(getCurrentTab())
+    newFactories.forEach(factory => sanitiseFactoryText(factory))
+
     try {
       repairs.push(...validateFactories(newFactories, gameData, getCurrentTab()))
     } catch (err) {
@@ -1058,7 +1064,10 @@ export const useAppStore = defineStore('app', () => {
     console.log('appStore: setFactories: Factories set.', factories.value)
   }
 
-  const addFactory = (factory: Factory) => {
+  /** False when the plan is already full, in which case nothing is added and the user is told. */
+  const addFactory = (factory: Factory): boolean => {
+    if (!canAddFactory(factories.value.length)) return false
+
     // newFactory() cannot see the plan, so its random ID may already be taken. A collision
     // makes the two factories indistinguishable to the dependency system, which keys every
     // export request by factory ID.
@@ -1088,6 +1097,7 @@ export const useAppStore = defineStore('app', () => {
     // declare nothing of their own, so a rebase would take the server's order back.
     markReorderedFactories(before, factories.value)
     schedulePersist()
+    return true
   }
 
   const removeFactory = (id: number) => {

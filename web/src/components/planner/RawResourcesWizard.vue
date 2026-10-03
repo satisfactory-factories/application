@@ -344,6 +344,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { formatNumber } from '@/utils/numberFormatter'
   import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
   import { markPlanReplaced } from '@/utils/sync-intent'
   import {
     applyRawWizard,
@@ -362,6 +363,7 @@
   import { downloadPlan } from '@/utils/plan-backup'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { PURITY_LABELS } from '@/utils/factory-management/building-groups/extraction'
+  import { canAddFactory } from '@/utils/plan-size'
 
   const props = defineProps<{ modelValue: boolean }>()
   const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
@@ -575,6 +577,11 @@
     const name = editingName.value.trim()
     const factory = pending.value.factories.find(entry => entry.id === factoryId)
     if (!name || !factory || name === factory.name) return
+    const allowed = textFieldRule('name')(name)
+    if (allowed !== true) {
+      eventBus.emit('toast', { message: allowed, type: 'error' })
+      return
+    }
 
     const previous = factory.name
     factory.name = name
@@ -605,6 +612,9 @@
 
   const apply = async () => {
     if (applying.value || !pending.value) return
+    // Each mine it would create is a factory like any other, so they count against the cap.
+    const current = appStore.getFactories().length
+    if (!canAddFactory(current, pending.value.factories.length - current)) return
     applying.value = true
     await afterPaint()
 

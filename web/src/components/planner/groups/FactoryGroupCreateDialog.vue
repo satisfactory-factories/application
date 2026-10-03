@@ -42,8 +42,9 @@
       v-model="name"
       autofocus
       class="mt-4"
-      hide-details
+      hide-details="auto"
       label="Group name"
+      :rules="[nameRule]"
       variant="outlined"
       @keyup.enter="submit"
     />
@@ -61,6 +62,7 @@
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
+  import { textFieldRule } from 'common'
   import { groupColorVars, groupPalette } from '@/utils/colors'
   import { useFactoryGroups } from '@/composables/useFactoryGroups'
   import { defaultGroupColor } from '@/utils/factory-management/factory-groups'
@@ -84,7 +86,11 @@
 
   const previewStyle = computed(() => groupColorVars(color.value))
 
+  const nameRule = textFieldRule('name')
+
   const submit = () => {
+    // Kept open so the field can say why and the name can be fixed.
+    if (nameRule(name.value) !== true) return
     const group = createGroup(name.value, color.value)
     if (group) emit('created', group.id)
     isOpen.value = false

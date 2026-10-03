@@ -4,9 +4,10 @@
        factory up here at the top of the list — moved to sit beside the factory it creates. -->
   <v-row class="pa-0 ma-0">
     <v-col class="text-center d-flex flex-column align-center ga-2" :class="factories.length === 0 ? 'pt-0' : 'pt-n1'">
-      <tooltip text="Add a new, empty factory to the plan, filed under no group.">
+      <tooltip :text="planFull ? PLAN_FULL_MESSAGE : 'Add a new, empty factory to the plan, filed under no group.'">
         <v-btn
           color="primary"
+          :disabled="planFull"
           prepend-icon="fas fa-plus"
           ripple
           @click="createFactory()"
@@ -274,6 +275,7 @@
   import FactoryGroupDeleteDialog from '@/components/planner/groups/FactoryGroupDeleteDialog.vue'
   import draggable from 'vuedraggable'
   import eventBus from '@/utils/eventBus'
+  import { PLAN_FULL_MESSAGE, planIsFull } from '@/utils/plan-size'
 
   const navigateToSection = inject('navigateToSection') as (sectionId: string) => void
   // Scroll-spy from Planner.vue, used by the two jump-link cards above the factory list.
@@ -290,6 +292,10 @@
     totalFactories: number,
     loadedFrom: string
   }>()
+
+  // The group rows' own Add factory buttons are refused by the planner with the same message.
+  const planFull = computed(() => planIsFull(compProps.totalFactories))
+
   // Visible from the start: the fast load paths never emit prepareForLoad, so an initial
   // false here left the docked sidebar empty for every plan that loaded quickly.
   const show = ref(true)

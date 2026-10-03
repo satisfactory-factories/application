@@ -13,6 +13,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { gameData } from '@/utils/gameData'
 import { createPinia, setActivePinia } from 'pinia'
 import eventBus from '@/utils/eventBus'
+import { MAX_FACTORIES_PER_PLAN } from '@/utils/plan-size'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { config } from '@/config/config'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
@@ -89,6 +90,18 @@ describe('app-store', () => {
       factories = [factory]
       calculateFactory(factory, factories, gameData)
     })
+    it('repairs text saved before the text rules on load', () => {
+      factory.notes = 'Guide at https://example.test/guide'
+      factory.name = 'Fuel {gen}\t'
+      factory.tasks = [{ title: 'Read www.example.test', completed: false }]
+
+      appStore.initFactories(factories)
+
+      expect(factory.notes).toBe('Guide at [link removed]')
+      expect(factory.name).toBe('Fuel gen')
+      expect(factory.tasks[0].title).toBe('Read [link removed]')
+    })
+
     // #317 - broken plan loading from v0.2 data
     it('should initialize factories with missing powerProducer keys', () => {
       // Malform the object to remove the powerProducers key for test
@@ -1317,6 +1330,18 @@ describe('app-store', () => {
         const factory = newFactory('Foobarbaz')
         appStore.addFactory(factory)
         expect(appStore.getFactories()).toEqual([factory])
+      })
+
+      // Every single-factory add goes through here, so this is where the cap holds.
+      it('refuses a factory past the plan cap, and says so', () => {
+        appStore.getFactories().push(
+          ...Array.from({ length: MAX_FACTORIES_PER_PLAN }, (_unused, index) => newFactory(`F${index}`, index, index + 1)),
+        )
+        const emit = vi.spyOn(eventBus, 'emit')
+
+        expect(appStore.addFactory(newFactory('One too many', 0, 9999))).toBe(false)
+        expect(appStore.getFactories()).toHaveLength(MAX_FACTORIES_PER_PLAN)
+        expect(emit).toHaveBeenCalledWith('toast', expect.objectContaining({ type: 'warning' }))
       })
 
       // It used to, and the event has no chain behind it: it hides the sidebar and opens the
