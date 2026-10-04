@@ -4578,7 +4578,7 @@
                 "maxVizHeight": 300,
                 "minVizHeight": 16,
                 "minVizWidth": 0,
-                "namePlacement": "left",
+                "namePlacement": "top",
                 "orientation": "horizontal",
                 "reduceOptions": {
                   "calcs": [

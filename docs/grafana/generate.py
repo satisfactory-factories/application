@@ -166,7 +166,7 @@ def timeseries(unit="short", fill=15, stack="none", steps=None, decimals=None,
     }
 
 
-def bargauge(display_name=None, unit="short", minmax=None):
+def bargauge(display_name=None, unit="short", minmax=None, name_placement="left"):
     defaults = {
         "unit": unit,
         "thresholds": {"mode": "absolute", "steps": [{"value": 0, "color": "green"}]},
@@ -187,7 +187,7 @@ def bargauge(display_name=None, unit="short", minmax=None):
                 "maxVizHeight": 300,
                 "minVizHeight": 16,
                 "minVizWidth": 0,
-                "namePlacement": "left",
+                "namePlacement": name_placement,
                 "orientation": "horizontal",
                 "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
                 "showUnfilled": True,
@@ -483,7 +483,7 @@ add(96, "Planner Errors by Status",
 add(99, "Planner Errors by Route, Last 24h",
     "What the planner was asking for when it was refused. The route pattern as the router matched it, never the raw path.",
     [query('sort_desc(round(sum by (route, status) (increase(sf_http_errors_total%s[24h]))) > 0)' % sel('client=~"versioned|beacon"'), "{{status}} · {{route}}", instant=True)],
-    bargauge(display_name="${__field.labels.status} · ${__field.labels.route}"))
+    bargauge(display_name="${__field.labels.status} · ${__field.labels.route}", name_placement="top"))
 
 # A level, not an increase, on purpose: a sweep is a burst inside one scrape, and increase()
 # only sees movement between samples. Since the scanner series is seeded at zero it now moves
