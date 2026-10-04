@@ -80,12 +80,12 @@ differently and nothing on a panel reveals which it is:
 
 Two panels are worth knowing the shape of:
 
-- **Edits** come from `sf_room_revisions`, a sum of `Room.revision` over live plans. It is a
-  gauge, so it *falls* when a plan is deleted. The 24-hour panel is therefore an offset
-  difference clamped at zero, not `increase()`, which is only valid on counters.
+- **Edits** come from `sf_edits_total`, a stored tally of every accepted edit that only rises,
+  falling back to `sf_room_revisions` for history from before the tally shipped. That older
+  series is a sum over live plans, so it *falls* when a plan is deleted.
 - **Busiest Accounts** is approximate. The count is written after an edit commits and is
   allowed to fail, because no metric may cost somebody their edit. Use it for ranking and
-  nothing else; `sf_room_revisions` is the exact figure.
+  nothing else; `sf_edits_total` is the exact figure.
 
 ## Checking a change before applying it
 

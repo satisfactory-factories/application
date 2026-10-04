@@ -18,11 +18,11 @@ export class RoomActivityService {
   ) {}
 
   /**
-   * Ops are excluded. One fires per accepted edit, which is the hottest write path in the
-   * service, and `sf_room_revisions` already sums them from the room documents for free.
+   * Ops included: `sf_room_revisions` loses a plan's edits when the plan is deleted, and
+   * the edit count is meant to measure use of the site, so it must only ever rise.
    */
   private async tally (kind: RoomActivityKind): Promise<void> {
-    if (kind !== 'op') await this.totals.bump(kind)
+    await this.totals.bump(kind)
   }
 
   // Append-only, so it is the last step of every chain: a resumed mutation then
@@ -34,8 +34,10 @@ export class RoomActivityService {
     summary?: string,
     options: { tally?: boolean } = {},
   ): Promise<void> {
-    await this.activity.create({ roomId, actor, kind, summary, at: this.clock.now() })
+    const at = this.clock.now()
+    await this.activity.create({ roomId, actor, kind, summary, at })
     if (options.tally !== false) await this.tally(kind)
+    if (kind === 'op') await this.totals.bumpEditBuckets(roomId, actor, at, actor === ANONYMOUS_ACTOR)
   }
 
   /**
