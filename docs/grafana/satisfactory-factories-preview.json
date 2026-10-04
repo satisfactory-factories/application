@@ -8710,8 +8710,8 @@
         "kind": "Panel",
         "spec": {
           "id": 70,
-          "title": "Biggest Plans",
-          "description": "The largest synced plans by factory count, with the account that owns each. Top 20 only.",
+          "title": "Biggest Plans · Now",
+          "description": "The largest synced plans by factory count right now, with the account that owns each. Top 20 only.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -8800,8 +8800,8 @@
         "kind": "Panel",
         "spec": {
           "id": 74,
-          "title": "Most Edited Plans",
-          "description": "Accepted edits per synced plan, the exact count still on the plan. Top 20 only; a plan nobody has edited is left out.",
+          "title": "Most Edited Plans · All Time",
+          "description": "Accepted edits per synced plan since it was made, the exact count still on the plan. Top 20 only; a plan nobody has edited is left out.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -8890,8 +8890,8 @@
         "kind": "Panel",
         "spec": {
           "id": 75,
-          "title": "Invites Accepted by Plan",
-          "description": "Accounts that accepted an invite into each plan, the owner not counted. Top 20 only; a plan nobody has joined is left out.",
+          "title": "Invites Accepted by Plan · Now",
+          "description": "Accounts currently in each plan through an accepted invite, the owner not counted. Top 20 only; a plan nobody has joined is left out.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -8980,8 +8980,8 @@
         "kind": "Panel",
         "spec": {
           "id": 108,
-          "title": "Accounts With the Most Plans",
-          "description": "Live synced plans per account, counted over the tabs each account created. Top 20 only.",
+          "title": "Accounts With the Most Plans · Now",
+          "description": "Live synced plans per account right now, counted over the tabs each account created. Top 20 only.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -9070,8 +9070,8 @@
         "kind": "Panel",
         "spec": {
           "id": 71,
-          "title": "Busiest Accounts",
-          "description": "Accepted edits per account. Approximate by design: the count is written after the edit commits and is allowed to fail, and it starts from zero at release rather than being backfilled. Top 20 only.",
+          "title": "Busiest Accounts · All Time",
+          "description": "Accepted edits per account since release. Approximate by design: the count is written after the edit commits and is allowed to fail, and it starts from zero at release rather than being backfilled. Top 20 only.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -9160,8 +9160,8 @@
         "kind": "Panel",
         "spec": {
           "id": 72,
-          "title": "Accounts With the Most Factories",
-          "description": "Factories summed over the synced plans each account created. Top 20 only.",
+          "title": "Accounts With the Most Factories · Now",
+          "description": "Factories right now, summed over the synced plans each account created. Top 20 only.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -9180,6 +9180,366 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "sort_desc(sf_user_factories{job=\"satisfactory-factories-preview\"})",
+                        "legendFormat": "{{username}}",
+                        "instant": true,
+                        "range": false
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.0.2",
+            "spec": {
+              "options": {
+                "displayMode": "gradient",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 0,
+                "namePlacement": "left",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "displayName": "${__field.labels.username}"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-136": {
+        "kind": "Panel",
+        "spec": {
+          "id": 136,
+          "title": "Most Edited Plans · Last 24h",
+          "description": "Accepted edits per synced plan inside the window, counted to the hour. A plan deleted since still shows, as (deleted). Top 20 only.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sort_desc(sf_room_edits_window{job=\"satisfactory-factories-preview\",window=\"24h\"})",
+                        "legendFormat": "{{owner}} · {{name}}",
+                        "instant": true,
+                        "range": false
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.0.2",
+            "spec": {
+              "options": {
+                "displayMode": "gradient",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 0,
+                "namePlacement": "left",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "displayName": "${__field.labels.owner} · ${__field.labels.name}"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-138": {
+        "kind": "Panel",
+        "spec": {
+          "id": 138,
+          "title": "Most Edited Plans · Last 7 Days",
+          "description": "Accepted edits per synced plan inside the window, counted to the hour. A plan deleted since still shows, as (deleted). Top 20 only.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sort_desc(sf_room_edits_window{job=\"satisfactory-factories-preview\",window=\"7d\"})",
+                        "legendFormat": "{{owner}} · {{name}}",
+                        "instant": true,
+                        "range": false
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.0.2",
+            "spec": {
+              "options": {
+                "displayMode": "gradient",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 0,
+                "namePlacement": "left",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "displayName": "${__field.labels.owner} · ${__field.labels.name}"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-137": {
+        "kind": "Panel",
+        "spec": {
+          "id": 137,
+          "title": "Busiest Accounts · Last 24h",
+          "description": "Accepted edits per account inside the window, counted to the hour. Approximate like the all-time panel: the count is written after the edit commits and is allowed to fail. Top 20 only.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sort_desc(sf_user_edits_window{job=\"satisfactory-factories-preview\",window=\"24h\"})",
+                        "legendFormat": "{{username}}",
+                        "instant": true,
+                        "range": false
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.0.2",
+            "spec": {
+              "options": {
+                "displayMode": "gradient",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 0,
+                "namePlacement": "left",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "short",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "displayName": "${__field.labels.username}"
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-139": {
+        "kind": "Panel",
+        "spec": {
+          "id": 139,
+          "title": "Busiest Accounts · Last 7 Days",
+          "description": "Accepted edits per account inside the window, counted to the hour. Approximate like the all-time panel: the count is written after the edit commits and is allowed to fail. Top 20 only.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "datasource": {
+                        "name": "prometheus"
+                      },
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sort_desc(sf_user_edits_window{job=\"satisfactory-factories-preview\",window=\"7d\"})",
                         "legendFormat": "{{username}}",
                         "instant": true,
                         "range": false
@@ -11151,7 +11511,7 @@
                         "height": 10,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-70"
+                          "name": "panel-136"
                         }
                       }
                     },
@@ -11164,7 +11524,7 @@
                         "height": 10,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-74"
+                          "name": "panel-137"
                         }
                       }
                     },
@@ -11177,7 +11537,7 @@
                         "height": 10,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-75"
+                          "name": "panel-138"
                         }
                       }
                     },
@@ -11186,6 +11546,32 @@
                       "spec": {
                         "x": 12,
                         "y": 10,
+                        "width": 12,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-139"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 20,
+                        "width": 12,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-74"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 20,
                         "width": 12,
                         "height": 10,
                         "element": {
@@ -11198,7 +11584,20 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 20,
+                        "y": 30,
+                        "width": 12,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-70"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 30,
                         "width": 12,
                         "height": 10,
                         "element": {
@@ -11210,13 +11609,26 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 12,
-                        "y": 20,
+                        "x": 0,
+                        "y": 40,
                         "width": 12,
                         "height": 10,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-108"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 40,
+                        "width": 12,
+                        "height": 10,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-75"
                         }
                       }
                     }

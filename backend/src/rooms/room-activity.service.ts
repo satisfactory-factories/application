@@ -34,8 +34,10 @@ export class RoomActivityService {
     summary?: string,
     options: { tally?: boolean } = {},
   ): Promise<void> {
-    await this.activity.create({ roomId, actor, kind, summary, at: this.clock.now() })
+    const at = this.clock.now()
+    await this.activity.create({ roomId, actor, kind, summary, at })
     if (options.tally !== false) await this.tally(kind)
+    if (kind === 'op') await this.totals.bumpEditBuckets(roomId, actor, at, actor === ANONYMOUS_ACTOR)
   }
 
   /**

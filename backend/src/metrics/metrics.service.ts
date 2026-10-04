@@ -53,6 +53,9 @@ interface SlowStats {
   topCollaborated: RoomTotal[]
   topEdited: RoomTotal[]
   topEditors: OwnedTotal[]
+  /** Per window label, the busiest rooms and accounts by edits inside it. */
+  windowEditedRooms: Array<readonly [string, RoomTotal[]]>
+  windowEditors: Array<readonly [string, OwnedTotal[]]>
   topOwners: OwnedTotal[]
   topRoomOwners: OwnedTotal[]
   newShares: Array<readonly [string, number]>
@@ -162,6 +165,8 @@ export class MetricsService {
   private readonly roomFeaturePlans: Gauge<'feature'>
   private readonly roomFeatureFactories: Gauge<'feature'>
   private readonly userEdits: Gauge<'username'>
+  private readonly roomEditsWindow: Gauge<'window' | 'room_id' | 'name' | 'owner'>
+  private readonly userEditsWindow: Gauge<'window' | 'username'>
   private readonly userFactories: Gauge<'username'>
   private readonly userRooms: Gauge<'username'>
 
@@ -321,6 +326,18 @@ export class MetricsService {
       name: 'sf_user_edits',
       help: `The ${METRICS_TOP_N} busiest accounts by accepted edits. Approximate: the count is written after the edit commits and is allowed to fail. Starts from zero at release rather than being backfilled.`,
       labelNames: ['username'],
+      registers,
+    })
+    this.roomEditsWindow = new Gauge({
+      name: 'sf_room_edits_window',
+      help: `The ${METRICS_TOP_N} most-edited synced tabs inside each rolling window, counted to the hour. A deleted tab keeps its edits and reports as "(deleted)".`,
+      labelNames: ['window', 'room_id', 'name', 'owner'],
+      registers,
+    })
+    this.userEditsWindow = new Gauge({
+      name: 'sf_user_edits_window',
+      help: `The ${METRICS_TOP_N} busiest accounts inside each rolling window, by accepted edits, counted to the hour. Approximate like sf_user_edits: the count is written after the edit commits and is allowed to fail.`,
+      labelNames: ['window', 'username'],
       registers,
     })
     this.userFactories = new Gauge({
@@ -505,6 +522,18 @@ export class MetricsService {
       this.userEdits.set({ username: editor.name }, editor.value)
     }
 
+    this.roomEditsWindow.reset()
+    for (const [window, rooms] of stats.windowEditedRooms) {
+      for (const room of rooms) {
+        this.roomEditsWindow.set({ window, room_id: room.roomId, name: room.name, owner: room.owner }, room.value)
+      }
+    }
+
+    this.userEditsWindow.reset()
+    for (const [window, editors] of stats.windowEditors) {
+      for (const editor of editors) this.userEditsWindow.set({ window, username: editor.name }, editor.value)
+    }
+
     this.userFactories.reset()
     for (const owner of stats.topOwners) {
       this.userFactories.set({ username: owner.name }, owner.value)
@@ -562,7 +591,7 @@ export class MetricsService {
     const now = this.clock.now()
     const [
       activeAccounts, newAccounts, signedInAccounts, topRooms, topCollaborated, topEdited, topEditors, topOwners,
-      topRoomOwners, newShares, topShares, newRooms, newMemberships, features,
+      topRoomOwners, newShares, topShares, newRooms, newMemberships, features, windowEditedRooms, windowEditors,
     ] =
       await Promise.all([
         this.countByWindow(now, since => this.users.countDocuments({ lastActiveAt: { $gt: since } })),
@@ -582,11 +611,13 @@ export class MetricsService {
         this.countByWindow(now, since =>
           this.memberships.countDocuments({ role: 'member', joinedAt: { $gt: since } })),
         this.sumFeatureUsage(),
+        this.perWindow(now, since => this.findMostEditedRoomsSince(since)),
+        this.perWindow(now, since => this.findBusiestEditorsSince(since)),
       ])
 
     return {
       activeAccounts, newAccounts, signedInAccounts, topRooms, topCollaborated, topEdited, topEditors, topOwners,
-      topRoomOwners, newShares, topShares, newRooms, newMemberships, ...features,
+      topRoomOwners, newShares, topShares, newRooms, newMemberships, ...features, windowEditedRooms, windowEditors,
     }
   }
 
@@ -704,6 +735,31 @@ export class MetricsService {
       const matched = await count(new Date(now.getTime() - ms))
       return [label, matched] as const
     }))
+  }
+
+  private async perWindow<T> (now: Date, find: (since: Date) => Promise<T>): Promise<Array<readonly [string, T]>> {
+    return Promise.all(ACTIVE_ACCOUNT_WINDOWS.map(async ([label, ms]) =>
+      [label, await find(new Date(now.getTime() - ms))] as const))
+  }
+
+  /** Tombstoned and purged rooms are kept: their edits happened inside the window. */
+  private async findMostEditedRoomsSince (since: Date): Promise<RoomTotal[]> {
+    const rows = await this.roomTotals.busiestSince('room', since, METRICS_TOP_N)
+    const rooms = await this.rooms
+      .find({ roomId: { $in: rows.map(row => row.key) } }, { roomId: 1, name: 1, createdBy: 1, deletedAt: 1 })
+      .lean()
+    const byId = new Map(rooms.filter(room => !room.deletedAt).map(room => [room.roomId, room]))
+
+    return this.nameRooms(rows.map(row => {
+      const room = byId.get(row.key)
+      return { roomId: row.key, name: room?.name ?? DELETED_OWNER, createdBy: room?.createdBy ?? '', value: row.edits }
+    }))
+  }
+
+  private async findBusiestEditorsSince (since: Date): Promise<OwnedTotal[]> {
+    const rows = await this.roomTotals.busiestSince('user', since, METRICS_TOP_N)
+    const names = await this.resolveUsernames(rows.map(row => row.key))
+    return rows.map(row => ({ name: names.get(row.key) ?? DELETED_OWNER, value: row.edits }))
   }
 
   /** Sorted by size then by id, so equal-sized rooms do not swap places between scrapes. */

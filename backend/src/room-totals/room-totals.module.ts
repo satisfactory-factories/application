@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 
 import { Room, RoomSchema } from '../rooms/schemas/room.schema'
+import { EditBucket, EditBucketSchema } from './edit-bucket.schema'
 import { RoomTotal, RoomTotalSchema } from './room-total.schema'
 import { RoomTotalsService } from './room-totals.service'
 
@@ -13,6 +14,7 @@ import { RoomTotalsService } from './room-totals.service'
   imports: [MongooseModule.forFeature([
     { name: RoomTotal.name, schema: RoomTotalSchema },
     { name: Room.name, schema: RoomSchema },
+    { name: EditBucket.name, schema: EditBucketSchema },
   ])],
   providers: [RoomTotalsService],
   exports: [RoomTotalsService],

@@ -4,6 +4,7 @@ import type { Model } from 'mongoose'
 
 import { EventCountersService } from '../event-counters/event-counters.service'
 import { Room } from '../rooms/schemas/room.schema'
+import { EditBucket } from './edit-bucket.schema'
 import { RoomTotal } from './room-total.schema'
 import type { RoomActivityKind } from '../rooms/schemas/room-activity.schema'
 
@@ -16,6 +17,8 @@ import type { RoomActivityKind } from '../rooms/schemas/room-activity.schema'
  * RoomsModule and the reader in MetricsModule, and hanging it off either would put a cycle
  * in the graph.
  */
+const HOUR_MS = 60 * 60 * 1000
+
 @Injectable()
 export class RoomTotalsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(RoomTotalsService.name)
@@ -23,6 +26,7 @@ export class RoomTotalsService implements OnApplicationBootstrap {
   constructor (
     @InjectModel(RoomTotal.name) private readonly totals: Model<RoomTotal>,
     @InjectModel(Room.name) private readonly rooms: Model<Room>,
+    @InjectModel(EditBucket.name) private readonly buckets: Model<EditBucket>,
     private readonly counters: EventCountersService,
   ) {}
 
@@ -38,6 +42,33 @@ export class RoomTotalsService implements OnApplicationBootstrap {
       this.logger.error(`Failed to count a "${kind}" room event`, cause)
       this.counters.record('server', 'post_commit_room_total_lost')
     }
+  }
+
+  /** Never throws, for the same reason as {@link bump}. Anonymous visitors have no account. */
+  async bumpEditBuckets (roomId: string, actor: string, at: Date, anonymous: boolean): Promise<void> {
+    const hour = new Date(Math.floor(at.getTime() / HOUR_MS) * HOUR_MS)
+    const keys: Array<['room' | 'user', string]> = [['room', roomId]]
+    if (!anonymous) keys.push(['user', actor])
+    try {
+      await this.buckets.bulkWrite(keys.map(([scope, key]) => ({
+        updateOne: { filter: { scope, key, hour }, update: { $inc: { count: 1 } }, upsert: true },
+      })), { ordered: false })
+    } catch (cause) {
+      this.logger.error('Failed to count an edit into its hourly bucket', cause)
+      this.counters.record('server', 'post_commit_edit_bucket_lost')
+    }
+  }
+
+  /** The busiest rooms or accounts since `since`, which is floored to the hour. */
+  async busiestSince (scope: 'room' | 'user', since: Date, limit: number): Promise<Array<{ key: string, edits: number }>> {
+    const hour = new Date(Math.floor(since.getTime() / HOUR_MS) * HOUR_MS)
+    const rows = await this.buckets.aggregate<{ _id: string, edits: number }>([
+      { $match: { scope, hour: { $gte: hour } } },
+      { $group: { _id: '$key', edits: { $sum: '$count' } } },
+      { $sort: { edits: -1, _id: 1 } },
+      { $limit: limit },
+    ])
+    return rows.map(row => ({ key: row._id, edits: row.edits }))
   }
 
   /** Runs before the server listens, so no op can create the row first and skip the seed. */

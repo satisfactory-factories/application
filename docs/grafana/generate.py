@@ -712,35 +712,47 @@ add(105, "Most Opened Share Links",
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.share_id}"))
 
 # ------------------------------------------------------------- biggest and busiest
-add(70, "Biggest Plans",
-    "The largest synced plans by factory count, with the account that owns each. Top 20 only.",
+add(70, "Biggest Plans · Now",
+    "The largest synced plans by factory count right now, with the account that owns each. Top 20 only.",
     [query("sort_desc(sf_room_factories%s)" % J, "{{owner}} · {{name}}", instant=True)],
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
 
-add(74, "Most Edited Plans",
-    "Accepted edits per synced plan, the exact count still on the plan. Top 20 only; a plan nobody has edited is left out.",
+add(74, "Most Edited Plans · All Time",
+    "Accepted edits per synced plan since it was made, the exact count still on the plan. Top 20 only; a plan nobody has edited is left out.",
     [query("sort_desc(sf_room_edits%s)" % J, "{{owner}} · {{name}}", instant=True)],
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
 
-add(75, "Invites Accepted by Plan",
-    "Accounts that accepted an invite into each plan, the owner not counted. Top 20 only; a plan nobody has joined is left out.",
+add(75, "Invites Accepted by Plan · Now",
+    "Accounts currently in each plan through an accepted invite, the owner not counted. Top 20 only; a plan nobody has joined is left out.",
     [query("sort_desc(sf_room_collaborators%s)" % J, "{{owner}} · {{name}}", instant=True)],
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
 
-add(108, "Accounts With the Most Plans",
-    "Live synced plans per account, counted over the tabs each account created. Top 20 only.",
+add(108, "Accounts With the Most Plans · Now",
+    "Live synced plans per account right now, counted over the tabs each account created. Top 20 only.",
     [query("sort_desc(sf_user_rooms%s)" % J, "{{username}}", instant=True)],
     bargauge(display_name="${__field.labels.username}"))
 
-add(71, "Busiest Accounts",
-    "Accepted edits per account. Approximate by design: the count is written after the edit commits and is allowed to fail, and it starts from zero at release rather than being backfilled. Top 20 only.",
+add(71, "Busiest Accounts · All Time",
+    "Accepted edits per account since release. Approximate by design: the count is written after the edit commits and is allowed to fail, and it starts from zero at release rather than being backfilled. Top 20 only.",
     [query("sort_desc(sf_user_edits%s)" % J, "{{username}}", instant=True)],
     bargauge(display_name="${__field.labels.username}"))
 
-add(72, "Accounts With the Most Factories",
-    "Factories summed over the synced plans each account created. Top 20 only.",
+add(72, "Accounts With the Most Factories · Now",
+    "Factories right now, summed over the synced plans each account created. Top 20 only.",
     [query("sort_desc(sf_user_factories%s)" % J, "{{username}}", instant=True)],
     bargauge(display_name="${__field.labels.username}"))
+
+for panel_id, window, label in ((136, "24h", "Last 24h"), (138, "7d", "Last 7 Days")):
+    add(panel_id, "Most Edited Plans · %s" % label,
+        "Accepted edits per synced plan inside the window, counted to the hour. A plan deleted since still shows, as (deleted). Top 20 only.",
+        [query('sort_desc(sf_room_edits_window%s)' % sel('window="%s"' % window), "{{owner}} · {{name}}", instant=True)],
+        bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
+
+for panel_id, window, label in ((137, "24h", "Last 24h"), (139, "7d", "Last 7 Days")):
+    add(panel_id, "Busiest Accounts · %s" % label,
+        "Accepted edits per account inside the window, counted to the hour. Approximate like the all-time panel: the count is written after the edit commits and is allowed to fail. Top 20 only.",
+        [query('sort_desc(sf_user_edits_window%s)' % sel('window="%s"' % window), "{{username}}", instant=True)],
+        bargauge(display_name="${__field.labels.username}"))
 
 # -------------------------------------------------------------------- process
 # Node's own numbers, so a socket count can be read against what the sockets cost.
@@ -861,9 +873,11 @@ rows = [
         item(0, 4, 12, 8, 104), item(12, 4, 12, 8, 105),
     ]),
     row("🏆 Biggest and Busiest · from the database", [
-        item(0, 0, 12, 10, 70), item(12, 0, 12, 10, 74),
-        item(0, 10, 12, 10, 75), item(12, 10, 12, 10, 71),
-        item(0, 20, 12, 10, 72), item(12, 20, 12, 10, 108),
+        item(0, 0, 12, 10, 136), item(12, 0, 12, 10, 137),
+        item(0, 10, 12, 10, 138), item(12, 10, 12, 10, 139),
+        item(0, 20, 12, 10, 74), item(12, 20, 12, 10, 71),
+        item(0, 30, 12, 10, 70), item(12, 30, 12, 10, 72),
+        item(0, 40, 12, 10, 108), item(12, 40, 12, 10, 75),
     ]),
     row("🏭 Synced Plans and Accounts · from the database", [
         item(0, 0, 4, 4, 30), item(4, 0, 4, 4, 31), item(8, 0, 4, 4, 32),

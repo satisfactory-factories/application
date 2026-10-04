@@ -22,7 +22,7 @@ import { RoomTotalsService } from '../src/room-totals/room-totals.service'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { User } from '../src/auth/user.schema'
 import { FakeClock, TestUser, call, registerAndLogin, resetRooms } from './utils/rooms'
-import { clearMetricsToken, labelValues, sample, scrapeMetrics, useMetricsToken } from './utils/metrics'
+import { clearMetricsToken, labelValues, sample, sampleWhere, scrapeMetrics, useMetricsToken } from './utils/metrics'
 
 const HOUR = 60 * 60 * 1000
 const DAY = 24 * HOUR
@@ -103,8 +103,7 @@ describe('the database-backed usage metrics', () => {
   })
 
   describe('sf_edits_total', () => {
-    const applyOp = async (room: Room) => {
-      const actor = '507f1f77bcf86cd799439011'
+    const applyOp = async (room: Room, actor = '507f1f77bcf86cd799439011') => {
       return context.app.get(RoomOpService).apply(
         {
           type: 'op',
@@ -151,6 +150,52 @@ describe('the database-backed usage metrics', () => {
 
     it('reports zero rather than nothing before any edit', async () => {
       expect(sample(await scrape(), 'sf_edits_total')).toBe(0)
+    })
+  })
+
+  describe('the per-window busiest metrics', () => {
+    const applyOp = async (room: Room, actor: string, revision: number) =>
+      context.app.get(RoomOpService).apply(
+        { type: 'op', roomId: room.roomId, opId: randomUUID(), baseRevision: revision, diff: { powerTarget: revision } } as never,
+        actor,
+        async () => ({ status: 'granted', role: 'owner', room: { ...room, revision } }) as never,
+      )
+
+    it('ranks rooms and accounts by edits inside each window, not all time', async () => {
+      const busy = await seedUser('busy')
+      const old = await seedUser('old')
+      const today = (await seedRoom(1, { name: 'Today', createdBy: String(busy._id), revision: 0 })).toObject()
+      const lastWeek = (await seedRoom(1, { name: 'Last Week', createdBy: String(old._id), revision: 0 })).toObject()
+
+      for (let revision = 0; revision < 5; revision++) await applyOp(lastWeek, String(old._id), revision)
+      clock.advance(3 * DAY)
+      for (let revision = 0; revision < 2; revision++) await applyOp(today, String(busy._id), revision)
+
+      const body = await scrape()
+      expect(sampleWhere(body, 'sf_room_edits_window', 'window="24h",name="Today"')).toBe(2)
+      expect(sampleWhere(body, 'sf_room_edits_window', 'window="24h",name="Last Week"')).toBeUndefined()
+      expect(sampleWhere(body, 'sf_room_edits_window', 'window="7d",name="Last Week"')).toBe(5)
+      expect(sampleWhere(body, 'sf_user_edits_window', 'window="24h",username="busy"')).toBe(2)
+      expect(sampleWhere(body, 'sf_user_edits_window', 'window="24h",username="old"')).toBeUndefined()
+      expect(sampleWhere(body, 'sf_user_edits_window', 'window="7d",username="old"')).toBe(5)
+    })
+
+    it('keeps a deleted room in the window, under a placeholder name', async () => {
+      const editor = await seedUser('editor')
+      const room = (await seedRoom(1, { name: 'Gone', revision: 0 })).toObject()
+      await applyOp(room, String(editor._id), 0)
+      await rooms().deleteOne({ roomId: room.roomId })
+
+      expect(sampleWhere(await scrape(), 'sf_room_edits_window', `window="24h",room_id="${room.roomId}",name="${DELETED_OWNER}"`)).toBe(1)
+    })
+
+    it('counts an anonymous edit against the room only', async () => {
+      const room = (await seedRoom(1, { name: 'Open', revision: 0 })).toObject()
+      await applyOp(room, ANONYMOUS_ACTOR, 0)
+
+      const body = await scrape()
+      expect(sampleWhere(body, 'sf_room_edits_window', 'window="24h",name="Open"')).toBe(1)
+      expect(labelValues(body, 'sf_user_edits_window', 'username')).toEqual([])
     })
   })
 
