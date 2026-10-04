@@ -140,6 +140,7 @@ export class MetricsService {
   private readonly roomsTotal: Gauge<'shared'>
   private readonly roomFactoriesTotal: Gauge<string>
   private readonly roomRevisions: Gauge<string>
+  private readonly editsTotal: Gauge<string>
   private readonly roomMembersTotal: Gauge<'role'>
   private readonly usersTotal: Gauge<string>
   private readonly wsConnections: Gauge<string>
@@ -203,7 +204,12 @@ export class MetricsService {
     })
     this.roomRevisions = new Gauge({
       name: 'sf_room_revisions',
-      help: 'Accepted edits summed across live synced tabs. Falls when a tab is deleted, because those edits no longer exist, so it is a gauge and not a counter.',
+      help: 'Accepted edits summed across live synced tabs. Falls when a tab is deleted, because those edits no longer exist, so it is a gauge and not a counter. sf_edits_total is the figure that only rises.',
+      registers,
+    })
+    this.editsTotal = new Gauge({
+      name: 'sf_edits_total',
+      help: 'Accepted edits that have ever happened, deleted tabs included. Only ever rises. Seeded on release from the edits still on live tabs, so edits on tabs deleted before then are missing.',
       registers,
     })
     this.roomMembersTotal = new Gauge({
@@ -355,7 +361,7 @@ export class MetricsService {
 
     this.roomActions = new Gauge({
       name: 'sf_room_actions_total',
-      help: 'Room lifecycle events that have ever happened, by kind: rooms created, rooms shared, invites accepted, and the rest. Only ever rises, and survives the room being deleted. Counts from this metric shipping rather than being backfilled, because the activity log it would have been read from is trimmed and purged. Excludes `op`, which sf_room_revisions already sums.',
+      help: 'Room lifecycle events that have ever happened, by kind: rooms created, rooms shared, invites accepted, and the rest. Only ever rises, and survives the room being deleted. Counts from this metric shipping rather than being backfilled, because the activity log it would have been read from is trimmed and purged. Excludes `op`, which sf_edits_total reports.',
       labelNames: ['action'],
       registers,
     })
@@ -446,9 +452,10 @@ export class MetricsService {
     const actions = new Map<string, number>(
       ROOM_ACTIVITY_KINDS.filter(kind => kind !== 'op').map(kind => [kind, 0]),
     )
-    for (const [action, count] of stored) actions.set(action, count)
+    for (const [action, count] of stored) if (action !== 'op') actions.set(action, count)
 
     for (const [action, count] of actions) this.roomActions.set({ action }, count)
+    this.editsTotal.set(stored.get('op') ?? 0)
   }
 
   private setClientGauges (census: TelemetrySnapshot): void {

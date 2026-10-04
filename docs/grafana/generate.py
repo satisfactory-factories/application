@@ -372,32 +372,28 @@ add(37, "Accounts, Plans and Collaborators Over Time",
     timeseries(fill=10))
 
 # ------------------------------------------------------------- edits and activity
-# The shape of this one is deliberate and took two attempts.
+# sf_edits_total is a tally that only rises; sf_room_revisions fell whenever a plan was
+# deleted. The tally is seeded from sf_room_revisions on release, so `or` falls back to the
+# old series for history before the tally existed and the line stays continuous.
 #
-# sf_room_revisions is a gauge, not a counter: deleting a plan removes its edits from
-# the sum. So increase() is invalid, and the obvious alternative — subtracting the
-# value from 24h ago — has two faults. It reads "No data" for the first 24 hours after
-# release, because there is no sample to offset to; and a deletion makes it negative.
-#
-# Measuring from the low point of the window fixes both. min_over_time includes the
-# current sample, so the result can never be negative and needs no clamp, and it has an
-# answer from the very first scrape. With no deletions it is exactly the 24h growth;
-# with one, it is growth since the trough, which is the more useful reading anyway.
-EDITS_24H = "sum(sf_room_revisions%s) - sum(min_over_time(sf_room_revisions%s[24h]))" % (J, J)
+# The 24h figure measures from the window's low point rather than offsetting by 24h, so it
+# answers from the first scrape instead of reading "No data" for a day.
+EDITS = "(sum(sf_edits_total%s) or sum(sf_room_revisions%s))" % (J, J)
+EDITS_24H = "%s - min_over_time(%s[24h:1m])" % (EDITS, EDITS)
 
 add(60, "Edits, All Time",
-    "Accepted edits summed across live plans. Falls when a plan is deleted, because those edits no longer exist; that is why it is a gauge rather than a counter.",
-    [query("sum(sf_room_revisions%s)" % J, "Edits")],
+    "Accepted edits that have ever happened, including those on plans since deleted. Only ever rises. Edits on plans deleted before this tally shipped are missing.",
+    [query(EDITS, "Edits")],
     stat(BLUE, graph="area", color_mode="background_solid"))
 
 add(61, "Edits, Last 24h",
-    "Edits added since the low point of the last 24 hours. Measured from the trough rather than from the value 24h ago, so it answers from the first scrape instead of reading No data for a day, and cannot go negative when a plan is deleted.",
+    "Edits added since the low point of the last 24 hours, so it answers from the first scrape instead of reading No data for a day.",
     [query(EDITS_24H, "Edits")],
     stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], graph="area"))
 
 add(62, "Edits Over Time",
     "The cumulative line. The strongest single indicator of whether the planner is being used.",
-    [query("sum(sf_room_revisions%s)" % J, "Edits")],
+    [query(EDITS, "Edits")],
     timeseries(fill=18, fixed="blue", points="never", width=3))
 
 add(63, "Edits per 24h, Over Time",

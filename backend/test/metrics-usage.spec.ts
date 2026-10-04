@@ -18,6 +18,7 @@ import { RoomMembership } from '../src/rooms/schemas/room-membership.schema'
 import { Share } from '../src/legacy/share.schema'
 import { RoomActivity } from '../src/rooms/schemas/room-activity.schema'
 import { RoomOpService } from '../src/realtime/room-op.service'
+import { RoomTotalsService } from '../src/room-totals/room-totals.service'
 import { TestContext, awaitConnection, createTestApp, destroyTestApp } from './utils/test-app'
 import { User } from '../src/auth/user.schema'
 import { FakeClock, TestUser, call, registerAndLogin, resetRooms } from './utils/rooms'
@@ -98,6 +99,58 @@ describe('the database-backed usage metrics', () => {
 
     it('reports zero rather than nothing on an empty database', async () => {
       expect(sample(await scrape(), 'sf_room_revisions')).toBe(0)
+    })
+  })
+
+  describe('sf_edits_total', () => {
+    const applyOp = async (room: Room) => {
+      const actor = '507f1f77bcf86cd799439011'
+      return context.app.get(RoomOpService).apply(
+        {
+          type: 'op',
+          roomId: room.roomId,
+          opId: randomUUID(),
+          baseRevision: room.revision ?? 0,
+          diff: { powerTarget: 42 },
+        } as never,
+        actor,
+        async () => ({ status: 'granted', role: 'owner', room }) as never,
+      )
+    }
+
+    it('counts every accepted edit', async () => {
+      const room = (await seedRoom(1, { revision: 0 })).toObject()
+      expect(await applyOp(room)).toEqual({ status: 'applied', revision: 1 })
+      expect(await applyOp({ ...room, revision: 1 })).toEqual({ status: 'applied', revision: 2 })
+
+      expect(sample(await scrape(), 'sf_edits_total')).toBe(2)
+    })
+
+    it('keeps a deleted room\'s edits', async () => {
+      const room = (await seedRoom(1, { revision: 0 })).toObject()
+      await applyOp(room)
+      await rooms().deleteOne({ roomId: room.roomId })
+
+      const body = await scrape()
+      expect(sample(body, 'sf_room_revisions')).toBe(0)
+      expect(sample(body, 'sf_edits_total')).toBe(1)
+    })
+
+    it('is seeded once from the edits on live rooms, and never again', async () => {
+      await seedRoom(1, { revision: 30 })
+      await seedRoom(1, { revision: 12, deletedAt: new Date() })
+      const totals = context.app.get(RoomTotalsService)
+
+      await totals.seedEdits()
+      expect(sample(await scrape(), 'sf_edits_total')).toBe(30)
+
+      await seedRoom(1, { revision: 500 })
+      await totals.seedEdits()
+      expect(sample(await scrape(), 'sf_edits_total')).toBe(30)
+    })
+
+    it('reports zero rather than nothing before any edit', async () => {
+      expect(sample(await scrape(), 'sf_edits_total')).toBe(0)
     })
   })
 
@@ -392,11 +445,9 @@ describe('the database-backed usage metrics', () => {
       expect(action(await scrape(), 'created')).toBe(1)
     })
 
-    // One per accepted edit would be the hottest write in the service, and sf_room_revisions
-    // already sums them off the room documents for nothing.
-    it('leaves ops out of the tally', async () => {
-      const mael = await registerAndLogin(context.app, 'editor')
-      await createRoom(mael)
+    // Ops are tallied, but reported as sf_edits_total rather than as a lifecycle action.
+    it('leaves ops out of the lifecycle actions', async () => {
+      await context.app.get(RoomTotalsService).bump('op')
 
       expect(action(await scrape(), 'op')).toBeUndefined()
     })

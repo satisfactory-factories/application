@@ -2982,7 +2982,7 @@
         "spec": {
           "id": 60,
           "title": "Edits, All Time",
-          "description": "Accepted edits summed across live plans. Falls when a plan is deleted, because those edits no longer exist; that is why it is a gauge rather than a counter.",
+          "description": "Accepted edits that have ever happened, including those on plans since deleted. Only ever rises. Edits on plans deleted before this tally shipped are missing.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3000,7 +3000,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(sf_room_revisions{job=\"satisfactory-factories\"})",
+                        "expr": "(sum(sf_edits_total{job=\"satisfactory-factories\"}) or sum(sf_room_revisions{job=\"satisfactory-factories\"}))",
                         "legendFormat": "Edits",
                         "range": true
                       }
@@ -3063,7 +3063,7 @@
         "spec": {
           "id": 61,
           "title": "Edits, Last 24h",
-          "description": "Edits added since the low point of the last 24 hours. Measured from the trough rather than from the value 24h ago, so it answers from the first scrape instead of reading No data for a day, and cannot go negative when a plan is deleted.",
+          "description": "Edits added since the low point of the last 24 hours, so it answers from the first scrape instead of reading No data for a day.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3081,7 +3081,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(sf_room_revisions{job=\"satisfactory-factories\"}) - sum(min_over_time(sf_room_revisions{job=\"satisfactory-factories\"}[24h]))",
+                        "expr": "(sum(sf_edits_total{job=\"satisfactory-factories\"}) or sum(sf_room_revisions{job=\"satisfactory-factories\"})) - min_over_time((sum(sf_edits_total{job=\"satisfactory-factories\"}) or sum(sf_room_revisions{job=\"satisfactory-factories\"}))[24h:1m])",
                         "legendFormat": "Edits",
                         "range": true
                       }
@@ -3166,7 +3166,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(sf_room_revisions{job=\"satisfactory-factories\"})",
+                        "expr": "(sum(sf_edits_total{job=\"satisfactory-factories\"}) or sum(sf_room_revisions{job=\"satisfactory-factories\"}))",
                         "legendFormat": "Edits",
                         "range": true
                       }
@@ -3282,7 +3282,7 @@
                       },
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(sf_room_revisions{job=\"satisfactory-factories\"}) - sum(min_over_time(sf_room_revisions{job=\"satisfactory-factories\"}[24h]))",
+                        "expr": "(sum(sf_edits_total{job=\"satisfactory-factories\"}) or sum(sf_room_revisions{job=\"satisfactory-factories\"})) - min_over_time((sum(sf_edits_total{job=\"satisfactory-factories\"}) or sum(sf_room_revisions{job=\"satisfactory-factories\"}))[24h:1m])",
                         "legendFormat": "Edits in 24h",
                         "range": true
                       }

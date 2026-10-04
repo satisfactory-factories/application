@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import type { Model } from 'mongoose'
 
 import { EventCountersService } from '../event-counters/event-counters.service'
+import { Room } from '../rooms/schemas/room.schema'
 import { RoomTotal } from './room-total.schema'
 import type { RoomActivityKind } from '../rooms/schemas/room-activity.schema'
 
@@ -16,11 +17,12 @@ import type { RoomActivityKind } from '../rooms/schemas/room-activity.schema'
  * in the graph.
  */
 @Injectable()
-export class RoomTotalsService {
+export class RoomTotalsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(RoomTotalsService.name)
 
   constructor (
     @InjectModel(RoomTotal.name) private readonly totals: Model<RoomTotal>,
+    @InjectModel(Room.name) private readonly rooms: Model<Room>,
     private readonly counters: EventCountersService,
   ) {}
 
@@ -36,6 +38,32 @@ export class RoomTotalsService {
       this.logger.error(`Failed to count a "${kind}" room event`, cause)
       this.counters.record('server', 'post_commit_room_total_lost')
     }
+  }
+
+  /** Runs before the server listens, so no op can create the row first and skip the seed. */
+  async onApplicationBootstrap (): Promise<void> {
+    try {
+      await this.seedEdits()
+    } catch (cause) {
+      this.logger.error('Failed to seed the edit tally', cause)
+    }
+  }
+
+  /**
+   * The edit tally started long after the first edit, so it begins at the edits still on
+   * live plans. Edits on plans deleted before then are gone and cannot be recovered.
+   * `$setOnInsert` makes this a no-op on every boot after the first.
+   */
+  async seedEdits (): Promise<void> {
+    const [row] = await this.rooms.aggregate<{ revisions: number }>([
+      { $match: { deletedAt: null } },
+      { $group: { _id: null, revisions: { $sum: { $ifNull: ['$revision', 0] } } } },
+    ])
+    await this.totals.updateOne(
+      { kind: 'op' },
+      { $setOnInsert: { value: row?.revisions ?? 0 } },
+      { upsert: true },
+    )
   }
 
   async all (): Promise<Map<string, number>> {
