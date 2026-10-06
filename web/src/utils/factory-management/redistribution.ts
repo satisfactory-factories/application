@@ -1,9 +1,10 @@
-// Redistribution hubs (#46). A factory can flag an import row as "redistribute", which makes the
-// imported quantity exportable from that factory as if it had produced it. That lets a logistics
-// hub collect a part from a producer and pass it on to consumers without making anything itself.
+// Redistribution hubs (#46). Any factory can pass on what it imports: a part it imports is
+// exportable from it as if it had produced it, so a logistics hub can collect a part from a producer
+// and hand it on to consumers without making anything itself. What it can spare is what is left after
+// its own use, so an over-import shows up as stock to pass on rather than a Trim warning.
 //
-// Only a flagged row counts. An ordinary factory that over-imports keeps its surplus to itself, as
-// it always has: otherwise every Trim warning in a plan would turn into an export candidate.
+// There used to be a per-row "redistribute" switch. Players were already doing this without one,
+// and the import dialog filters well enough that the switch was only in the way.
 //
 // A leaf module (types only), so parts.ts, dependencies.ts and inputs-analysis.ts can all use it
 // without closing an import cycle through factory.ts.
@@ -12,23 +13,24 @@ import { Factory, FactoryInput } from '@/interfaces/planner/FactoryInterface'
 const findById = (id: number | null, factories: Factory[]): Factory | undefined =>
   id === null ? undefined : factories.find(fac => fac.id === id)
 
-export const getRedistributedInputs = (factory: Factory, part: string): FactoryInput[] =>
-  factory.inputs.filter(input => input.redistribute && input.outputPart === part && input.factoryId)
+export const getPartInputs = (factory: Factory, part: string): FactoryInput[] =>
+  factory.inputs.filter(input => input.outputPart === part && input.factoryId)
 
+export const isPartImported = (factory: Factory, part: string): boolean =>
+  getPartInputs(factory, part).length > 0
+
+// Passing on an import it does not make itself: what reads as a hub for this part.
 export const isPartRedistributed = (factory: Factory, part: string): boolean =>
-  getRedistributedInputs(factory, part).length > 0
-
-export const redistributedAmount = (factory: Factory, part: string): number =>
-  getRedistributedInputs(factory, part).reduce((acc, input) => acc + (input.amount ?? 0), 0)
-
-export const hasAnyRedistribution = (factory: Factory): boolean =>
-  factory.inputs.some(input => input.redistribute && input.outputPart && input.factoryId)
+  isPartImported(factory, part) &&
+  !(factory.parts[part]?.amountSuppliedViaProduction > 0) &&
+  Object.values(factory.dependencies?.requests ?? {}).some(requests =>
+    requests.some(request => request.part === part)
+  )
 
 /**
- * Every factory a hub's stock of `part` ultimately comes from, following hub-to-hub links.
- *
- * Only redistributed rows are followed: those are the only ones that pass the part on. The visited
- * set means a cycle that already exists in saved data ends the walk rather than hanging it.
+ * Every factory a factory's imported stock of `part` ultimately comes from, following hub-to-hub
+ * links. The visited set means a cycle that already exists in saved data ends the walk rather than
+ * hanging it.
  */
 export const getUpstreamFactoryIds = (
   hub: Factory,
@@ -36,7 +38,7 @@ export const getUpstreamFactoryIds = (
   factories: Factory[],
   visited: Set<number> = new Set()
 ): Set<number> => {
-  getRedistributedInputs(hub, part).forEach(input => {
+  getPartInputs(hub, part).forEach(input => {
     const sourceId = input.factoryId as number
     if (visited.has(sourceId)) return
     visited.add(sourceId)
@@ -55,7 +57,7 @@ export const getUpstreamFactoryIds = (
  * only: a hub fed by another hub reads "via Hub B", and Hub B's own entry names its producers.
  */
 export const getRedistributionSourceNames = (hub: Factory, part: string, factories: Factory[]): string[] => {
-  const names = getRedistributedInputs(hub, part)
+  const names = getPartInputs(hub, part)
     .map(input => findById(input.factoryId, factories)?.name)
     .filter((name): name is string => !!name)
 
@@ -74,20 +76,6 @@ export const wouldCreateLoop = (
 ): boolean => {
   if (consumerId === provider.id) return true
   return getUpstreamFactoryIds(provider, part, factories).has(consumerId)
-}
-
-/**
- * Can this import row be flagged to redistribute? Not when the factory it imports from is itself
- * fed by this factory's redistribution of the same part, because flagging it would close a loop.
- */
-export const canRedistributeInput = (factory: Factory, input: FactoryInput, factories: Factory[]): boolean => {
-  if (!input.factoryId || !input.outputPart) return false
-  if (input.redistribute) return true // Always allow turning it off.
-
-  const provider = findById(input.factoryId, factories)
-  if (!provider) return false
-
-  return !wouldCreateLoop(factory.id, provider, input.outputPart, factories)
 }
 
 export interface ImportSource {
@@ -126,7 +114,7 @@ export const getImportSources = (
       return {
         factory: provider,
         spare: Math.max(0, partData.amountRemaining + ownRequest),
-        via: isPartRedistributed(provider, part)
+        via: passesOn(provider, part)
           ? getRedistributionSourceNames(provider, part, factories)
           : [],
         alreadyImported: factory.inputs.some(input =>
@@ -134,13 +122,29 @@ export const getImportSources = (
         ),
       }
     })
+    // A factory that only passes the part on is offered when it has some to spare, or this factory
+    // already takes from it. Otherwise every factory that imports iron plates would be listed as a
+    // source of them, most with nothing left over.
+    .filter(source => !passesOn(source.factory, part) || source.spare > 0 || source.alreadyImported)
     .sort((a, b) => b.spare - a.spare || a.factory.name.localeCompare(b.factory.name))
 }
 
+// Its stock of this part is imported rather than made.
+const passesOn = (provider: Factory, part: string): boolean =>
+  isPartImported(provider, part) && !(provider.parts[part]?.amountSuppliedViaProduction > 0)
+
+// What this factory actually consumes or has promised away. A part's amountRequired also carries
+// what an AWESOME Sink takes, and a sink takes whatever is left, so counting it made every sunk
+// import read as a need.
+const isPartNeeded = (factory: Factory, part: string): boolean => {
+  const partData = factory.parts[part]
+  if (!partData) return false
+  return partData.amountRequired - (partData.amountRequiredSink ?? 0) > 0
+}
+
 /**
- * The parts the import dialog offers. By default, only what this factory actually needs. With
- * `anySurplus` on, any part another factory has spare, which is how a hub picks up stock it does
- * not consume itself.
+ * The parts the import dialog offers. With `anySurplus` off, only what this factory actually needs;
+ * on, any part another factory has spare, which is how a hub picks up stock it does not consume.
  */
 export const getImportableParts = (
   factory: Factory,
@@ -153,8 +157,9 @@ export const getImportableParts = (
     if (provider.id === factory.id) return
     Object.keys(provider.parts).forEach(part => {
       if (!provider.parts[part].exportable) return
-      if (!anySurplus && !(factory.parts[part]?.amountRequired > 0)) return
+      if (!anySurplus && !isPartNeeded(factory, part)) return
       if (wouldCreateLoop(factory.id, provider, part, factories)) return
+      if (passesOn(provider, part) && !(provider.parts[part].amountRemaining > 0)) return
       parts.add(part)
     })
   })

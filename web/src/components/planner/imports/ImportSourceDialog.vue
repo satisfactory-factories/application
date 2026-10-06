@@ -31,7 +31,7 @@
             />
           </template>
           <template #item="{ props: itemProps, item }">
-            <v-list-item v-bind="itemProps">
+            <v-list-item v-bind="itemProps" :subtitle="item.needed ? 'Needed by this factory' : undefined">
               <template #prepend>
                 <game-asset
                   class="mr-2"
@@ -44,20 +44,11 @@
             </v-list-item>
           </template>
         </v-autocomplete>
-        <v-switch
-          v-model="anySurplus"
-          class="mt-2"
-          color="primary"
-          data-testid="import-any-surplus"
-          density="compact"
-          hide-details
-          label="Show any available surplus, including items this factory doesn't use"
-        />
       </div>
     </template>
 
     <p v-if="partItems.length === 0" class="text-body-2 text-medium-emphasis pa-4">
-      No other factory has anything this factory needs spare. Tick the box above to see every surplus in the plan.
+      No other factory in the plan has anything spare to import.
     </p>
     <p v-else-if="!selectedPart" class="text-body-2 text-medium-emphasis pa-4">
       Pick an item to see every factory with some of it spare.
@@ -142,27 +133,26 @@
   const currentFactoryId = computed(() => currentInput.value?.factoryId ?? null)
 
   const selectedPart = ref<string | null>(null)
-  const anySurplus = ref(false)
 
-  const neededParts = computed(() => getImportableParts(props.factory, getFactories(), false))
-
-  // Re-seed every time it opens: a factory that needs nothing is most likely a hub being set up,
-  // so it starts with every surplus showing rather than an empty list.
+  // Every surplus in the plan is offered, with what this factory needs listed first. Hiding the rest
+  // behind a switch meant a factory that already made something, or sank one of its imports, was
+  // only ever offered the items it already had (#46 feedback).
   watch(isOpen, open => {
     if (!open) return
     selectedPart.value = currentInput.value?.outputPart ?? null
-    anySurplus.value = neededParts.value.length === 0 ||
-      (!!selectedPart.value && !neededParts.value.includes(selectedPart.value))
   }, { immediate: true })
 
   const partItems = computed(() => {
-    const parts = anySurplus.value
-      ? getImportableParts(props.factory, getFactories(), true)
-      : neededParts.value
+    const factories = getFactories()
+    const needed = new Set(getImportableParts(props.factory, factories, false))
+    const byName = (a: { title: string }, b: { title: string }) => a.title.localeCompare(b.title)
+    const items = getImportableParts(props.factory, factories, true)
+      .map(part => ({ title: getPartDisplayName(part), value: part, needed: needed.has(part) }))
 
-    return parts
-      .map(part => ({ title: getPartDisplayName(part), value: part }))
-      .sort((a, b) => a.title.localeCompare(b.title))
+    return [
+      ...items.filter(item => item.needed).sort(byName),
+      ...items.filter(item => !item.needed).sort(byName),
+    ]
   })
 
   const partName = computed(() => selectedPart.value ? getPartDisplayName(selectedPart.value) : '')
