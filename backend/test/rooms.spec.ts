@@ -205,13 +205,23 @@ describe('rooms', () => {
       expect((await get('/rooms', other)).body.rooms[0].name).toBe('Renamed')
     })
 
-    it('truncates an over-long name to the cap rather than rejecting it', async () => {
+    it('refuses an over-long name, and a name with a link', async () => {
       const room = await createRoom(owner)
 
-      const response = await put(`/rooms/${room.roomId}/name`, owner).send({ name: 'a'.repeat(500) })
+      const tooLong = await put(`/rooms/${room.roomId}/name`, owner).send({ name: 'a '.repeat(150) })
+      expect(tooLong.status).toBe(400)
+      expect(tooLong.body.textIssue).toMatchObject({ path: 'name', rule: 'too_long' })
 
-      expect(response.status).toBe(200)
-      expect(response.body.room.name).toHaveLength(CAPS.name)
+      const link = await put(`/rooms/${room.roomId}/name`, owner).send({ name: 'www.example.test' })
+      expect(link.body.code).toBe('invalid_text')
+    })
+
+    it('stores a name trimmed', async () => {
+      const room = await createRoom(owner)
+
+      const response = await put(`/rooms/${room.roomId}/name`, owner).send({ name: '  Iron Line\t' })
+
+      expect(response.body.room.name).toBe('Iron Line')
     })
 
     it('refuses a member\'s rename', async () => {
@@ -446,23 +456,30 @@ describe('rooms', () => {
       expect(response.body.code).toBe('invalid_payload')
     })
 
-    it('truncates factory names, notes and tasks instead of rejecting them', async () => {
+    it('drops tasks past the count cap', async () => {
       const roomId = randomUUID()
       const factory = makeFactory({
-        name: 'n'.repeat(400),
-        notes: 'x'.repeat(2000),
-        tasks: Array.from({ length: CAPS.tasks + 10 }, () => ({ title: 't'.repeat(400), completed: false })),
+        tasks: Array.from({ length: CAPS.tasks + 10 }, () => ({ title: 'Build it', completed: false })),
       })
 
       const response = await post('/rooms', owner).send({ roomId, name: 'Fine', factories: [factory] })
 
       expect(response.status).toBe(201)
       const stored = await connection.collection('rooms').findOne({ roomId })
-      const saved = (stored?.factories as { name: string, notes: string, tasks: { title: string }[] }[])[0]
-      expect(saved.name).toHaveLength(CAPS.name)
-      expect(saved.notes).toHaveLength(CAPS.notes)
-      expect(saved.tasks).toHaveLength(CAPS.tasks)
-      expect(saved.tasks[0].title).toHaveLength(CAPS.taskTitle)
+      expect((stored?.factories as { tasks: unknown[] }[])[0].tasks).toHaveLength(CAPS.tasks)
+    })
+
+    it.each([
+      ['an over-long note', { notes: 'x '.repeat(CAPS.notes) }, 'factories.0.notes', 'too_long'],
+      ['a task with a link', { tasks: [{ title: 'see example.com', completed: false }] }, 'factories.0.tasks.0.title', 'link'],
+      ['a name with curly brackets', { name: '{Iron}' }, 'factories.0.name', 'braces'],
+    ])('refuses %s', async (_label, fields, path, rule) => {
+      const response = await post('/rooms', owner)
+        .send({ roomId: randomUUID(), name: 'Fine', factories: [makeFactory(fields)] })
+
+      expect(response.status).toBe(400)
+      expect(response.body.code).toBe('invalid_text')
+      expect(response.body.textIssue).toMatchObject({ path, rule })
     })
 
     it('rejects the twenty-sixth membership', async () => {

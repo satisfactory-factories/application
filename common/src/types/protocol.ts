@@ -1,10 +1,13 @@
 import type { Factory, FactoryGroup } from './factory'
+import type { TextIssue } from '../text-rules'
 
 /**
- * Bumped whenever a client and a server stop being able to understand each other.
- * Tracks the app's major/minor, not its patch: a patch never changes the wire.
+ * Bumped whenever a client and a server stop being able to understand each other, or
+ * whenever every open tab must reload onto a new build. Named after the release that
+ * raised it; compared only as an exact string. 0.7.3 made tabs from before the text
+ * rules (#756) refresh onto a build that checks them before sending.
  */
-export const PROTOCOL_VERSION = '7.0'
+export const PROTOCOL_VERSION = '0.7.3'
 
 /**
  * Header every REST call must carry, matched against `PROTOCOL_VERSION`. Only
@@ -268,6 +271,8 @@ export interface ServerOpApplyMessage {
 export type OpRejectReason =
   | 'stale_base'
   | 'invalid'
+  /** The op broke a text rule; `textIssue` says which field and which rule. */
+  | 'invalid_text'
   | 'forbidden'
   | 'room_deleted'
   | 'too_large'
@@ -279,6 +284,8 @@ export interface ServerOpRejectMessage {
   roomId: string
   opId: string
   reason: OpRejectReason
+  /** Present with `invalid_text`: the first field that broke a rule. */
+  textIssue?: TextIssue
   /**
    * The rebase path adopts this, overlays intent and resends. Absent only when
    * the room is no longer readable at all (`forbidden`, `room_deleted`), where

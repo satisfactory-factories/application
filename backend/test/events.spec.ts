@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { APP_VERSION_HEADER, APP_VERSION_HEADER_FALLBACK, EVENT_CAPS, EVENT_REASONS } from 'common'
+import { APP_VERSION_HEADER, APP_VERSION_HEADER_FALLBACK, EVENT_CAPS, EVENT_REASONS, PROTOCOL_VERSION } from 'common'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import request from 'supertest'
 
@@ -266,7 +266,7 @@ describe('the /events rate limiter', () => {
     // A browser in an error loop must never rate-limit the planner beside it.
     const login = await request(context.app.getHttpServer())
       .post('/login')
-      .set(APP_VERSION_HEADER, '7.0')
+      .set(APP_VERSION_HEADER, PROTOCOL_VERSION)
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
   })
@@ -300,7 +300,7 @@ describe('the HTTP error filter', () => {
 
     await request(context.app.getHttpServer())
       .post('/login')
-      .set(APP_VERSION_HEADER, '7.0')
+      .set(APP_VERSION_HEADER, PROTOCOL_VERSION)
       .send({ username: 'nobody', password: 'nobody' })
 
     expect(httpErrors(await scrape(), labels)).toBe(before + 1)
@@ -381,7 +381,7 @@ describe('the HTTP error filter', () => {
   it('leaves a plain message body untouched', async () => {
     const response = await request(context.app.getHttpServer())
       .post('/login')
-      .set(APP_VERSION_HEADER, '7.0')
+      .set(APP_VERSION_HEADER, PROTOCOL_VERSION)
       .send({ username: 'nobody', password: 'nobody' })
 
     expect(response.status).toBe(400)

@@ -69,6 +69,7 @@
   import { create267Scenario } from '@/utils/factory-setups/267-nuclear-waste-handling'
   import { create375Scenario } from '@/utils/factory-setups/375-byproduct-ghost-surplus'
   import { create485DemoPlan } from '@/utils/factory-setups/485-drifted-plan'
+  import { create726Scenario } from '@/utils/factory-setups/726-building-groups-as-built'
   import { TemplatePlan } from '@/utils/factory-setups/template-plan'
   import { markPlanReplaced, markTabEdited } from '@/utils/sync-intent'
   import { devToolsEnabled, runOfflineConflictDemo } from '@/sync/offline-conflict-demo'
@@ -251,6 +252,13 @@
       name: '#656: Generator fuel draw',
       description: 'The Oil MegaFac\'s fuel problem, shrunk to two self-contained factories. Each makes 640/min Liquid Fuel from its own crude, and Recycled Plastic takes 240 of it, so 400 is what the generators may burn. They differ only in what the generators are set to: "over-drawing" is on 640 and should offer Trim to supply (400), taking it 8,000 → 5,000 MW; "spare fuel" is on 240 and should offer Expand to supply (400), taking it 3,000 → 5,000 MW. Nothing is imported and every part but the Plastic the factory exists to make balances exactly, so the fuel is the only thing either has left to settle. The over-drawing one also offers Satisfy (880) on its Liquid Fuel product — deliberately: making more fuel and burning less are both real answers to the same shortage, and the two buttons are the two ends of it.',
       data: scenarioData(createFuelSupplyMatchingScenario().getFactories()),
+      show: isDebugMode,
+      isDebug: true,
+    },
+    {
+      name: '#726: Building groups as built',
+      description: 'One oil refinery that balances on its quantities while its Building Groups do not. Sync is off on two products: Heavy Oil Residue asks for 360/min but its groups hold 2 x 3 refineries (240/min, under producing), and Residual Fuel asks for 280/min but its groups hold 2 x 4 (320/min, over producing). Satisfaction reads 0/min surplus on both, and beneath it Heavy Oil Residue should show -180/min shortage as built (hover names both products) Liquid Fuel +40/min surplus as built, and Crude Oil +90/min surplus as built (the missing Heavy Oil Residue refineries draw less crude). Each product row should carry a "Groups make N/min" chip. Polymer Resin is sunk, so it should show no as-built chip: the sink absorbs the difference.',
+      data: scenarioData(create726Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,
     },

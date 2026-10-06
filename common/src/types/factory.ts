@@ -379,7 +379,9 @@ export interface Factory {
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;
   usingRawResourcesOnly: boolean;
-  hidden: boolean; // Whether to hide the card or not
+  // Retired with hidden factories: always false. Still sent because clients already deployed
+  // require it on the wire.
+  hidden: boolean;
   hasProblem: boolean
   inSync: boolean | null;
   syncState: { [key: string]: FactorySyncState };

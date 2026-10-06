@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { APP_VERSION_HEADER, TELEMETRY_CAPS, TELEMETRY_VERSION_FALLBACK } from 'common'
+import { APP_VERSION_HEADER, PROTOCOL_VERSION, TELEMETRY_CAPS, TELEMETRY_VERSION_FALLBACK } from 'common'
 import request from 'supertest'
 
 import { METRICS_CACHE_MS, METRICS_VERSION_LABEL_LIMIT, TELEMETRY_MIN_INTERVAL_MS } from '../src/metrics/metrics.constants'
@@ -383,7 +383,7 @@ describe('the /telemetry rate limiter', () => {
     // A busy NAT heartbeating must never rate-limit the planner behind it.
     const login = await request(context.app.getHttpServer())
       .post('/login')
-      .set(APP_VERSION_HEADER, '7.0')
+      .set(APP_VERSION_HEADER, PROTOCOL_VERSION)
       .send({ username: 'nobody', password: 'nobody' })
     expect(login.status).toBe(400)
   })

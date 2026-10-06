@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { CAPS } from 'common'
+import { CAPS, LINK_REMOVED } from 'common'
 import { makeFactory } from 'common/testing'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import type { Connection } from 'mongoose'
@@ -122,9 +122,9 @@ describe('legacy blob import', () => {
       expect(after).toEqual(before)
     })
 
-    it('truncates and caps the blob it imports', async () => {
+    it('repairs the text and caps the blob it imports', async () => {
       await seedBlob(user.username, [
-        { id: 1, name: 'n'.repeat(400), notes: 'x'.repeat(2000) },
+        { id: 1, name: 'word '.repeat(80), notes: `see https://example.test ${'word '.repeat(400)}` },
         ...Array.from({ length: CAPS.factoriesPerRoom + 20 }, (_unused, id) => ({ id: id + 2, name: 'f' })),
       ])
 
@@ -133,8 +133,9 @@ describe('legacy blob import', () => {
       const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
       const factories = stored?.factories as { name: string, notes?: string }[]
       expect(factories).toHaveLength(CAPS.factoriesPerRoom)
-      expect(factories[0].name).toHaveLength(CAPS.name)
+      expect(factories[0].name.length).toBeLessThanOrEqual(CAPS.name)
       expect(factories[0].notes).toHaveLength(CAPS.notes)
+      expect(factories[0].notes?.startsWith(`see ${LINK_REMOVED} word`)).toBe(true)
     })
 
     // The client cannot work this out for itself: it never sees the blob.
@@ -231,12 +232,12 @@ describe('legacy blob import', () => {
       expect(body.room.name).toBe(LEGACY_ROOM_NAME)
     })
 
-    it('truncates and caps the tab it imports', async () => {
+    it('repairs the text and caps the tab it imports', async () => {
       await seedBlob(user.username, wholeTab({
-        name: 't'.repeat(400),
-        groups: [{ id: 'group-1', name: 'g'.repeat(400) }],
+        name: 'tab '.repeat(100),
+        groups: [{ id: 'group-1', name: '{group} '.repeat(50) }],
         factories: [
-          { id: 1, name: 'n'.repeat(400), notes: 'x'.repeat(2000) },
+          { id: 1, name: 'word '.repeat(80), notes: 'word '.repeat(400) },
           ...Array.from({ length: CAPS.factoriesPerRoom + 20 }, (_unused, id) => ({ id: id + 2, name: 'f' })),
         ],
       }))
@@ -246,10 +247,12 @@ describe('legacy blob import', () => {
       const stored = await connection.collection('rooms').findOne({ roomId: body.room.roomId })
       const factories = stored?.factories as { name: string, notes?: string }[]
       expect(factories).toHaveLength(CAPS.factoriesPerRoom)
-      expect(factories[0].name).toHaveLength(CAPS.name)
+      expect(factories[0].name.length).toBeLessThanOrEqual(CAPS.name)
       expect(factories[0].notes).toHaveLength(CAPS.notes)
-      expect(stored?.name).toHaveLength(CAPS.name)
-      expect((stored?.groups as { name: string }[])[0].name).toHaveLength(CAPS.name)
+      expect(stored?.name.length).toBeLessThanOrEqual(CAPS.name)
+      const group = (stored?.groups as { name: string }[])[0].name
+      expect(group.length).toBeLessThanOrEqual(CAPS.name)
+      expect(group).not.toContain('{')
     })
 
     it('reports how many factories the cap left behind', async () => {

@@ -33,17 +33,12 @@ export const openPlanner = async (
 }
 
 /**
- * Nothing here polls a fixed duration: the loader overlay is the app's own
- * statement that a plan is mid-load, and the tab bar only renders once routing
- * has settled.
- *
- * `--active` is that statement; presence is not. Vuetify keeps a dismissed
- * overlay's root mounted until its leave transition reports back, and that root
- * is a full-viewport box, so `:visible` reads a finished load as a running one
- * whenever the callback is late.
+ * Nothing here polls a fixed duration: the loading screen is the app's own statement that the
+ * planner has not yet painted its plan, and the tab bar only renders once routing has settled.
+ * The screen is in index.html and is removed outright, so presence is the whole test.
  */
 export const loadingOverlay = (page: Page): Locator =>
-  page.locator('[data-testid="loading-overlay"].v-overlay--active')
+  page.getByTestId('boot-loader')
 
 export const settle = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('add-tab')).toBeVisible()

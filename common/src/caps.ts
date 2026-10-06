@@ -1,7 +1,6 @@
 /**
- * The v7 validation table. Two kinds of limit and they behave differently:
- * names, notes and tasks are silently truncated to preserve today's behaviour,
- * everything else is rejected outright.
+ * The v7 validation table. Every limit rejects, except the task count, whose overflow
+ * is dropped. Text caps are enforced with the rest of the text rules (`text-rules.ts`).
  */
 export const CAPS = {
   /** Room/tab, factory and group names. */

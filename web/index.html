@@ -10,6 +10,58 @@
          `vuetify-core`, promoting the core reset's `button { font: inherit }`
          over every component's own styles. Dev loads in order and hides this. -->
     <style>@layer vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final;</style>
+    <!-- The loading screen, painted from the HTML alone before any script has run, and removed
+         by bootLoader.ts once the page under it has painted. Plain CSS on purpose: it has to show
+         while the app's own bundle and stylesheets are still on their way. -->
+    <style>
+      #boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* 75% opaque, so the page can be seen arriving behind it. */
+        background: rgba(18, 18, 18, 0.75);
+        font-family: Roboto, sans-serif;
+      }
+      #boot-loader .boot-loader-card {
+        width: min(500px, calc(100vw - 32px));
+        padding: 16px;
+        border-radius: 16px;
+        background: #212121;
+        box-shadow: #0094e6 0 0 10px 0;
+        color: #fff;
+        text-align: center;
+        font-size: 1.5rem;
+      }
+      #boot-loader .boot-loader-bar {
+        position: relative;
+        height: 8px;
+        margin-top: 12px;
+        overflow: hidden;
+        border-radius: 4px;
+        background: rgba(0, 148, 230, 0.25);
+      }
+      #boot-loader .boot-loader-bar::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        width: 40%;
+        background: #0094e6;
+        animation: boot-loader-slide 1.2s ease-in-out infinite;
+      }
+      #boot-loader .boot-loader-quip {
+        margin-top: 8px;
+        min-height: 1.25rem;
+        color: #9e9e9e;
+        font-size: 0.875rem;
+      }
+      @keyframes boot-loader-slide {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(250%); }
+      }
+    </style>
     <script defer src="/assets/js/fa-brands.min.js"></script>
     <script defer src="/assets/js/fa-solid.min.js"></script>
     <script defer src="/assets/js/fa.min.js"></script>
@@ -42,6 +94,39 @@
 </head>
 
 <body>
+    <div id="boot-loader" data-testid="boot-loader" role="status">
+        <div class="boot-loader-card">
+            Loading planner...
+            <div class="boot-loader-bar"></div>
+            <div class="boot-loader-quip"></div>
+        </div>
+    </div>
+    <script>
+      // One of the old loader's quips, picked before the app has started.
+      ;(function () {
+        var quips = [
+          'Calculating...',
+          'Crunching numbers...',
+          'Doing the math...',
+          'Thinking...',
+          'ADA is hard at work...',
+          'ADA approves of this message...',
+          'FICSIT approves the efficient use of this tool...',
+          'Reticulating splines...',
+          'Bending the spoon...',
+          'The factory must grow...',
+          'Powered by cups of tea...',
+          'Constructing additional pylons...',
+          'We\'ll miss you Snutt!',
+          'Sing us your blood song...',
+          // Twice, so it comes up twice as often. Shameless plugging.
+          'Don\'t forget to donate if you\'re enjoying the tool! \u2764\ufe0f',
+          'Don\'t forget to donate if you\'re enjoying the tool! \u2764\ufe0f',
+        ]
+        var quip = document.querySelector('#boot-loader .boot-loader-quip')
+        if (quip) quip.textContent = quips[Math.floor(Math.random() * quips.length)]
+      })()
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
 </body>

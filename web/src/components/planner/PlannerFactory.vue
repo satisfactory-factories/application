@@ -15,7 +15,9 @@
               <input
                 v-model="draftName"
                 class="ml-3 pl-0 factory-name"
+                :class="{ 'factory-name-invalid': nameRule(draftName) !== true }"
                 placeholder="Factory Name"
+                :title="nameRule(draftName) === true ? undefined : String(nameRule(draftName))"
                 @blur="commitName"
                 @focus="nameFocused = true"
                 @keyup.enter="acceptName"
@@ -296,6 +298,7 @@
   import PlannerFactoryChecklist from '@/components/planner/PlannerFactoryChecklist.vue'
   import { groupColorVars } from '@/utils/colors'
   import eventBus from '@/utils/eventBus'
+  import { textFieldRule } from 'common'
 
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
@@ -353,6 +356,7 @@
   // The name is held as a draft while typing: writing each keystroke into the factory re-rendered
   // every place the name appears, which read as lag. Blur or Enter is what applies it.
   const draftName = ref(props.factory.name)
+  const nameRule = textFieldRule('name')
   const nameFocused = ref(false)
   // A remote apply must not clobber a draft mid-typing; blur commits, and the
   // user's committed name then wins the same way any content edit does.
@@ -367,6 +371,12 @@
   const commitName = () => {
     nameFocused.value = false
     if (draftName.value === props.factory.name) return
+    const allowed = nameRule(draftName.value)
+    if (allowed !== true) {
+      eventBus.emit('toast', { message: allowed, type: 'error' })
+      draftName.value = props.factory.name
+      return
+    }
     const live = getFactories().find(entry => entry.id === props.factory.id) ?? props.factory
     live.name = draftName.value
     props.factory.name = draftName.value
@@ -482,6 +492,12 @@
 .factory-name {
   width: 85%;
   padding: 6px;
+
+  // A name the text rules refuse. Blur rejects it with a toast; this says so while typing.
+  &.factory-name-invalid {
+    color: var(--sf-error);
+    text-decoration: underline wavy var(--sf-error);
+  }
 
   // The markup's `pl-0` beat this on `!important` until Vuetify 4 layered the
   // spacing helpers. Scoped so it outranks the rule above deterministically.

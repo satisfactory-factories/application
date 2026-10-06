@@ -166,7 +166,7 @@ def timeseries(unit="short", fill=15, stack="none", steps=None, decimals=None,
     }
 
 
-def bargauge(display_name=None, unit="short", minmax=None):
+def bargauge(display_name=None, unit="short", minmax=None, name_placement="left"):
     defaults = {
         "unit": unit,
         "thresholds": {"mode": "absolute", "steps": [{"value": 0, "color": "green"}]},
@@ -187,7 +187,7 @@ def bargauge(display_name=None, unit="short", minmax=None):
                 "maxVizHeight": 300,
                 "minVizHeight": 16,
                 "minVizWidth": 0,
-                "namePlacement": "left",
+                "namePlacement": name_placement,
                 "orientation": "horizontal",
                 "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
                 "showUnfilled": True,
@@ -372,32 +372,28 @@ add(37, "Accounts, Plans and Collaborators Over Time",
     timeseries(fill=10))
 
 # ------------------------------------------------------------- edits and activity
-# The shape of this one is deliberate and took two attempts.
+# sf_edits_total is a tally that only rises; sf_room_revisions fell whenever a plan was
+# deleted. The tally is seeded from sf_room_revisions on release, so `or` falls back to the
+# old series for history before the tally existed and the line stays continuous.
 #
-# sf_room_revisions is a gauge, not a counter: deleting a plan removes its edits from
-# the sum. So increase() is invalid, and the obvious alternative — subtracting the
-# value from 24h ago — has two faults. It reads "No data" for the first 24 hours after
-# release, because there is no sample to offset to; and a deletion makes it negative.
-#
-# Measuring from the low point of the window fixes both. min_over_time includes the
-# current sample, so the result can never be negative and needs no clamp, and it has an
-# answer from the very first scrape. With no deletions it is exactly the 24h growth;
-# with one, it is growth since the trough, which is the more useful reading anyway.
-EDITS_24H = "sum(sf_room_revisions%s) - sum(min_over_time(sf_room_revisions%s[24h]))" % (J, J)
+# The 24h figure measures from the window's low point rather than offsetting by 24h, so it
+# answers from the first scrape instead of reading "No data" for a day.
+EDITS = "(sum(sf_edits_total%s) or sum(sf_room_revisions%s))" % (J, J)
+EDITS_24H = "%s - min_over_time(%s[24h:1m])" % (EDITS, EDITS)
 
 add(60, "Edits, All Time",
-    "Accepted edits summed across live plans. Falls when a plan is deleted, because those edits no longer exist; that is why it is a gauge rather than a counter.",
-    [query("sum(sf_room_revisions%s)" % J, "Edits")],
+    "Accepted edits that have ever happened, including those on plans since deleted. Only ever rises. Edits on plans deleted before this tally shipped are missing.",
+    [query(EDITS, "Edits")],
     stat(BLUE, graph="area", color_mode="background_solid"))
 
 add(61, "Edits, Last 24h",
-    "Edits added since the low point of the last 24 hours. Measured from the trough rather than from the value 24h ago, so it answers from the first scrape instead of reading No data for a day, and cannot go negative when a plan is deleted.",
+    "Edits added since the low point of the last 24 hours, so it answers from the first scrape instead of reading No data for a day.",
     [query(EDITS_24H, "Edits")],
     stat([{"value": 0, "color": "#6a6a6a"}, {"value": 1, "color": "green"}], graph="area"))
 
 add(62, "Edits Over Time",
     "The cumulative line. The strongest single indicator of whether the planner is being used.",
-    [query("sum(sf_room_revisions%s)" % J, "Edits")],
+    [query(EDITS, "Edits")],
     timeseries(fill=18, fixed="blue", points="never", width=3))
 
 add(63, "Edits per 24h, Over Time",
@@ -487,7 +483,7 @@ add(96, "Planner Errors by Status",
 add(99, "Planner Errors by Route, Last 24h",
     "What the planner was asking for when it was refused. The route pattern as the router matched it, never the raw path.",
     [query('sort_desc(round(sum by (route, status) (increase(sf_http_errors_total%s[24h]))) > 0)' % sel('client=~"versioned|beacon"'), "{{status}} · {{route}}", instant=True)],
-    bargauge(display_name="${__field.labels.status} · ${__field.labels.route}"))
+    bargauge(display_name="${__field.labels.status} · ${__field.labels.route}", name_placement="top"))
 
 # A level, not an increase, on purpose: a sweep is a burst inside one scrape, and increase()
 # only sees movement between samples. Since the scanner series is seeded at zero it now moves
@@ -716,35 +712,47 @@ add(105, "Most Opened Share Links",
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.share_id}"))
 
 # ------------------------------------------------------------- biggest and busiest
-add(70, "Biggest Plans",
-    "The largest synced plans by factory count, with the account that owns each. Top 20 only.",
+add(70, "Biggest Plans · Now",
+    "The largest synced plans by factory count right now, with the account that owns each. Top 20 only.",
     [query("sort_desc(sf_room_factories%s)" % J, "{{owner}} · {{name}}", instant=True)],
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
 
-add(74, "Most Edited Plans",
-    "Accepted edits per synced plan, the exact count still on the plan. Top 20 only; a plan nobody has edited is left out.",
+add(74, "Most Edited Plans · All Time",
+    "Accepted edits per synced plan since it was made, the exact count still on the plan. Top 20 only; a plan nobody has edited is left out.",
     [query("sort_desc(sf_room_edits%s)" % J, "{{owner}} · {{name}}", instant=True)],
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
 
-add(75, "Invites Accepted by Plan",
-    "Accounts that accepted an invite into each plan, the owner not counted. Top 20 only; a plan nobody has joined is left out.",
+add(75, "Invites Accepted by Plan · Now",
+    "Accounts currently in each plan through an accepted invite, the owner not counted. Top 20 only; a plan nobody has joined is left out.",
     [query("sort_desc(sf_room_collaborators%s)" % J, "{{owner}} · {{name}}", instant=True)],
     bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
 
-add(108, "Accounts With the Most Plans",
-    "Live synced plans per account, counted over the tabs each account created. Top 20 only.",
+add(108, "Accounts With the Most Plans · Now",
+    "Live synced plans per account right now, counted over the tabs each account created. Top 20 only.",
     [query("sort_desc(sf_user_rooms%s)" % J, "{{username}}", instant=True)],
     bargauge(display_name="${__field.labels.username}"))
 
-add(71, "Busiest Accounts",
-    "Accepted edits per account. Approximate by design: the count is written after the edit commits and is allowed to fail, and it starts from zero at release rather than being backfilled. Top 20 only.",
+add(71, "Busiest Accounts · All Time",
+    "Accepted edits per account since release. Approximate by design: the count is written after the edit commits and is allowed to fail, and it starts from zero at release rather than being backfilled. Top 20 only.",
     [query("sort_desc(sf_user_edits%s)" % J, "{{username}}", instant=True)],
     bargauge(display_name="${__field.labels.username}"))
 
-add(72, "Accounts With the Most Factories",
-    "Factories summed over the synced plans each account created. Top 20 only.",
+add(72, "Accounts With the Most Factories · Now",
+    "Factories right now, summed over the synced plans each account created. Top 20 only.",
     [query("sort_desc(sf_user_factories%s)" % J, "{{username}}", instant=True)],
     bargauge(display_name="${__field.labels.username}"))
+
+for panel_id, window, label in ((136, "24h", "Last 24h"), (138, "7d", "Last 7 Days")):
+    add(panel_id, "Most Edited Plans · %s" % label,
+        "Accepted edits per synced plan inside the window, counted to the hour. A plan deleted since still shows, as (deleted). Top 20 only.",
+        [query('sort_desc(sf_room_edits_window%s)' % sel('window="%s"' % window), "{{owner}} · {{name}}", instant=True)],
+        bargauge(display_name="${__field.labels.owner} · ${__field.labels.name}"))
+
+for panel_id, window, label in ((137, "24h", "Last 24h"), (139, "7d", "Last 7 Days")):
+    add(panel_id, "Busiest Accounts · %s" % label,
+        "Accepted edits per account inside the window, counted to the hour. Approximate like the all-time panel: the count is written after the edit commits and is allowed to fail. Top 20 only.",
+        [query('sort_desc(sf_user_edits_window%s)' % sel('window="%s"' % window), "{{username}}", instant=True)],
+        bargauge(display_name="${__field.labels.username}"))
 
 # -------------------------------------------------------------------- process
 # Node's own numbers, so a socket count can be read against what the sockets cost.
@@ -865,9 +873,11 @@ rows = [
         item(0, 4, 12, 8, 104), item(12, 4, 12, 8, 105),
     ]),
     row("🏆 Biggest and Busiest · from the database", [
-        item(0, 0, 12, 10, 70), item(12, 0, 12, 10, 74),
-        item(0, 10, 12, 10, 75), item(12, 10, 12, 10, 71),
-        item(0, 20, 12, 10, 72), item(12, 20, 12, 10, 108),
+        item(0, 0, 12, 10, 136), item(12, 0, 12, 10, 137),
+        item(0, 10, 12, 10, 138), item(12, 10, 12, 10, 139),
+        item(0, 20, 12, 10, 74), item(12, 20, 12, 10, 71),
+        item(0, 30, 12, 10, 70), item(12, 30, 12, 10, 72),
+        item(0, 40, 12, 10, 108), item(12, 40, 12, 10, 75),
     ]),
     row("🏭 Synced Plans and Accounts · from the database", [
         item(0, 0, 4, 4, 30), item(4, 0, 4, 4, 31), item(8, 0, 4, 4, 32),

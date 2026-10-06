@@ -42,9 +42,8 @@ export type Events = {
   // user is offered a reload rather than made to do one.
   updateAvailable: { version: string };
   toast: ToastData;
-  // Initial factory loading dialog
+  // A load has finished and the plan is in place
   loadingCompleted: undefined;
-  prepareForLoad: { count: number };
   // Custom loading screen
   loaderInit: { title?: string, steps: number }
   loaderNextStep: { message: string, step?: number, isFinalStep?: boolean }

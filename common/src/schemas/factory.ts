@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { CAPS } from '../caps'
+import { textSchema } from './text'
 import { FactoryPowerChangeType, ItemType } from '../types/factory'
 
 // The persistent-data boundary. `Room.factories` is Mixed in Mongo, so nothing but
@@ -12,7 +13,8 @@ const str = z.string().max(CAPS.string)
 const num = z.number()
 /** Part ids, recipe ids and factory ids used as record keys. */
 const key = z.string().max(CAPS.string)
-const name = z.string().max(CAPS.name)
+/** A user-written name: cleaned, capped and held to the text rules. */
+const name = textSchema('name')
 const id = z.string().min(1).max(CAPS.string)
 
 /**
@@ -235,7 +237,7 @@ export const factoryPowerSyncStateSchema = z.object({
 })
 
 export const factoryTaskSchema = z.object({
-  title: z.string().max(CAPS.taskTitle),
+  title: textSchema('task'),
   completed: z.boolean(),
 })
 
@@ -331,7 +333,7 @@ export const factorySchema = z.object({
     .default(() => ({})),
   displayOrder: num,
   tasks: z.array(factoryTaskSchema).max(CAPS.tasks),
-  notes: z.string().max(CAPS.notes),
+  notes: textSchema('notes'),
   checklistEnabled: z.boolean().default(false),
   checklistPanelHidden: z.boolean().default(false),
   checklistExports: boundedRecord(z.boolean(), CAPS.checklistKeys).default(() => ({})),
