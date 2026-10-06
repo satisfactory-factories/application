@@ -13,7 +13,6 @@
       <div class="px-4 pt-2 pb-3">
         <v-switch
           v-model="filterByDemand"
-          class="mb-3"
           color="primary"
           data-testid="import-filter-demand"
           density="compact"
@@ -21,6 +20,10 @@
           hide-details
           label="Filter by demand: only items this factory uses"
         />
+        <p class="demand-caption text-caption text-medium-emphasis mb-3">
+          Turn this off to import any item another factory has spare, even one this factory does not
+          use. That is how a factory becomes a logistics hub, gathering items to pass on to others.
+        </p>
         <v-autocomplete
           v-model="selectedPart"
           auto-select-first
@@ -190,3 +193,12 @@
     isOpen.value = false
   }
 </script>
+
+<style lang="scss" scoped>
+// Snug under the switch, lined up with its label rather than the knob.
+.demand-caption {
+  line-height: 1.3;
+  margin-top: -4px;
+  padding-left: 44px;
+}
+</style>
