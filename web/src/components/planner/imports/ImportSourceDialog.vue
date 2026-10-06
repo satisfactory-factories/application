@@ -13,6 +13,7 @@
       <div class="px-4 pt-2 pb-3">
         <v-switch
           v-model="filterByDemand"
+          class="mb-3"
           color="primary"
           data-testid="import-filter-demand"
           density="compact"

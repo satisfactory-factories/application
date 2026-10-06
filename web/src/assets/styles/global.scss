@@ -825,6 +825,15 @@ tr.sf-nav-flash {
   width: 18px;
 }
 
+// A compact switch draws outside its own box. Vuetify centres a 36px track in a 28px wrapper, and
+// the thumb sits on the track's left end when off, so the switch pokes 6px left of everything it is
+// lined up with. Each switch used to be nudged back by hand (an ml-*, a 6px margin) and the next one
+// forgot, so the fix lives here, once, for every compact switch. The default density's wrapper is
+// as wide as the thumb's travel, so it already lines up.
+.v-switch.v-input--density-compact .v-selection-control__wrapper {
+  margin-inline-start: 6px;
+}
+
 .v-radio, .v-checkbox, .v-checkbox-btn {
   .v-selection-control__input > :is(.v-icon, svg) {
     display: none;
