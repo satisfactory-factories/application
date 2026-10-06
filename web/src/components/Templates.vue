@@ -151,7 +151,7 @@
     },
     {
       name: '#46 Redistribution hub',
-      description: 'Proof of concept for distribution hubs. Iron Factory makes Iron Plates, the Hub imports them on a row flagged Redistribute and makes nothing itself, and Reinforced Plates imports its plates from the Hub. Push the Reinforced Plates import above 100/min and the Hub goes red.',
+      description: 'Proof of concept for distribution hubs. Iron Factory makes Iron Plates, the Hub imports them and makes nothing itself, and Reinforced Plates imports its plates from the Hub. Push the Reinforced Plates import above 100/min and the Hub goes red.',
       data: scenarioData(create46Scenario().getFactories()),
       show: true,
       isDebug: false,
@@ -165,7 +165,7 @@
     },
     {
       name: '#315 Import exportable parts',
-      description: '#315 - For testing import candidate code. Aluminium factory in this example should not be able to import Copper Ingots from Copper Parts',
+      description: '#315 - For testing import candidate code. Since #46, Aluminium Parts can import the Copper Ingots that Copper Parts imports and passes on',
       data: scenarioData(create315Scenario().getFactories()),
       show: isDebugMode,
       isDebug: true,

@@ -5,7 +5,7 @@ import { calculateParts, isAmountSatisfied } from '@/utils/factory-management/pa
 import { DataInterface } from '@/interfaces/DataInterface'
 import { rawArray } from '@/utils/factory-management/common'
 import { recordEvent } from '@/utils/record-event'
-import { isPartRedistributed } from '@/utils/factory-management/redistribution'
+import { isPartImported } from '@/utils/factory-management/redistribution'
 
 // Adds dependencies between two factories.
 export const updateDependency = (
@@ -170,9 +170,9 @@ export const flushInvalidRequests = (factories: Factory[], gameData: DataInterfa
 
         // If a part is found, check if the part is produced within the factory. If it isn't, remove the dependency and the input.
         // Thankfully since we are doing the dependency calculation BEFORE the parts calculation, the part data will be eventually correct.
-        // A redistribution hub makes nothing, but passes on what it imports (#46).
-        const foundRedistribution = isPartRedistributed(factory, request.part)
-        if (isCalculated && !foundProduct && !foundByProduct && !foundPowerProducerByProduct && !foundRedistribution) {
+        // A distribution hub makes nothing, but passes on what it imports (#46).
+        const foundImport = isPartImported(factory, request.part)
+        if (isCalculated && !foundProduct && !foundByProduct && !foundPowerProducerByProduct && !foundImport) {
           console.warn(`flushInvalidRequests: productCheck: Factory "${factory.name}" (${factory.id}) does not produce the product ${request.part} requested by "${dependantFactory.name}" (${dependantFactory.id})!`)
 
           deleteRequestPair(factory, dependantFactory, factories, request, gameData)

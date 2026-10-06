@@ -179,7 +179,7 @@ describe('Simple factory plan', () => {
         isRaw: false,
         isEndProduct: false,
         isSinkable: true,
-        exportable: false,
+        exportable: true,
       })
     })
     it('should be marked as not using only raw resources', () => {
@@ -231,7 +231,7 @@ describe('Simple factory plan', () => {
         isRaw: false,
         isEndProduct: false,
         isSinkable: true,
-        exportable: false,
+        exportable: true,
       })
     })
     it('should properly update the dependency and part metrics when an input has been deleted', () => {

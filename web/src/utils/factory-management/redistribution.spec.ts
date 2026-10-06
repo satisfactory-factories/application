@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
-import { calculateFactories, findFacByName } from '@/utils/factory-management/factory'
+import { calculateFactories, findFacByName, newFactory } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
 import { create46Scenario } from '@/utils/factory-setups/46-redistribution-hub'
 import {
-  canRedistributeInput,
   getImportableParts,
   getImportSources,
   getUpstreamFactoryIds,
@@ -12,6 +11,8 @@ import {
 } from '@/utils/factory-management/redistribution'
 import { isImportRedundant } from '@/utils/factory-management/inputs'
 import { getFactoryStatuses } from '@/utils/factory-management/status'
+import { setSinkCount } from '@/utils/factory-management/disposal'
+import { checkFactorySyncState, setSyncState } from '@/utils/factory-management/syncState'
 
 let factories: Factory[]
 let ironFactory: Factory
@@ -28,7 +29,7 @@ describe('redistribution hubs (#46)', () => {
   })
 
   describe('exports from a hub', () => {
-    it('makes a redistributed import exportable', () => {
+    it('makes an imported part exportable', () => {
       expect(hub.parts.IronPlate.exportable).toBe(true)
     })
 
@@ -53,21 +54,28 @@ describe('redistribution hubs (#46)', () => {
       expect(getFactoryStatuses(hub).map(status => status.type)).toContain('exportShortage')
     })
 
-    it('never calls a redistributed import redundant', () => {
+    it('does not call an import that is passed on redundant', () => {
       expect(isImportRedundant(0, hub)).toBe(false)
     })
   })
 
-  describe('an unflagged import', () => {
-    it('is not exportable', () => {
-      hub.inputs[0].redistribute = false
+  describe('a factory with nothing to spare', () => {
+    it('is not offered as a source to anyone not already importing from it', () => {
+      // Reinforced Plates takes every plate the hub imports.
+      reinforced.inputs[0].amount = 100
       calculateFactories(factories, gameData)
+      const other = newFactory('Other', 3, 4)
 
-      expect(hub.parts.IronPlate.exportable).toBe(false)
+      expect(getImportSources(other, 'IronPlate', [...factories, other]).map(source => source.factory.id))
+        .not.toContain(hub.id)
+      expect(getImportSources(reinforced, 'IronPlate', factories).map(source => source.factory.id))
+        .toContain(hub.id)
     })
+  })
 
-    it('takes the imports other factories had from the hub with it', () => {
-      hub.inputs[0].redistribute = false
+  describe('a hub that stops importing', () => {
+    it('takes the imports other factories had from it with it', () => {
+      hub.inputs = []
       calculateFactories(factories, gameData)
 
       expect(reinforced.inputs).toHaveLength(0)
@@ -86,20 +94,12 @@ describe('redistribution hubs (#46)', () => {
     })
 
     it('follows hub-to-hub chains', () => {
+      // The consumer passes plates on too, which makes it a second hub.
       const hubB = findFacByName('Reinforced Plates', factories)
-      // Pretend the consumer is a second hub passing plates on.
-      hubB.inputs[0].redistribute = true
-      calculateFactories(factories, gameData)
 
       expect(getUpstreamFactoryIds(hubB, 'IronPlate', factories)).toEqual(new Set([hub.id, ironFactory.id]))
       expect(wouldCreateLoop(ironFactory.id, hubB, 'IronPlate', factories)).toBe(true)
       expect(wouldCreateLoop(hub.id, hubB, 'IronPlate', factories)).toBe(true)
-    })
-
-    it('refuses to flag a row that would close a loop', () => {
-      // Iron Factory imports plates back from the Hub (as saved data could have it).
-      ironFactory.inputs.push({ factoryId: hub.id, outputPart: 'IronPlate', amount: 10 })
-      expect(canRedistributeInput(ironFactory, ironFactory.inputs[0], factories)).toBe(false)
     })
   })
 
@@ -118,6 +118,26 @@ describe('redistribution hubs (#46)', () => {
       // The hub needs Iron Plates for its exports, and nothing else.
       expect(getImportableParts(hub, factories, false)).toEqual(['IronPlate'])
       expect(getImportableParts(hub, factories, true)).toContain('IronPlateReinforced')
+    })
+
+    it('does not count what an AWESOME Sink takes as a need', () => {
+      // Nobody imports from the hub, and its plates are sunk instead.
+      reinforced.inputs = []
+      setSinkCount(hub, 'IronPlate', 1)
+      calculateFactories(factories, gameData)
+
+      expect(hub.parts.IronPlate.amountRequiredSink).toBeGreaterThan(0)
+      expect(getImportableParts(hub, factories, false)).toEqual([])
+      expect(getImportableParts(hub, factories, true)).toContain('IronPlateReinforced')
+    })
+  })
+
+  describe('game sync', () => {
+    it('lets a hub that only imports stay marked in sync', () => {
+      setSyncState(hub)
+      checkFactorySyncState(hub)
+
+      expect(hub.inSync).toBe(true)
     })
   })
 })

@@ -5,7 +5,7 @@ import { addInputToFactory } from '@/utils/factory-management/inputs'
 
 // https://github.com/satisfactory-factories/application/issues/46
 // Iron Factory -> Hub -> Reinforced Plates and Rotors. The Hub makes nothing: it imports Iron
-// Plates on a redistributed row and passes them on.
+// Plates and passes them on.
 export const create46Scenario = (): { getFactories: () => Factory[] } => {
   const ironFactory = newFactory('Iron Factory', 0, 1)
   const hub = newFactory('Hub', 1, 2)
@@ -30,7 +30,6 @@ export const create46Scenario = (): { getFactories: () => Factory[] } => {
     outputPart: 'IronPlate',
     amount: 100,
   })
-  hub.inputs[0].redistribute = true
 
   // Reinforced plates need 60 Iron Plates and 120 Screws; only the plates come from the Hub.
   addInputToFactory(reinforced, {

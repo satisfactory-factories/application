@@ -746,18 +746,18 @@ export const addImport = async (
   const imports = card.locator('[id$="-imports"]')
   await imports.getByRole('button', { name: 'Add Import' }).click()
 
-  // The import dialog: pick the item, then the factory supplying it. "Any surplus" is switched on
-  // so the item is offered whether or not this factory's products consume it.
+  // The import dialog: pick the item, then the factory supplying it.
   const dialog = page.locator('.v-overlay--active').filter({ has: page.getByTestId('import-item-picker') })
   await expect(dialog, 'the import dialog never opened').toBeVisible()
-  await dialog.getByTestId('import-any-surplus').locator('input').check()
 
   const picker = dialog.getByTestId('import-item-picker').locator('input')
   await picker.click()
   await picker.fill(item)
-  // Matched on text: each option carries the item's icon, whose alt text joins its accessible name.
+  // Matched on the title: each option carries the item's icon, whose alt text joins its accessible
+  // name, and a needed item carries a subtitle too.
   const exactly = new RegExp(`^\\s*${item}\\s*$`)
-  const option = page.locator('.v-menu .v-list-item').filter({ hasText: exactly }).first()
+  const option = page.locator('.v-menu .v-list-item')
+    .filter({ has: page.locator('.v-list-item-title', { hasText: exactly }) }).first()
   await expect(option, `the item picker never offered ${item}`).toBeVisible()
   await option.click()
 

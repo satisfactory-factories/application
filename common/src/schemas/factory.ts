@@ -217,7 +217,6 @@ export const factoryInputSchema = z.object({
   factoryId: num.nullable(),
   outputPart: str.nullable(),
   amount: num,
-  redistribute: z.boolean().optional(),
   ...checklistRowFields,
 })
 

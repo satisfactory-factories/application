@@ -454,7 +454,9 @@
     return (factory.products.length > 0 && factory.products[0]?.recipe !== '') ||
       (factory.powerProducers.length > 0 && factory.powerProducers[0]?.building !== '') ||
       // A portal room makes nothing and generates nothing, and is still a thing you built.
-      ((factory.customBuildings?.length ?? 0) > 0 && factory.customBuildings[0]?.building !== '')
+      ((factory.customBuildings?.length ?? 0) > 0 && factory.customBuildings[0]?.building !== '') ||
+      // A distribution hub makes nothing either, and its belts and train stations are still built (#46).
+      factory.inputs.some(input => input.factoryId && input.outputPart)
   }
 
   // Every handler below writes a field the plan persists and the room syncs, so each one
