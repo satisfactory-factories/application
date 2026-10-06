@@ -538,7 +538,7 @@
                   :key="`${partId}-${request.requestingFactoryId}`"
                   class="d-inline-flex align-center"
                 >
-                  <checklist-factory-chip
+                  <factory-chip
                     :checked="factory.checklistEnabled ? isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString()) : undefined"
                     :desynced="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount)"
                     :factory="findFactory(request.requestingFactoryId)"
@@ -550,7 +550,7 @@
                     @toggle="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
                   >
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
-                  </checklist-factory-chip>
+                  </factory-chip>
                 </div>
               </div>
             </div>

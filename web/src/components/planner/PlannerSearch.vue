@@ -95,19 +95,13 @@
                 :key="`factory-${match.factory.id}`"
                 class="result-inline"
                 :class="{ active: !pointerOut && activeIndex === indexOf(`factory-${match.factory.id}`) }"
-                :title="match.factory.group ? `Group: ${match.factory.group.name}` : undefined"
                 type="button"
                 @click="goToFactory(match.factory.id)"
                 @mousemove="pointerOut = false; activeIndex = indexOf(`factory-${match.factory.id}`)"
               >
-                <v-chip
-                  class="sf-chip sf-chip-clickable small factory no-margin row-chip"
-                  :class="{ grouped: !!match.factory.group }"
-                  :style="groupStripe(match.factory)"
-                >
-                  <factory-icon-display :icon="match.factory.icon" size="20" />
-                  <b class="ml-2 row-name">{{ match.factory.name }}</b>
-                </v-chip>
+                <factory-chip class="no-margin row-chip" :factory="match.factory" :jumpable="false">
+                  <b>{{ match.factory.name }}</b>
+                </factory-chip>
               </button>
             </div>
             <p v-if="results.hiddenFactories" class="more">
@@ -131,19 +125,13 @@
                 :key="`${part.partId}-${usage.factory.id}`"
                 class="result-row"
                 :class="{ active: !pointerOut && activeIndex === indexOf(`${part.partId}-${usage.factory.id}`) }"
-                :title="usage.factory.group ? `Group: ${usage.factory.group.name}` : undefined"
                 type="button"
                 @click="goToUsage(part.partId, usage)"
                 @mousemove="pointerOut = false; activeIndex = indexOf(`${part.partId}-${usage.factory.id}`)"
               >
-                <v-chip
-                  class="sf-chip sf-chip-clickable small factory no-margin row-chip"
-                  :class="{ grouped: !!usage.factory.group }"
-                  :style="groupStripe(usage.factory)"
-                >
-                  <factory-icon-display :icon="usage.factory.icon" size="20" />
-                  <b class="ml-2 row-name">{{ usage.factory.name }}</b>
-                </v-chip>
+                <factory-chip class="no-margin row-chip" :factory="usage.factory" :jumpable="false">
+                  <b>{{ usage.factory.name }}</b>
+                </factory-chip>
                 <span class="row-usage">
                   {{ USAGE_LABEL[usage.kind] }} {{ formatNumber(usage.amount) }}/min
                 </span>
@@ -168,7 +156,6 @@
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import {
     buildPlanSearchIndex,
-    FactorySummary,
     hasResults,
     PartSearchRole,
     PartUsageEntry,
@@ -329,15 +316,6 @@
     [PartSearchRole.Other]: 'fas fa-truck',
   }
 
-  // The group's colour, handed to the chip's own left edge as a custom property. A property rather
-  // than the border directly because `.sf-chip.factory` sets its border colour with `!important`,
-  // which a plain inline style loses to; the rule that reads this can carry its own.
-  //
-  // Ungrouped factories get nothing rather than a grey stand-in: a colour that means "no group"
-  // still reads as a group at a glance.
-  const groupStripe = (factory: FactorySummary) =>
-    factory.group ? { '--group-color': factory.group.color } : undefined
-
   const goToFactory = (factoryId: number) => jump(factoryId)
 
   const goToUsage = (partId: string, usage: PartUsageEntry) => {
@@ -446,8 +424,8 @@ $focus-ring: 1px solid var(--sf-grey-border);
 
   // `border-color` is the shorthand, so it takes the left edge with it and a grouped factory
   // loses its colour exactly while you are pointing at it. Put it back, after the rule above.
-  &.active .row-chip.grouped,
-  &:hover .row-chip.grouped {
+  &.active .row-chip,
+  &:hover .row-chip {
     border-left-color: var(--group-color) !important;
   }
 }
@@ -491,32 +469,10 @@ $focus-ring: 1px solid var(--sf-grey-border);
   min-width: 0;
   max-width: 100%;
 
-  // The tonal fill is a child sitting inside the chip's border, but it takes the chip's own
-  // corner radius rather than the smaller one the border's inner edge actually has. Its corners
-  // therefore curve away from the border and leave a wedge of the panel showing through, which
-  // the group colour's wider left edge only makes plainer. Squared off, it meets the border.
-  :deep(.v-chip__underlay) {
-    border-radius: 0;
-  }
-
-  // The group's colour on the chip's own left edge rather than out at the row's, where it read
-  // as a bar floating beside the result instead of as something the factory carries. Both
-  // declarations need !important to get past `.sf-chip.factory`, which sets the border with it.
-  &.grouped {
-    border-left-color: var(--group-color) !important;
-    border-left-width: 5px !important;
-  }
-
   :deep(.v-chip__content) {
     min-width: 0;
     overflow: hidden;
   }
-}
-
-.row-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .result-row {
@@ -547,8 +503,8 @@ $focus-ring: 1px solid var(--sf-grey-border);
   }
 
   // As above: the shorthand would take the group's left edge with it.
-  &:hover .row-chip.grouped,
-  &.active .row-chip.grouped {
+  &:hover .row-chip,
+  &.active .row-chip {
     border-left-color: var(--group-color) !important;
   }
 

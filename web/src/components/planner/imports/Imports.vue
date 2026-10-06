@@ -11,7 +11,7 @@
     <!-- A table, so every column lines up whatever the item and factory are called (#46). Keyed by
          index: every half-configured row reads as "null-null", and duplicate keys make Vue patch
          the wrong row. -->
-    <v-table class="imports-table sub-card border-md rounded mb-2" density="compact">
+    <v-table v-if="factory.inputs.length" class="imports-table sub-card border-md rounded mb-2" density="compact">
       <thead>
         <tr>
           <th class="item-col">Item</th>
@@ -47,7 +47,7 @@
                 type="item"
                 width="28px"
               />
-              <span v-if="input.outputPart" class="text-body-1 text-truncate" data-testid="import-item-name">{{ getPartDisplayName(input.outputPart) }}</span>
+              <span v-if="input.outputPart" class="text-body-1" data-testid="import-item-name">{{ getPartDisplayName(input.outputPart) }}</span>
               <span v-else>Choose what to import</span>
               <v-spacer />
               <i class="fas fa-pen ml-3 text-caption text-medium-emphasis" />
@@ -56,7 +56,7 @@
           <td class="from-col">
             <!-- The same factory chip the Exports column uses, with the checklist tick inside it.
                  Clicking it jumps to the product supplying this import. -->
-            <checklist-factory-chip
+            <factory-chip
               v-if="input.factoryId && findFactory(input.factoryId)?.id"
               :checked="factory.checklistEnabled ? !!input.completed : undefined"
               :desynced="isInputChecklistDesynced(input)"
@@ -68,7 +68,7 @@
               @toggle="toggleChecklistInput(factory, input)"
             >
               <b>{{ findFactory(input.factoryId).name }}</b><template v-if="sourceVia(input).length"> (via {{ sourceVia(input).join(', ') }})</template>
-            </checklist-factory-chip>
+            </factory-chip>
           </td>
           <td class="qty-col">
             <div class="d-flex align-center">
@@ -511,13 +511,6 @@
   .imports-table {
     overflow-x: auto;
 
-    // Fixed layout, so every column starts at the same place on every row and in every factory,
-    // whatever the items and factories are called. The supply bar takes whatever width is left.
-    :deep(table) {
-      min-width: 900px;
-      table-layout: fixed;
-    }
-
     th {
       white-space: nowrap;
     }
@@ -527,41 +520,37 @@
       padding-top: 8px !important;
     }
 
-    .item-col {
-      width: 240px;
-    }
-
-    .from-col {
-      width: 300px;
-    }
-
+    // Item, From and Qty shrink to their widest row and never truncate, so every row lines up and
+    // nothing is cut off; the supply bar takes whatever width is left.
+    .item-col,
+    .from-col,
     .qty-col {
-      width: 200px;
+      white-space: nowrap;
+      width: 1%;
     }
 
-    // The item button and the factory chip are the same height and fill their columns, so the
-    // two read as a pair, and the pen and the eye sit at the right-hand end of each.
-    .import-item-btn :deep(.v-btn__content) {
-      width: 100%;
+    // Wide enough for the longest item name in the game, Electromagnetic Control Rod, so the column
+    // does not shift from factory to factory.
+    .import-item-btn {
+      min-width: 310px;
+
+      :deep(.v-btn__content) {
+        width: 100%;
+      }
     }
 
+    // The number input has no width of its own to shrink to, so it is given one.
+    .qty-col :deep(.v-number-input) {
+      flex: 0 0 auto;
+      width: 130px;
+    }
+
+    // The item button and the factory chip are the same height, and every chip fills the column,
+    // so the From column reads as one block as wide as its longest factory name.
     .from-col :deep(.v-chip) {
       font-size: 0.95rem;
       height: 40px;
       width: 100%;
-
-      .v-chip__content {
-        min-width: 0;
-        width: 100%;
-      }
-
-      .v-chip__content > span.ml-2 {
-        flex: 1;
-        overflow: hidden;
-        text-align: left;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
     }
   }
 </style>
