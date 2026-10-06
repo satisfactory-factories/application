@@ -11,13 +11,23 @@
     <!-- A table, so every column lines up whatever the item and factory are called (#46). Keyed by
          index: every half-configured row reads as "null-null", and duplicate keys make Vue patch
          the wrong row. -->
-    <v-table v-if="factory.inputs.length" class="imports-table sub-card border-md rounded mb-2" density="compact">
+    <v-table v-if="factory.inputs.length" class="imports-table sub-card border-md rounded mb-2">
       <thead>
         <tr>
-          <th class="item-col">Item</th>
-          <th class="from-col">From</th>
-          <th class="qty-col">Qty /min</th>
-          <th>Share of supply</th>
+          <th class="delete-col" />
+          <th class="item-col text-h6">
+            <i class="fas fa-box" /><span class="ml-2">Item</span>
+          </th>
+          <th class="from-col text-h6">
+            <i class="fas fa-industry" /><span class="ml-2">From</span>
+          </th>
+          <th class="qty-col text-h6">
+            <i class="fas fa-tachometer-alt" /><span class="ml-2">Qty /min</span>
+          </th>
+          <th class="share-col text-h6">
+            <i class="fas fa-chart-pie" /><span class="ml-2">Share of supply</span>
+          </th>
+          <th />
         </tr>
       </thead>
       <tbody>
@@ -27,6 +37,17 @@
           :key="inputIndex"
           class="status-anchor selectors"
         >
+          <td class="delete-col">
+            <v-btn
+              class="rounded"
+              color="red"
+              icon="fas fa-trash"
+              size="small"
+              title="Delete this import"
+              variant="outlined"
+              @click="deleteInput(inputIndex, factory)"
+            />
+          </td>
           <td class="item-col">
             <!-- Opens the import dialog, where the filtering lives. -->
             <v-btn
@@ -84,29 +105,21 @@
                 @update:model-value="updateFactoriesDebounced(factory, input)"
               />
               <debounce-spinner :active="pendingRecalc === `${input.factoryId}-${input.outputPart}`" />
-              <v-btn
-                class="rounded ml-2"
-                color="red"
-                icon="fas fa-trash"
-                size="small"
-                title="Delete this import"
-                variant="outlined"
-                @click="deleteInput(inputIndex, factory)"
-              />
             </div>
+          </td>
+          <td class="share-col">
+            <import-supply-share
+              v-if="importShare(inputIndex)"
+              :provider-name="providerName(inputIndex)"
+              :share="importShare(inputIndex)!"
+            />
           </td>
           <td>
             <!-- Need and Capacity are the two questions an import row can be sized against: what this
                  factory wants, and what the supplier can actually give. Every button here names which
                  one it answers, because asking a supplier for more than it makes is a valid thing to
                  do deliberately and used to be the only thing Satisfy could do. -->
-            <div class="d-flex align-center ga-3">
-              <import-supply-bar
-                v-if="importShare(inputIndex)"
-                class="flex-grow-1"
-                :provider-name="providerName(inputIndex)"
-                :share="importShare(inputIndex)!"
-              />
+            <div class="d-flex align-center flex-wrap ga-2">
               <v-btn
                 v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
                 class="rounded"
@@ -230,7 +243,7 @@
     isPartRedistributed,
   } from '@/utils/factory-management/redistribution'
   import ImportSourceDialog from '@/components/planner/imports/ImportSourceDialog.vue'
-  import ImportSupplyBar from '@/components/planner/imports/ImportSupplyBar.vue'
+  import ImportSupplyShare from '@/components/planner/imports/ImportSupplyShare.vue'
   import {
     checklistTickTitle,
     inputChecklistDesync,
@@ -515,16 +528,24 @@
       white-space: nowrap;
     }
 
+    th,
+    td {
+      padding-left: 8px !important;
+      padding-right: 8px !important;
+    }
+
     td {
       padding-bottom: 8px !important;
       padding-top: 8px !important;
     }
 
-    // Item, From and Qty shrink to their widest row and never truncate, so every row lines up and
-    // nothing is cut off; the supply bar takes whatever width is left.
+    // Every column but the last shrinks to its widest row and never truncates, so every row lines
+    // up and nothing is cut off; the fix buttons take whatever width is left.
+    .delete-col,
     .item-col,
     .from-col,
-    .qty-col {
+    .qty-col,
+    .share-col {
       white-space: nowrap;
       width: 1%;
     }

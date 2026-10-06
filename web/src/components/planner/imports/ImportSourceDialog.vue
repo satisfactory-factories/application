@@ -11,6 +11,15 @@
   >
     <template #header>
       <div class="px-4 pt-2 pb-3">
+        <v-switch
+          v-model="filterByDemand"
+          color="primary"
+          data-testid="import-filter-demand"
+          density="compact"
+          :disabled="!anyNeeded"
+          hide-details
+          label="Filter by demand: only items this factory uses"
+        />
         <v-autocomplete
           v-model="selectedPart"
           auto-select-first
@@ -134,15 +143,13 @@
 
   const selectedPart = ref<string | null>(null)
 
-  // Every surplus in the plan is offered, with what this factory needs listed first. Hiding the rest
-  // behind a switch meant a factory that already made something, or sank one of its imports, was
-  // only ever offered the items it already had (#46 feedback).
-  watch(isOpen, open => {
-    if (!open) return
-    selectedPart.value = currentInput.value?.outputPart ?? null
-  }, { immediate: true })
+  // Every surplus in the plan, with what this factory needs listed first. "Filter by demand" cuts
+  // the list down to just the needed ones. It starts on when there is something needed to show,
+  // and off for a hub or a row being re-pointed to an item it does not use, which would otherwise
+  // open on an empty or incomplete list (the #46 tester reports).
+  const filterByDemand = ref(false)
 
-  const partItems = computed(() => {
+  const allItems = computed(() => {
     const factories = getFactories()
     const needed = new Set(getImportableParts(props.factory, factories, false))
     const byName = (a: { title: string }, b: { title: string }) => a.title.localeCompare(b.title)
@@ -154,6 +161,20 @@
       ...items.filter(item => !item.needed).sort(byName),
     ]
   })
+
+  const anyNeeded = computed(() => allItems.value.some(item => item.needed))
+
+  const partItems = computed(() =>
+    filterByDemand.value ? allItems.value.filter(item => item.needed) : allItems.value
+  )
+
+  watch(isOpen, open => {
+    if (!open) return
+    const current = currentInput.value?.outputPart ?? null
+    selectedPart.value = current
+    filterByDemand.value = anyNeeded.value &&
+      (!current || allItems.value.some(item => item.value === current && item.needed))
+  }, { immediate: true })
 
   const partName = computed(() => selectedPart.value ? getPartDisplayName(selectedPart.value) : '')
 

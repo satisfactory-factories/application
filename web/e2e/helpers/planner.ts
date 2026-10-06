@@ -750,6 +750,13 @@ export const addImport = async (
   const dialog = page.locator('.v-overlay--active').filter({ has: page.getByTestId('import-item-picker') })
   await expect(dialog, 'the import dialog never opened').toBeVisible()
 
+  // Every surplus in the plan, not only what this factory uses, so a helper call never depends on
+  // whether the item happens to be in demand yet.
+  const demandFilter = dialog.getByTestId('import-filter-demand').locator('input')
+  if (await demandFilter.isChecked()) {
+    await demandFilter.click()
+  }
+
   const picker = dialog.getByTestId('import-item-picker').locator('input')
   await picker.click()
   await picker.fill(item)
