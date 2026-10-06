@@ -7,7 +7,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import {
   addInputToFactory, calculateAbleToImport,
-  calculateImportCandidates, calculateImportCapacity,
+  calculateImportCandidates, calculateImportCapacity, calculateImportShare,
   calculatePossibleImports, canSatisfyImportToCapacity, deleteInputPair, importExceedsCapacity,
   importFactorySelections,
   importPartSelections, importRowId, isDuplicateImport, isImportRedundant, satisfyImport,
@@ -935,6 +935,40 @@ describe('inputs', () => {
         calculateFactories(factories, gameData)
 
         expect(calculateImportCapacity(0, plateFac, ingotFac)).toBe(0)
+      })
+    })
+
+    describe('calculateImportShare', () => {
+      it('should return null while the row has no item', () => {
+        plateFac.inputs[0].outputPart = null
+        expect(calculateImportShare(0, plateFac, ingotFac)).toBe(null)
+      })
+
+      it('should show the row overdrawing a provider nobody else uses', () => {
+        expect(calculateImportShare(0, plateFac, ingotFac)).toEqual({
+          available: 200,
+          thisImport: 300,
+          others: 0,
+          spare: 0,
+          over: 100,
+        })
+      })
+
+      it('should split the provider between this row, other factories and what is left', () => {
+        const otherFac = newFactory('Rods', 2, 203)
+        factories.push(otherFac)
+        addProductToFactory(otherFac, { id: 'IronRod', amount: 50, recipe: 'IronRod' })
+        addInputToFactory(otherFac, { factoryId: ingotFac.id, outputPart: 'IronIngot', amount: 50 })
+        plateFac.inputs[0].amount = 120
+        calculateFactories(factories, gameData)
+
+        expect(calculateImportShare(0, plateFac, ingotFac)).toEqual({
+          available: 200,
+          thisImport: 120,
+          others: 50,
+          spare: 30,
+          over: 0,
+        })
       })
     })
 
