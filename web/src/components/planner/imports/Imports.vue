@@ -15,10 +15,9 @@
       <thead>
         <tr>
           <th class="item-col">Item</th>
-          <th>From</th>
+          <th class="from-col">From</th>
           <th class="qty-col">Qty /min</th>
-          <th />
-          <th class="delete-col" />
+          <th>Share of supply</th>
         </tr>
       </thead>
       <tbody>
@@ -54,7 +53,7 @@
               <i class="fas fa-pen ml-3 text-caption text-medium-emphasis" />
             </v-btn>
           </td>
-          <td>
+          <td class="from-col">
             <!-- The same factory chip the Exports column uses, with the checklist tick inside it.
                  Clicking it jumps to the product supplying this import. -->
             <checklist-factory-chip
@@ -85,6 +84,15 @@
                 @update:model-value="updateFactoriesDebounced(factory, input)"
               />
               <debounce-spinner :active="pendingRecalc === `${input.factoryId}-${input.outputPart}`" />
+              <v-btn
+                class="rounded ml-2"
+                color="red"
+                icon="fas fa-trash"
+                size="small"
+                title="Delete this import"
+                variant="outlined"
+                @click="deleteInput(inputIndex, factory)"
+              />
             </div>
           </td>
           <td>
@@ -92,7 +100,13 @@
                  factory wants, and what the supplier can actually give. Every button here names which
                  one it answers, because asking a supplier for more than it makes is a valid thing to
                  do deliberately and used to be the only thing Satisfy could do. -->
-            <div class="d-flex align-center flex-wrap ga-2">
+            <div class="d-flex align-center ga-3">
+              <import-supply-bar
+                v-if="importShare(inputIndex)"
+                class="flex-grow-1"
+                :provider-name="providerName(inputIndex)"
+                :share="importShare(inputIndex)!"
+              />
               <v-btn
                 v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
                 class="rounded"
@@ -157,17 +171,6 @@
               </v-chip>
             </div>
           </td>
-          <td class="delete-col">
-            <v-btn
-              class="rounded"
-              color="red"
-              icon="fas fa-trash"
-              size="small"
-              title="Delete this import"
-              variant="outlined"
-              @click="deleteInput(inputIndex, factory)"
-            />
-          </td>
         </tr>
       </tbody>
     </v-table>
@@ -200,11 +203,13 @@
     calculateAbleToImport,
     calculateImportCandidates,
     calculateImportCapacity,
+    calculateImportShare,
     calculatePossibleImports,
     canSatisfyImportToCapacity,
     deleteInputPair,
     importExceedsCapacity,
     importRowId,
+    ImportShare,
     isDuplicateImport,
     isImportRedundant,
     satisfyImport,
@@ -225,6 +230,7 @@
     isPartRedistributed,
   } from '@/utils/factory-management/redistribution'
   import ImportSourceDialog from '@/components/planner/imports/ImportSourceDialog.vue'
+  import ImportSupplyBar from '@/components/planner/imports/ImportSupplyBar.vue'
   import {
     checklistTickTitle,
     inputChecklistDesync,
@@ -439,6 +445,11 @@
     return provider ? calculateImportCapacity(inputIndex, props.factory, provider) : null
   }
 
+  const importShare = (inputIndex: number): ImportShare | null => {
+    const provider = providerFor(inputIndex)
+    return provider ? calculateImportShare(inputIndex, props.factory, provider) : null
+  }
+
   const exceedsCapacity = (inputIndex: number): boolean => {
     const provider = providerFor(inputIndex)
     return provider ? importExceedsCapacity(inputIndex, props.factory, provider) : false
@@ -500,6 +511,13 @@
   .imports-table {
     overflow-x: auto;
 
+    // Fixed layout, so every column starts at the same place on every row and in every factory,
+    // whatever the items and factories are called. The supply bar takes whatever width is left.
+    :deep(table) {
+      min-width: 900px;
+      table-layout: fixed;
+    }
+
     th {
       white-space: nowrap;
     }
@@ -509,20 +527,41 @@
       padding-top: 8px !important;
     }
 
-    // Fixed, so the factory column starts at the same place on every row whatever the item is called.
     .item-col {
-      max-width: 260px;
-      min-width: 260px;
-      width: 260px;
+      width: 240px;
+    }
+
+    .from-col {
+      width: 300px;
     }
 
     .qty-col {
-      min-width: 140px;
-      width: 140px;
+      width: 200px;
     }
 
-    .delete-col {
-      width: 1%;
+    // The item button and the factory chip are the same height and fill their columns, so the
+    // two read as a pair, and the pen and the eye sit at the right-hand end of each.
+    .import-item-btn :deep(.v-btn__content) {
+      width: 100%;
+    }
+
+    .from-col :deep(.v-chip) {
+      font-size: 0.95rem;
+      height: 40px;
+      width: 100%;
+
+      .v-chip__content {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .v-chip__content > span.ml-2 {
+        flex: 1;
+        overflow: hidden;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     }
   }
 </style>
