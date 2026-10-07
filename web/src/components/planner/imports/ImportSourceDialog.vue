@@ -12,13 +12,14 @@
     <template #header>
       <div class="px-4 pt-2 pb-3">
         <v-switch
-          v-model="filterByDemand"
           color="primary"
           data-testid="import-filter-demand"
           density="compact"
           :disabled="!anyNeeded"
           hide-details
           label="Filter by demand: only items this factory uses"
+          :model-value="filterByDemand"
+          @update:model-value="setFilterByDemand"
         />
         <p class="demand-caption text-caption text-medium-emphasis mb-3">
           Turn this off to import any item another factory has spare, even one this factory does not
@@ -148,10 +149,29 @@
   const selectedPart = ref<string | null>(null)
 
   // Every surplus in the plan, with what this factory needs listed first. "Filter by demand" cuts
-  // the list down to just the needed ones. It starts on when there is something needed to show,
-  // and off for a hub or a row being re-pointed to an item it does not use, which would otherwise
-  // open on an empty or incomplete list (the #46 tester reports).
+  // the list down to just the needed ones. The switch is remembered in this browser, so the dialog
+  // opens the way it was last left (on until first turned off). It still opens off for a hub or a
+  // row being re-pointed to an item it does not use, which would otherwise open on an empty or
+  // incomplete list (the #46 tester reports); that override is not saved over the preference.
+  const FILTER_STORAGE_KEY = 'importFilterByDemand'
   const filterByDemand = ref(false)
+
+  const savedFilterPreference = (): boolean => {
+    try {
+      return localStorage.getItem(FILTER_STORAGE_KEY) !== 'false'
+    } catch {
+      return true
+    }
+  }
+
+  const setFilterByDemand = (value: boolean | null) => {
+    filterByDemand.value = !!value
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, String(!!value))
+    } catch {
+      // Storage blocked or full: the switch still works for this visit.
+    }
+  }
 
   const allItems = computed(() => {
     const factories = getFactories()
@@ -176,7 +196,7 @@
     if (!open) return
     const current = currentInput.value?.outputPart ?? null
     selectedPart.value = current
-    filterByDemand.value = anyNeeded.value &&
+    filterByDemand.value = savedFilterPreference() && anyNeeded.value &&
       (!current || allItems.value.some(item => item.value === current && item.needed))
   }, { immediate: true })
 
