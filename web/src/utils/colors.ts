@@ -82,6 +82,10 @@ export const sfColors = {
   // building it labelled. Muted enough not to be mistaken for `statusWarning`'s brighter amber.
   building: { color: palette.tan, border: palette.tan },
   import: { color: palette.grey, border: palette.greyBorder },
+  // The factory an import row comes from (#46). Its own colour rather than `factory`'s white or
+  // `import`'s grey, both of which read as a disabled control beside the item button. A soft green
+  // for "incoming supply", lighter than the success green and well clear of lime.
+  importSource: { color: '#81c784', border: '#4b8a4e' },
   somersloop: { color: palette.purple, border: palette.purpleBorder },
   // The Dimensional Depot and the Mercer Spheres its uploaders are built from. This is the ACCENT:
   // chips, icons and the number inputs in the Storage column.

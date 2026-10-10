@@ -294,11 +294,27 @@ export const satisfyImport = (importIndex: number, factory: Factory): void | nul
 // The importing factory's own requests are deliberately excluded — this row is the one being
 // sized — but its other rows against the same provider and part are not, since those are
 // separate promises the provider still has to keep.
-export const calculateImportCapacity = (
+export interface ImportShare {
+  // What the provider has to hand out after its own use.
+  available: number
+  // This row's import.
+  thisImport: number
+  // Every other claim on it: other factories, and this factory's other rows for the same item.
+  others: number
+  // Left over once every claim is met, or what the claims overshoot by.
+  spare: number
+  over: number
+}
+
+/**
+ * How a row's import sits within everything its provider has to hand out. The capacity checks
+ * below and the supply bar on the import row (#46) both read from this.
+ */
+export const calculateImportShare = (
   importIndex: number,
   factory: Factory,
   provider: Factory
-): number | null => {
+): ImportShare | null => {
   const input = factory.inputs[importIndex]
 
   if (!input?.outputPart) {
@@ -328,7 +344,32 @@ export const calculateImportCapacity = (
     return acc + (otherInput.amount ?? 0)
   }, 0)
 
-  const capacity = partData.amountSupplied - consumedByProvider - promisedToOthers - otherRowsFromProvider
+  const available = Math.max(0, partData.amountSupplied - consumedByProvider)
+  const thisImport = input.amount ?? 0
+  const others = promisedToOthers + otherRowsFromProvider
+  const claimed = thisImport + others
+
+  return {
+    available,
+    thisImport,
+    others,
+    spare: Math.max(0, available - claimed),
+    over: Math.max(0, claimed - available),
+  }
+}
+
+export const calculateImportCapacity = (
+  importIndex: number,
+  factory: Factory,
+  provider: Factory
+): number | null => {
+  const share = calculateImportShare(importIndex, factory, provider)
+
+  if (!share) {
+    return null
+  }
+
+  const capacity = share.available - share.others
 
   return capacity > 0 ? capacity : 0
 }

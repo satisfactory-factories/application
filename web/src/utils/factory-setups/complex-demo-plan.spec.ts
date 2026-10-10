@@ -537,7 +537,7 @@ describe('Complex Demo Plan', () => {
         isRaw: true,
         isEndProduct: false,
         isSinkable: true,
-        exportable: false,
+        exportable: true,
       })
       expect(uraniumFac.parts.SulfuricAcid).toEqual({
         amountRequired: 160,
@@ -575,7 +575,7 @@ describe('Complex Demo Plan', () => {
         isRaw: true,
         isEndProduct: false,
         isSinkable: true,
-        exportable: false,
+        exportable: true,
       })
       // Pumped on site: 22 Water Extractors, over-producing 80/min because 2560 isn't a multiple
       // of the 120/min a pump gives.
@@ -810,7 +810,7 @@ describe('Complex Demo Plan', () => {
         isRaw: false,
         isEndProduct: false,
         isSinkable: false,
-        exportable: false,
+        exportable: true,
       })
       expect(plutoniumFac.parts.Silica).toEqual({
         amountRequired: 16.667,

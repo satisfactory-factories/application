@@ -80,7 +80,13 @@ export const checkFactorySyncState = (factory: Factory) => {
   }
 
   // Early return for completely empty factories - nothing to sync
-  if (!factory.products.length && !factory.powerProducers.length && !factory.customBuildings?.length) {
+  // A factory that only imports (a distribution hub, #46) is not empty: it has its logistics built.
+  if (
+    !factory.products.length &&
+    !factory.powerProducers.length &&
+    !factory.customBuildings?.length &&
+    !factory.inputs.some(input => input.factoryId && input.outputPart)
+  ) {
     factory.inSync = false
     return
   }

@@ -191,7 +191,7 @@
                       class="checklist-source"
                     >
                       <!-- A row with no source factory has no chip, so its tick stands alone. -->
-                      <checklist-factory-chip
+                      <factory-chip
                         v-if="entry.input.factoryId"
                         :checked="!!entry.input.completed"
                         :desynced="isInputChecklistDesynced(entry.input)"
@@ -254,7 +254,7 @@
                       :key="request.requestingFactoryId"
                       class="checklist-source"
                     >
-                      <checklist-factory-chip
+                      <factory-chip
                         :checked="isChecklistExportComplete(factory, request.requestingFactoryId, request.part)"
                         :desynced="isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount)"
                         :factory="findFactory(request.requestingFactoryId)"

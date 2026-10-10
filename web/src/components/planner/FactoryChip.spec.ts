@@ -1,15 +1,15 @@
 import vuetify from '@/plugins/vuetify'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import ChecklistFactoryChip from './ChecklistFactoryChip.vue'
+import FactoryChip from './FactoryChip.vue'
 import { newFactory } from '@/utils/factory-management/factory'
 
-const render = (props: Record<string, unknown> = {}) => mount(ChecklistFactoryChip, {
+const render = (props: Record<string, unknown> = {}) => mount(FactoryChip, {
   props: { factory: newFactory('Phase Three', 0, 2), ...props },
   global: { plugins: [vuetify] },
 })
 
-describe('ChecklistFactoryChip', () => {
+describe('FactoryChip', () => {
   it('draws no tick when checklist mode is off', () => {
     const wrapper = render()
 
@@ -56,12 +56,28 @@ describe('ChecklistFactoryChip', () => {
   })
 
   it('renders the slot in place of the name', () => {
-    const wrapper = mount(ChecklistFactoryChip, {
+    const wrapper = mount(FactoryChip, {
       props: { factory: newFactory('Phase Three', 0, 2) },
       slots: { default: '<b>Phase Three</b>: 900/min' },
       global: { plugins: [vuetify] },
     })
 
     expect(wrapper.text()).toContain('Phase Three: 900/min')
+  })
+
+  // Every reference to a factory carries its group's colour on its left edge; an ungrouped one gets
+  // a neutral grey, so the chip is the same shape either way.
+  it("wears the factory's group colour, or grey when ungrouped", () => {
+    const factory = newFactory('Phase Three', 0, 2)
+    expect(render({ factory }).find('.v-chip').attributes('style')).toContain('--group-color: #6c6c6c')
+
+    factory.group = { id: 'g1', name: 'Smelting', color: '#e57373', order: 0 }
+    const wrapper = render({ factory })
+    expect(wrapper.find('.v-chip').attributes('style')).toContain('--group-color: #e57373')
+    expect(wrapper.find('.v-chip').attributes('title')).toBe('Group: Smelting')
+  })
+
+  it('leaves the jump button off when it is not jumpable', () => {
+    expect(render({ jumpable: false }).find('.chip-jump-btn').exists()).toBe(false)
   })
 })
