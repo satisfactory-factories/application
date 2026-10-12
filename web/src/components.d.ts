@@ -113,6 +113,7 @@ declare module 'vue' {
     StatisticsPower: typeof import('./components/planner/StatisticsPower.vue')['default']
     StatisticsResources: typeof import('./components/planner/StatisticsResources.vue')['default']
     StatisticsShardsSloops: typeof import('./components/planner/StatisticsShardsSloops.vue')['default']
+    SurveyBanner: typeof import('./components/SurveyBanner.vue')['default']
     TabNavigation: typeof import('./components/TabNavigation.vue')['default']
     TabSettingsDialog: typeof import('./components/sync/TabSettingsDialog.vue')['default']
     Templates: typeof import('./components/Templates.vue')['default']
