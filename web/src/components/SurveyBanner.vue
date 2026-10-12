@@ -22,31 +22,47 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { computed, ref } from 'vue'
+  import { useAuthStore } from '@/stores/auth-store'
 
   const SURVEY_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf9iwJVXUp3m2ixLjnAfLwTgzEBgK14NShyko2nr6y7dDCJeQ/viewform?usp=sharing&ouid=116850695672424184269'
 
   /** Named for this survey, so a later one gets its own key and shows again to everyone. */
   const SURVEY_DISMISSED_KEY = 'dismissed-survey-2026-10'
 
-  // Storage can throw (private windows, blocked site data); the banner then just shows.
-  const wasDismissed = () => {
+  /** Stamped on the first page load, so the next one knows this browser has been here before. */
+  const VISITED_KEY = 'visitedBefore'
+
+  // Storage can throw (private windows, blocked site data). Then nothing is remembered,
+  // so the banner only shows to someone signed in.
+  const read = (key: string): string | null => {
     try {
-      return localStorage.getItem(SURVEY_DISMISSED_KEY) === 'true'
+      return localStorage.getItem(key)
     } catch {
-      return false
+      return null
+    }
+  }
+  const write = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value)
+    } catch {
+      // Remembered for this page load only.
     }
   }
 
-  const visible = ref(!wasDismissed())
+  // A first visit has the introduction and an empty planner to get through; the survey can
+  // wait until they come back. Anyone who closed the introduction before this banner shipped
+  // has been here already, as has anyone with an account.
+  const returning = read(VISITED_KEY) === 'true' || read('dismissed-introduction') === 'true'
+  write(VISITED_KEY, 'true')
+
+  const auth = useAuthStore()
+  const dismissed = ref(read(SURVEY_DISMISSED_KEY) === 'true')
+  const visible = computed(() => !dismissed.value && (returning || auth.isLoggedIn))
 
   const dismiss = () => {
-    visible.value = false
-    try {
-      localStorage.setItem(SURVEY_DISMISSED_KEY, 'true')
-    } catch {
-      // Hidden for this page load only.
-    }
+    dismissed.value = true
+    write(SURVEY_DISMISSED_KEY, 'true')
   }
 </script>
 
