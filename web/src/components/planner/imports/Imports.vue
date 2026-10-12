@@ -49,30 +49,37 @@
             />
           </td>
           <td class="item-col">
-            <!-- Opens the import dialog, where the filtering lives. -->
-            <v-btn
-              block
-              class="import-item-btn rounded text-none justify-start px-3"
-              :class="{ 'text-medium-emphasis': !input.outputPart }"
-              height="40"
-              title="Change where this import comes from"
-              variant="outlined"
-              @click="openSourceDialog(inputIndex)"
-            >
-              <game-asset
-                v-if="input.outputPart"
-                :key="input.outputPart"
-                class="mr-2 flex-shrink-0"
-                height="28px"
-                :subject="input.outputPart"
-                type="item"
-                width="28px"
-              />
-              <span v-if="input.outputPart" class="text-body-1" data-testid="import-item-name">{{ getPartDisplayName(input.outputPart) }}</span>
-              <span v-else>Choose what to import</span>
-              <v-spacer />
-              <i class="fas fa-pen ml-3 text-caption text-medium-emphasis" />
-            </v-btn>
+            <!-- Drawn exactly as a product's Item field (icon beside an outlined "Item" select), but
+                 read-only: a click opens the import dialog, where the filtering lives. -->
+            <div class="d-flex align-center">
+              <span class="mr-2 item-icon">
+                <game-asset
+                  v-if="input.outputPart"
+                  :key="input.outputPart"
+                  height="42px"
+                  :subject="input.outputPart"
+                  type="item"
+                  width="42px"
+                />
+                <i v-else class="fas fa-cube" />
+              </span>
+              <v-select
+                class="import-item-select"
+                hide-details
+                :items="input.outputPart ? [{ title: getPartDisplayName(input.outputPart), value: input.outputPart }] : []"
+                label="Item"
+                :model-value="input.outputPart"
+                placeholder="Choose what to import"
+                readonly
+                title="Change what this import is and where it comes from"
+                variant="outlined"
+                @click="openSourceDialog(inputIndex)"
+              >
+                <template #selection="{ item }">
+                  <span class="text-truncate" data-testid="import-item-name">{{ item.title }}</span>
+                </template>
+              </v-select>
+            </div>
           </td>
           <td class="from-col">
             <!-- The same factory chip the Exports column uses, with the checklist tick inside it.
@@ -559,12 +566,25 @@
 
     // Wide enough for the longest item name in the game, Electromagnetic Control Rod, so the column
     // does not shift from factory to factory.
-    .import-item-btn {
-      min-width: 310px;
+    // Wide enough for Electromagnetic Control Rod, the longest item name, beside its icon.
+    .import-item-select {
+      min-width: 300px;
+      cursor: pointer;
 
-      :deep(.v-btn__content) {
-        width: 100%;
+      :deep(.v-field),
+      :deep(input) {
+        cursor: pointer;
       }
+    }
+
+    // The same 42px slot the product row keeps for its icon, so an empty row lines up too.
+    .item-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
     }
 
     // The number input has no width of its own to shrink to, so it is given one.
