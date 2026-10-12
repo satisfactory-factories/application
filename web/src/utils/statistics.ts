@@ -1,4 +1,4 @@
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
 import {
   getPartDisplayName,
   hasMetricsForPart,
@@ -42,6 +42,7 @@ export const calculateTotalBuildingsByType = (factories: Factory[]): BuildingTot
           id: factory.id,
           name: factory.name,
           icon: factory.icon,
+          group: factory.group,
           amount: requirement.amount,
         })
       }
@@ -71,6 +72,8 @@ export interface FactoryContribution {
   id: number
   name: string
   icon?: string
+  // For the group colour on the factory chip that names it.
+  group?: FactoryGroup
   amount: number
 }
 
@@ -105,7 +108,7 @@ export const calculateTotalRawResources = (factories: Factory[]): RawResourceTot
       if (source) {
         source.amount += product.amount
       } else {
-        entry.sources.push({ id: factory.id, name: factory.name, icon: factory.icon, amount: product.amount })
+        entry.sources.push({ id: factory.id, name: factory.name, icon: factory.icon, group: factory.group, amount: product.amount })
       }
     })
   })
@@ -168,6 +171,7 @@ export const calculateTotalParts = (factories: Factory[]): PartTotal[] => {
           id: factory.id,
           name: factory.name,
           icon: factory.icon,
+          group: factory.group,
           amount,
         })
       }
@@ -341,6 +345,7 @@ export const calculateDimensionalDepot = (
         id: factory.id,
         name: factory.name,
         icon: factory.icon,
+        group: factory.group,
         amount: spare,
         containers,
       })

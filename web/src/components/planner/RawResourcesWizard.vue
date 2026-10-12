@@ -256,9 +256,12 @@
                 :key="imported.fromFactoryId"
                 class="cell-line ga-2 text-no-wrap"
               >
-                <v-chip class="sf-chip factory x-small no-margin">
-                  <i class="fas fa-industry mr-1" />{{ imported.fromFactoryName }}
-                </v-chip>
+                <factory-chip
+                  class="no-margin"
+                  :clickable="false"
+                  :factory="previewFactory(imported.fromFactoryId, imported.fromFactoryName)"
+                  :jumpable="false"
+                />
                 <span class="text-medium-emphasis">{{ formatNumber(imported.amount) }}/min</span>
                 <v-chip
                   v-if="imported.change"
@@ -276,9 +279,12 @@
                 :key="exported.toFactoryId"
                 class="cell-line ga-2 text-no-wrap"
               >
-                <v-chip class="sf-chip factory x-small no-margin">
-                  <i class="fas fa-industry mr-1" />{{ exported.toFactoryName }}
-                </v-chip>
+                <factory-chip
+                  class="no-margin"
+                  :clickable="false"
+                  :factory="previewFactory(exported.toFactoryId, exported.toFactoryName)"
+                  :jumpable="false"
+                />
                 <span class="text-medium-emphasis">{{ formatNumber(exported.amount) }}/min</span>
               </span>
             </td>
@@ -498,6 +504,13 @@
     error.value = ''
     backedUp.value = false
   }, { immediate: true })
+
+  // The factory a preview row names, from the built result, so its chip wears the factory's own
+  // icon and group colour. The row's name wins, since a rename on this screen updates it first.
+  const previewFactory = (factoryId: number, name: string) => {
+    const factory = pending.value?.factories.find(candidate => candidate.id === factoryId)
+    return { name, icon: factory?.icon, group: factory?.group }
+  }
 
   const setAll = (choice: WizardChoice) => {
     rows.value.forEach(row => {

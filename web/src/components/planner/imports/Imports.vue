@@ -86,7 +86,7 @@
               :tick-title="checklistTickTitle(inputChecklistDesync(input), 'Mark this import as built')"
               @jump="navigateToSource(input)"
               @open="navigateToSource(input)"
-              @toggle="toggleChecklistInput(factory, input)"
+              @toggle="toggleChecklistInputWithOffer(factory, input, findFactory(input.factoryId))"
             >
               <b>{{ findFactory(input.factoryId).name }}</b><template v-if="sourceVia(input).length"> (via {{ sourceVia(input).join(', ') }})</template>
             </factory-chip>
@@ -249,7 +249,7 @@
     inputChecklistDesync,
     isInputChecklistDesynced,
   } from '@/utils/factory-management/checklist'
-  import { toggleChecklistInputWithOffer } from '@/composables/useLinkedTick'
+  import { offerLinkedExportTick, toggleChecklistInputWithOffer } from '@/composables/useLinkedTick'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
   import { markFactoryEdited } from '@/utils/sync-intent'
@@ -365,6 +365,13 @@
     markFactoryEdited(factory)
     handleInputFactoryChange(factory, inputIndex)
     updateFactories(factory, input)
+
+    // A row already ticked as built has just been pointed at a new source: that source's export
+    // is the other end of the link now, so offer to tick it too. Only once the recalculation
+    // above has given the source its request for this row.
+    if (factory.checklistEnabled && input.completed) {
+      offerLinkedExportTick(factory, input, findFactory(factoryId))
+    }
   }
 
   // Where a hub's stock of the row's item comes from, for "from Hub (via Iron Factory)".

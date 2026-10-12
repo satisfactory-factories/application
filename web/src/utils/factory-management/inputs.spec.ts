@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInterface'
 import { calculateFactories, findFacByName, newFactory } from '@/utils/factory-management/factory'
-import * as factoryUtils from '@/utils/factory-management/factory'
 import { addCustomBuildingToFactory } from '@/utils/factory-management/custom-buildings'
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
@@ -9,14 +8,12 @@ import {
   addInputToFactory, calculateAbleToImport,
   calculateImportCandidates, calculateImportCapacity, calculateImportShare,
   calculatePossibleImports, canSatisfyImportToCapacity, deleteInputPair, importExceedsCapacity,
-  importFactorySelections,
-  importPartSelections, importRowId, isDuplicateImport, isImportRedundant, satisfyImport,
+  importRowId, isDuplicateImport, isImportRedundant, satisfyImport,
   satisfyImportTarget, satisfyImportToCapacity, satisfyImportToCapacityTarget,
   trimImportToCapacity, validateInput,
 } from '@/utils/factory-management/inputs'
 import { getExportableFactories } from '@/utils/factory-management/exports'
 import { gameData } from '@/utils/gameData'
-import { create290Scenario } from '@/utils/factory-setups/290-multiple-byproduct-imports'
 import { create315Scenario } from '@/utils/factory-setups/315-non-exportable-parts-imports'
 import { calculateAllDependencies } from '@/utils/factory-management/dependencies'
 import { create324Scenario } from '@/utils/factory-setups/324-redundant-import'
@@ -271,107 +268,9 @@ describe('inputs', () => {
           const result = calculateImportCandidates(ironRodsFac, ironRodsPossibleImports)
           expect(result).toHaveLength(0)
         })
-
-        it('should show only the remaining input part from a factory with a selection already', () => {
-          // We should expect to see the RIPs from iron rods fac 2.
-          // Input Index 1 here is not defined in the factory, so we intend to select the RIPs with this input.
-          const result = importPartSelections(ironRodsFac2, screwsFac, 1)
-          expect(result).toHaveLength(1)
-          expect(result[0]).toBe('IronPlateReinforced')
-        })
       })
     })
 
-    describe('importPartSelections', () => {
-      it('should inject the currently selected input factory', () => {
-        // Set up an input for screws fac to point to iron Rods fac.
-        addInputToFactory(screwsFac, {
-          factoryId: ironRodsFac.id,
-          outputPart: 'IronRod',
-          amount: 500,
-        })
-
-        const result = importFactorySelections(
-          0, // This in effect simulates the user opening or viewing the input selection for the first input
-          [ironRodsFac],
-          screwsFac,
-          [ironRodsFac, screwsFac]
-        )
-        expect(result).toHaveLength(1)
-        expect(result[0]).toEqual({
-          title: ironRodsFac.name,
-          value: ironRodsFac.id,
-        })
-      })
-      it('should throw error if factory cannot be found', () => {
-        // Set up an input for screws fac to point to iron Rods fac.
-        addInputToFactory(screwsFac, {
-          factoryId: ironRodsFac.id,
-          outputPart: 'IronRod',
-          amount: 500,
-        })
-
-        const findFacSpy = vi.spyOn(factoryUtils, 'findFac').mockImplementation(() => {
-          throw new Error('Could not find factory')
-        })
-
-        expect(() =>
-          importFactorySelections(
-            0, // This simulates the user opening or viewing the input selection for the first input
-            [ironRodsFac],
-            screwsFac,
-            [ironRodsFac, screwsFac]
-          )
-        ).toThrowError()
-
-        // Clean up the spy
-        findFacSpy.mockRestore()
-      })
-      it('should be able to import the same product from multiple factories', () => {
-        // Import the scenario, which has two factories producing Iron Ingots, with an iron plate demanding one of each
-        const factories = create290Scenario().getFactories()
-        const ironIngotFac = findFacByName('Iron Ingots', factories)
-        const ironIngotFac2 = findFacByName('Iron Ingots 2', factories)
-        const ironPlatesFac = findFacByName('Iron Plates', factories)
-
-        // Calculate factories
-        calculateFactories(factories, gameData)
-
-        const importCandidates = calculatePossibleImports(factories[2], getExportableFactories(factories))
-
-        // Now check that we should be able to see the second iron rods fac in the list
-        const factoryResult = importFactorySelections(
-          1, // This simulates the user opening or viewing the input selection for the first input
-          importCandidates,
-          screwsFac,
-          factories
-        )
-        expect(factoryResult).toHaveLength(2)
-        expect(factoryResult[1].title).toBe('Iron Ingots 2')
-
-        // Now also check that the part for BOTH factories is showing up
-        const partResult = importPartSelections(ironIngotFac, ironPlatesFac, 0)
-        const partResult2 = importPartSelections(ironIngotFac2, ironPlatesFac, 1)
-        expect(partResult).toHaveLength(1)
-        expect(partResult2).toHaveLength(1)
-        expect(partResult[0]).toBe('IronIngot')
-        expect(partResult2[0]).toBe('IronIngot') // #290 bug was here where this was empty as it was already "selected".
-        expect(partResult[1]).toBeUndefined()
-      })
-      it('should not show parts that are not exportable', () => {
-        const factories = create315Scenario().getFactories()
-        const copperParts = findFacByName('Copper Parts Fac', factories)
-        const aluminiumPartsFac = findFacByName('Aluminium Parts Fac', factories)
-
-        // Calculate factories
-        calculateFactories(factories, gameData)
-
-        // Now check that we should NOT be able to select copper ingots from the copperPartsFac within aluminiumPartsFac.
-        const partResult = importPartSelections(copperParts, aluminiumPartsFac, 1)
-        expect(partResult[0]).toStrictEqual('CopperSheet')
-        expect(partResult[1]).toBeUndefined()
-      })
-    })
     describe('calculateAbleToImport', () => {
       let ingotFactory: Factory
       let fuelFactory: Factory

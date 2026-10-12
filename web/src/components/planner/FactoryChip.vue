@@ -10,15 +10,17 @@
        `preventDefault()`-cancelled checkbox click can lose a race against the browser's own
        revert-to-pre-click-state step, leaving the tick visually unchanged even though the state
        flipped.
-     - a jump button (on unless `jumpable` is false). Search leaves it off: the whole row jumps. -->
+     - a jump button (on unless `jumpable` is false). Search leaves it off: the whole row jumps.
+     A chip that only names a factory, with nothing to open, passes `clickable` false. -->
 <template>
   <v-chip
-    class="sf-chip sf-chip-clickable small factory factory-chip"
-    :class="{ selected }"
+    class="sf-chip small factory factory-chip"
+    :class="{ selected, 'sf-chip-clickable': clickable }"
     :color="selected ? 'primary' : ''"
+    :ripple="clickable"
     :style="{ '--group-color': factory.group?.color ?? UNGROUPED_COLOR }"
     :title="factory.group ? `Group: ${factory.group.name}` : 'Ungrouped'"
-    @click="emit('open')"
+    @click="clickable && emit('open')"
   >
     <input
       v-if="checked !== undefined"
@@ -64,6 +66,7 @@
     tickTitle?: string
     jumpTitle?: string
     jumpable?: boolean
+    clickable?: boolean
     selected?: boolean
   }>(), {
     checked: undefined,
@@ -71,6 +74,7 @@
     tickTitle: 'Mark as built',
     jumpTitle: 'Jump to this factory',
     jumpable: true,
+    clickable: true,
     selected: false,
   })
 

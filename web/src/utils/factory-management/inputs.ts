@@ -145,66 +145,6 @@ export const calculateImportCandidates = (factory: Factory, possibleImports: Fac
   })
 }
 
-// Gets the list of importCandidate factories but also injects the currently selected one as to not break the selector.
-export const importFactorySelections = (
-  inputIndex: number,
-  importCandidates: Factory[],
-  factory: Factory,
-  allFactories: Factory[]
-): { title: string; value: string | number }[] => {
-  // Clone the possible candidates array into a Map
-  const remainingFactories = new Map(importCandidates.map(fac => [fac.id, fac]))
-
-  // Inject the already selected factory otherwise it'll break the selector.
-  if (factory.inputs[inputIndex]?.factoryId) {
-    remainingFactories.set(
-      factory.inputs[inputIndex].factoryId, findFac(factory.inputs[inputIndex].factoryId, allFactories)
-    )
-  }
-
-  // Convert Map values to an array and map them to the required format
-  return Array.from(remainingFactories.values()).map(factory => ({
-    title: factory.name,
-    value: factory.id,
-  }))
-}
-
-// Gets the remaining parts to be selected for the input factory and filters out any parts that have already been selected.
-export const importPartSelections = (
-  inputFactory: Factory,
-  factory: Factory,
-  inputIndex: number,
-): string[] => {
-  const availableInputParts = new Set<string>()
-  const selectedFactoryParts = new Set<string>()
-  const partsWithRequirements = getPartsWithRequirements(factory)
-
-  // Construct the selectedFactoryParts map from the inputs of the factory
-  factory.inputs.forEach((input, index) => {
-    if (index === inputIndex) return // Don't include the current input
-    if (!input.outputPart) return // If there's no output part, skip
-    selectedFactoryParts.add(`${input.factoryId}-${input.outputPart}`)
-  })
-
-  // Go through the input factory's parts and see if they're available to be selected.
-  // Using Sets like this ensures uniqueness and prevents duplicate inputs.
-  Object.keys(inputFactory.parts).forEach(part => {
-    const selectedPartKey = `${inputFactory.id}-${part}`
-    const partData = inputFactory.parts[part]
-
-    if (
-      partsWithRequirements.includes(part) &&
-      !selectedFactoryParts.has(selectedPartKey) &&
-      partData.exportable
-    ) {
-      availableInputParts.add(part)
-    }
-  })
-
-  // availableInputParts is a set of parts that are available to be selected from the input factory. Return just the parts, the component will adjust it for the selector.
-  return Array.from(availableInputParts)
-}
-
 export const calculateAbleToImport = (factory: Factory, importCandidates: Factory[]): string | boolean => {
   if (
     factory.products.length === 0 &&

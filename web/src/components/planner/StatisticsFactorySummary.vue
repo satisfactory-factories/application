@@ -112,16 +112,16 @@
                   <td>
                     <!-- Named the way the summary's own Exports column names them, so the same
                          destination reads the same in both places. -->
-                    <v-chip
+                    <factory-chip
                       v-for="flow in exportsFor(product.partId)"
                       :key="`${product.partId}-to-${flow.factoryId}`"
-                      class="sf-chip factory flow-factory small"
-                      @click="goToFactoryFromDialog(flow.factoryId)"
+                      class="flow-factory"
+                      :factory="factoryById(flow.factoryId)"
+                      :jumpable="false"
+                      @open="goToFactoryFromDialog(flow.factoryId)"
                     >
-                      <factory-icon-display :icon="factoryIcon(flow.factoryId)" size="18" />
-                      <span class="ml-2">{{ factoryName(flow.factoryId) }}</span>
-                      <span class="ml-2 text-medium-emphasis">{{ formatNumber(flow.amount) }}/min</span>
-                    </v-chip>
+                      {{ factoryById(flow.factoryId).name }}<span class="ml-2 text-medium-emphasis">{{ formatNumber(flow.amount) }}/min</span>
+                    </factory-chip>
                   </td>
                 </tr>
               </tbody>
@@ -157,16 +157,16 @@
                   <td><b>{{ formatNumber(producedTotal(product.partId)) }}/min</b></td>
                   <td>
                     <!-- The factory to go and look at, which is the only actionable part of this. -->
-                    <v-chip
+                    <factory-chip
                       v-for="flow in producersFor(product.partId)"
                       :key="`${product.partId}-by-${flow.factoryId}`"
-                      class="sf-chip factory flow-factory small"
-                      @click="goToFactoryFromDialog(flow.factoryId)"
+                      class="flow-factory"
+                      :factory="factoryById(flow.factoryId)"
+                      :jumpable="false"
+                      @open="goToFactoryFromDialog(flow.factoryId)"
                     >
-                      <factory-icon-display :icon="factoryIcon(flow.factoryId)" size="18" />
-                      <span class="ml-2">{{ factoryName(flow.factoryId) }}</span>
-                      <span class="ml-2 text-medium-emphasis">{{ formatNumber(flow.amount) }}/min</span>
-                    </v-chip>
+                      {{ factoryById(flow.factoryId).name }}<span class="ml-2 text-medium-emphasis">{{ formatNumber(flow.amount) }}/min</span>
+                    </factory-chip>
                   </td>
                 </tr>
               </tbody>
@@ -554,11 +554,8 @@
   const exportedTotal = (partId: string) => sumAmounts(exportsFor(partId))
   const producedTotal = (partId: string) => sumAmounts(producersFor(partId))
 
-  const factoryName = (factoryId: number) =>
-    props.factories.find(factory => factory.id === factoryId)?.name ?? 'UNKNOWN'
-
-  const factoryIcon = (factoryId: number) =>
-    props.factories.find(factory => factory.id === factoryId)?.icon
+  const factoryById = (factoryId: number) =>
+    props.factories.find(factory => factory.id === factoryId) ?? { name: 'UNKNOWN' }
 
   // Spelled out rather than the sidebar's four-character figure: there is room for it here, and that
   // row only gets away with dropping the sign because its tooltip says which way it went.
@@ -653,16 +650,6 @@
 
     &.no-demand :deep(td) {
       background-color: var(--sf-status-warning-bg);
-    }
-
-    // Each factory reference is the app's factory chip, the same as the summary table's import and
-    // export cells use, rather than a bare line of text.
-    .flow-factory {
-      cursor: pointer;
-
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-      }
     }
   }
 
