@@ -303,13 +303,11 @@
       </div>
     </template>
     <template v-if="group.type === ItemType.Product && !isExtraction">
-      <div :class="{'w-100': partCount > 4 && lgAndDown}" />
-      <div :class="lgAndDown && partCount > 4 ? 'px-4' : 'px-1'">
+      <div class="px-1">
         <div>+</div>
         <div class="underchip">&nbsp;</div>
       </div>
     </template>
-    <!-- Spacer if there's too many items on small screens -->
     <template v-for="(_, part) in group.parts" :key="`${item.id}-${part}`">
       <div v-if="part.toString() !== item.id && !partIsByProduct(String(part), group.type)">
         <v-chip
@@ -347,9 +345,8 @@
         </div>
       </div>
     </template>
-    <!-- Spacer if there's too many items on big screens -->
-    <div :class="{'w-100': partCount > 4 && lgAndUp}" />
-    <div :class="partCount > 4 && lgAndUp ? 'px-4' : 'px-1'">
+    <!-- No forced break before the outputs: the row wraps on its own when it runs out of room. -->
+    <div class="px-1">
       <div>=</div>
       <div class="underchip">&nbsp;</div>
     </div>
@@ -462,7 +459,6 @@
   } from '@/interfaces/planner/FactoryInterface'
   import { getPartDisplayName } from '@/utils/helpers'
   import { sfColors } from '@/utils/colors'
-  import { useDisplay } from 'vuetify'
   import { fixTargetSuffix, formatMw, formatNumberFully } from '@/utils/numberFormatter'
   import { canBuildingOverclock, getBuildingDisplayName, isAlwaysSyncedBuilding } from '@/utils/factory-management/common'
   import {
@@ -508,8 +504,6 @@
   let updateRunId = 0
 
   const timeout = ref<NodeJS.Timeout | null>(null)
-
-  const { lgAndDown, lgAndUp } = useDisplay()
 
   const props = defineProps<{
     factory: Factory
@@ -766,10 +760,6 @@
       'text-byproduct': isByProduct,
     }
   }
-
-  const partCount = computed(() => {
-    return Object.values(props.group.parts).length
-  })
 
   const updateGroupPartsDebounce = (
     part: string
