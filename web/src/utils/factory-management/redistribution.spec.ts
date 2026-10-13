@@ -12,6 +12,7 @@ import {
 import { isImportRedundant } from '@/utils/factory-management/inputs'
 import { getFactoryStatuses } from '@/utils/factory-management/status'
 import { setSinkCount } from '@/utils/factory-management/disposal'
+import { addProductToFactory } from '@/utils/factory-management/products'
 import { checkFactorySyncState, setSyncState } from '@/utils/factory-management/syncState'
 
 let factories: Factory[]
@@ -87,10 +88,24 @@ describe('redistribution hubs (#46)', () => {
       expect(getUpstreamFactoryIds(hub, 'IronPlate', factories)).toEqual(new Set([ironFactory.id]))
     })
 
-    it('never offers a hub part back to the factory that feeds it', () => {
+    it('marks a hub as a loop for the factory that feeds it, listed after every real source', () => {
+      const other = newFactory('Other Plates', 3, 4)
+      addProductToFactory(other, { id: 'IronPlate', amount: 30, recipe: 'IronPlate' })
+      factories.push(other)
+      calculateFactories(factories, gameData)
+
       expect(wouldCreateLoop(ironFactory.id, hub, 'IronPlate', factories)).toBe(true)
-      expect(getImportSources(ironFactory, 'IronPlate', factories).map(source => source.factory.id))
-        .not.toContain(hub.id)
+      const sources = getImportSources(ironFactory, 'IronPlate', factories)
+      expect(sources.map(source => [source.factory.name, source.loop])).toEqual([
+        ['Other Plates', false],
+        ['Hub', true],
+      ])
+    })
+
+    it('keeps a part whose only source is a loop only when asked to', () => {
+      // The Iron Factory has no use for plates, so ask for any surplus.
+      expect(getImportableParts(ironFactory, factories, true)).not.toContain('IronPlate')
+      expect(getImportableParts(ironFactory, factories, true, true)).toContain('IronPlate')
     })
 
     it('follows hub-to-hub chains', () => {

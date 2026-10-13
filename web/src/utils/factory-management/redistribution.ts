@@ -86,11 +86,14 @@ export interface ImportSource {
   via: string[]
   // This factory already imports this part from the provider on another row.
   alreadyImported: boolean
+  // Importing from it would send the part round in a circle. Listed so the dialog can say why.
+  loop: boolean
 }
 
 /**
  * Every factory this one could import `part` from, for the import dialog. A hub is listed like any
- * other provider, with where its stock comes from. Factories that would close a loop are left out.
+ * other provider, with where its stock comes from. Factories that would close a loop are listed
+ * last, marked, so the dialog can refuse them with a reason.
  */
 export const getImportSources = (
   factory: Factory,
@@ -100,8 +103,7 @@ export const getImportSources = (
   return factories
     .filter(provider =>
       provider.id !== factory.id &&
-      provider.parts[part]?.exportable &&
-      !wouldCreateLoop(factory.id, provider, part, factories)
+      provider.parts[part]?.exportable
     )
     .map(provider => {
       const partData = provider.parts[part]
@@ -120,13 +122,16 @@ export const getImportSources = (
         alreadyImported: factory.inputs.some(input =>
           input.factoryId === provider.id && input.outputPart === part
         ),
+        loop: wouldCreateLoop(factory.id, provider, part, factories),
       }
     })
     // A factory that only passes the part on is offered when it has some to spare, or this factory
     // already takes from it. Otherwise every factory that imports iron plates would be listed as a
     // source of them, most with nothing left over.
     .filter(source => !passesOn(source.factory, part) || source.spare > 0 || source.alreadyImported)
-    .sort((a, b) => b.spare - a.spare || a.factory.name.localeCompare(b.factory.name))
+    .sort((a, b) =>
+      Number(a.loop) - Number(b.loop) || b.spare - a.spare || a.factory.name.localeCompare(b.factory.name)
+    )
 }
 
 // Its stock of this part is imported rather than made.
@@ -145,11 +150,13 @@ const isPartNeeded = (factory: Factory, part: string): boolean => {
 /**
  * The parts the import dialog offers. With `anySurplus` off, only what this factory actually needs;
  * on, any part another factory has spare, which is how a hub picks up stock it does not consume.
+ * `includeLoops` keeps a part whose only sources would close a loop, so the dialog can explain it.
  */
 export const getImportableParts = (
   factory: Factory,
   factories: Factory[],
-  anySurplus: boolean
+  anySurplus: boolean,
+  includeLoops = false
 ): string[] => {
   const parts = new Set<string>()
 
@@ -158,7 +165,7 @@ export const getImportableParts = (
     Object.keys(provider.parts).forEach(part => {
       if (!provider.parts[part].exportable) return
       if (!anySurplus && !isPartNeeded(factory, part)) return
-      if (wouldCreateLoop(factory.id, provider, part, factories)) return
+      if (!includeLoops && wouldCreateLoop(factory.id, provider, part, factories)) return
       if (passesOn(provider, part) && !(provider.parts[part].amountRemaining > 0)) return
       parts.add(part)
     })

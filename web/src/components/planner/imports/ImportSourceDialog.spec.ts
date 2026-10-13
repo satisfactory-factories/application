@@ -10,6 +10,7 @@ import { addProductToFactory } from '@/utils/factory-management/products'
 import { useAppStore } from '@/stores/app-store'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { create46Scenario } from '@/utils/factory-setups/46-redistribution-hub'
 
 const STORAGE_KEY = 'importFilterByDemand'
 
@@ -76,5 +77,37 @@ describe('ImportSourceDialog demand filter', () => {
 
     expect(filterInput().checked).toBe(false)
     expect(localStorage.getItem(STORAGE_KEY)).toBe('true')
+  })
+})
+
+describe('ImportSourceDialog loop sources', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('lists a source that would close a loop in red, and will not import from it', async () => {
+    setActivePinia(createPinia())
+    const factories = create46Scenario().getFactories()
+    const [, hub, reinforced] = factories
+    // Over-import so Reinforced Plates has plates to pass on, all of them from the Hub.
+    reinforced.inputs[0].amount = 80
+    calculateFactories(factories, useGameDataStore().getGameData())
+    useAppStore().getFactories = () => factories
+
+    // Re-pointing the Hub's own plate import.
+    const wrapper = mount(ImportSourceDialog, {
+      props: { factory: hub, inputIndex: 0, modelValue: true },
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const loopRow = document.body.querySelector('.import-source-' + reinforced.id)!
+    expect(loopRow.querySelector('[data-testid="import-source-loop"]')?.textContent?.trim())
+      .toBe('Unable to import: Will create loop')
+    expect(loopRow.querySelector('button')?.hasAttribute('disabled')).toBe(true)
+    expect(document.body.querySelector('.import-source-' + factories[0].id + ' [data-testid="import-source-loop"]'))
+      .toBeNull()
+    expect(wrapper.emitted('select')).toBeUndefined()
   })
 })

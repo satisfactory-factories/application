@@ -8,6 +8,7 @@ import { cleanDisposalCount, isEmptyDisposal } from '@/utils/factory-management/
 import { repairFactoryGroups } from '@/utils/factory-management/factory-groups'
 import type { EventReason } from 'common'
 import { recordEvent } from '@/utils/record-event'
+import { wouldCreateLoop } from '@/utils/factory-management/redistribution'
 
 const repair = (factory: Factory, reason: EventReason, summary: string): StructuralRepair => {
   // Kept alongside the dialog: the console line carries the IDs, which are noise to the
@@ -233,6 +234,40 @@ export const repairDependencyChain = (factories: Factory[], gameData: DataInterf
   return repairs
 }
 
+// The import dialog refuses a source that would send a part round in a circle, but a share link,
+// a hand-edit or two people editing a room at once can still carry one. Left in, every factory
+// on the loop reads as supplied by the others with nothing being made. Inputs are removed one at
+// a time against the plan as it stands, so only the link that closes each loop goes.
+export const repairImportLoops = (factories: Factory[], gameData: DataInterface): StructuralRepair[] => {
+  const repairs: StructuralRepair[] = []
+  const partName = (part: string) => getPartDisplayNameWithoutDataStore(part, gameData)
+
+  factories.forEach(factory => {
+    factory.inputs.forEach(input => {
+      const provider = input.factoryId ? findFac(input.factoryId, factories) : undefined
+      if (!provider || !input.outputPart || !wouldCreateLoop(factory.id, provider, input.outputPart, factories)) {
+        return
+      }
+
+      const part = input.outputPart
+      factory.inputs = rawArray(factory.inputs.filter(other => other !== input))
+      const requests = provider.dependencies?.requests?.[factory.id]
+      if (requests) {
+        const kept = requests.filter(request => request.part !== part)
+        if (kept.length) {
+          provider.dependencies.requests[factory.id] = rawArray(kept)
+        } else {
+          delete provider.dependencies.requests[factory.id]
+        }
+      }
+
+      repairs.push(repair(factory, 'plan_repair_import_loop', `Imported ${partName(part)} from "${provider.name}", which gets its ${partName(part)} from this factory, so neither was really supplied. The import has been removed.`))
+    })
+  })
+
+  return repairs
+}
+
 // Repairs everything wrong with a loaded plan that can be put right automatically, and
 // returns what it corrected so the user can be told. An empty list means the plan was clean.
 export const validateFactories = (
@@ -316,6 +351,10 @@ export const validateFactories = (
       }
     })
   })
+
+  // Once the inputs are sane, and before the chain is reconciled, so a removed loop leaves no
+  // export behind to be reported a second time.
+  repairs.push(...repairImportLoops(factories, gameData))
 
   // Last, once every factory has a unique ID and its inputs are sane, so the chain is being
   // reconciled against data that can be trusted.

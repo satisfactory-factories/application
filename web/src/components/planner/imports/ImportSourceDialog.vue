@@ -74,7 +74,7 @@
         :class="`import-source-${source.factory.id}`"
         :data-source-name="source.factory.name"
         data-testid="import-source"
-        :disabled="source.alreadyImported && source.factory.id !== currentFactoryId"
+        :disabled="unavailable(source)"
       >
         <template #prepend>
           <factory-icon-display class="mr-3" :icon="source.factory.icon" size="32" />
@@ -90,14 +90,17 @@
           </v-chip>
         </v-list-item-title>
         <v-list-item-subtitle>
-          <span :class="source.spare > 0 ? 'text-green' : 'text-red'">
+          <span v-if="source.loop" class="text-red" data-testid="import-source-loop">
+            Unable to import: Will create loop
+          </span>
+          <span v-else :class="source.spare > 0 ? 'text-green' : 'text-red'">
             {{ formatNumber(source.spare) }}/min spare
           </span>
         </v-list-item-subtitle>
         <template #append>
           <v-btn
             color="primary"
-            :disabled="source.alreadyImported && source.factory.id !== currentFactoryId"
+            :disabled="unavailable(source)"
             size="small"
             :title="`Import ${partName} from ${source.factory.name}`"
             variant="tonal"
@@ -175,9 +178,9 @@
 
   const allItems = computed(() => {
     const factories = getFactories()
-    const needed = new Set(getImportableParts(props.factory, factories, false))
+    const needed = new Set(getImportableParts(props.factory, factories, false, true))
     const byName = (a: { title: string }, b: { title: string }) => a.title.localeCompare(b.title)
-    const items = getImportableParts(props.factory, factories, true)
+    const items = getImportableParts(props.factory, factories, true, true)
       .map(part => ({ title: getPartDisplayName(part), value: part, needed: needed.has(part) }))
 
     return [
@@ -207,8 +210,12 @@
     return getImportSources(props.factory, selectedPart.value, getFactories())
   })
 
+  // A loop is refused even on the row being re-pointed: keeping it would keep the loop.
+  const unavailable = (source: ImportSource) =>
+    source.loop || (source.alreadyImported && source.factory.id !== currentFactoryId.value)
+
   const choose = (source: ImportSource) => {
-    if (!selectedPart.value) return
+    if (!selectedPart.value || unavailable(source)) return
     emit('select', { factoryId: source.factory.id, part: selectedPart.value, spare: source.spare })
     isOpen.value = false
   }

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Factory, FactoryItem } from '@/interfaces/planner/FactoryInterface'
-import { newFactory } from '@/utils/factory-management/factory'
+import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
+import { create46Scenario } from '@/utils/factory-setups/46-redistribution-hub'
 import { validateFactories } from '@/utils/factory-management/validation'
 import { addInputToFactory } from '@/utils/factory-management/inputs'
 import { gameData } from '@/utils/gameData'
@@ -254,6 +255,47 @@ describe('validation', () => {
       validateFactories([factory], gameData)
 
       expect(factory.partDisposal).toEqual({ CopperIngot: { sinks: 2, depots: 0 } })
+    })
+  })
+
+  describe('import loops (#46)', () => {
+    it('should remove the import that closes a loop and keep the real supply', () => {
+      const scenario = create46Scenario().getFactories()
+      calculateFactories(scenario, gameData)
+      const [ironFactory, hub] = scenario
+      // Saved from somewhere the import dialog could not stop it: the producer topping up from its own hub.
+      addInputToFactory(ironFactory, { factoryId: hub.id, outputPart: 'IronPlate', amount: 20 })
+      hub.dependencies.requests[ironFactory.id] = [{ requestingFactoryId: ironFactory.id, part: 'IronPlate', amount: 20 }]
+
+      const repairs = validateFactories(scenario, gameData)
+
+      expect(ironFactory.inputs).toEqual([])
+      expect(hub.dependencies.requests[ironFactory.id]).toBeUndefined()
+      expect(hub.inputs).toHaveLength(1)
+      expect(ironFactory.dependencies.requests[hub.id]).toHaveLength(1)
+      expect(repairs).toHaveLength(1)
+      expect(repairs[0].reason).toBe('plan_repair_import_loop')
+      expect(repairs[0].factoryName).toBe('Iron Factory')
+    })
+
+    it('should not let a pair of factories feeding each other supply anything', () => {
+      const first = newFactory('First', 0, 1)
+      const second = newFactory('Second', 1, 2)
+      const factories = [first, second]
+      addInputToFactory(first, { factoryId: second.id, outputPart: 'IronPlate', amount: 100 })
+      addInputToFactory(second, { factoryId: first.id, outputPart: 'IronPlate', amount: 100 })
+      first.dependencies.requests[second.id] = [{ requestingFactoryId: second.id, part: 'IronPlate', amount: 100 }]
+      second.dependencies.requests[first.id] = [{ requestingFactoryId: first.id, part: 'IronPlate', amount: 100 }]
+
+      const repairs = validateFactories(factories, gameData)
+      calculateFactories(factories, gameData)
+
+      expect(repairs.map(entry => entry.reason)).toEqual(['plan_repair_import_loop'])
+      expect(first.inputs).toEqual([])
+      // The other import then has nothing behind it, and the engine drops it as it always has.
+      expect(second.inputs).toEqual([])
+      expect(first.requirementsSatisfied).toBe(true)
+      expect(second.requirementsSatisfied).toBe(true)
     })
   })
 

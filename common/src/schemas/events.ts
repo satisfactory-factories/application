@@ -25,6 +25,7 @@ export const EVENT_REASONS = [
   'plan_repair_import_amount_nonpositive',
   'plan_repair_import_orphaned',
   'plan_repair_import_self_reference',
+  'plan_repair_import_loop',
   'plan_repair_product_entry_null',
   'plan_repair_product_amount_nonpositive',
   'plan_repair_part_entry_missing',
