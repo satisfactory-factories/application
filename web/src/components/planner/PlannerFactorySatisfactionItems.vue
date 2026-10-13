@@ -631,7 +631,7 @@
     isChecklistExportComplete,
     isChecklistExportDesynced,
   } from '@/utils/factory-management/checklist'
-  import { toggleChecklistExportWithOffer } from '@/composables/useLinkedImportTick'
+  import { toggleChecklistExportWithOffer } from '@/composables/useLinkedTick'
   import { formatNumber } from '@/utils/numberFormatter'
   import { AsBuiltSource, getAsBuiltDifferences } from '@/utils/factory-management/building-groups/as-built'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
