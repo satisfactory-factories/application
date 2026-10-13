@@ -14,7 +14,6 @@
     <v-table v-if="factory.inputs.length" class="imports-table sub-card border-md rounded mb-2">
       <thead>
         <tr>
-          <th class="delete-col" />
           <th class="item-col text-h6">
             <i class="fas fa-box" /><span class="ml-2">Item</span>
           </th>
@@ -27,7 +26,8 @@
           <th class="share-col text-h6">
             <i class="fas fa-chart-pie" /><span class="ml-2">Share of supply</span>
           </th>
-          <th />
+          <th class="fix-col" />
+          <th class="delete-col" />
         </tr>
       </thead>
       <tbody>
@@ -37,17 +37,6 @@
           :key="inputIndex"
           class="status-anchor selectors"
         >
-          <td class="delete-col">
-            <v-btn
-              class="rounded"
-              color="red"
-              icon="fas fa-trash"
-              size="small"
-              title="Delete this import"
-              variant="outlined"
-              @click="deleteInput(inputIndex, factory)"
-            />
-          </td>
           <td class="item-col">
             <!-- Drawn exactly as a product's Item field (icon beside an outlined "Item" select), but
                  read-only: a click opens the import dialog, where the filtering lives. -->
@@ -104,7 +93,6 @@
                 v-model="input.amount"
                 aria-label="Qty /min"
                 control-variant="stacked"
-                density="compact"
                 :disabled="!input.outputPart"
                 hide-details
                 :name="`${input.factoryId}-${input.outputPart}.amount`"
@@ -121,12 +109,12 @@
               :share="importShare(inputIndex)!"
             />
           </td>
-          <td>
+          <td class="fix-col">
             <!-- Need and Capacity are the two questions an import row can be sized against: what this
                  factory wants, and what the supplier can actually give. Every button here names which
                  one it answers, because asking a supplier for more than it makes is a valid thing to
                  do deliberately and used to be the only thing Satisfy could do. -->
-            <div class="d-flex align-center flex-wrap ga-2">
+            <div class="d-flex align-center ga-2">
               <v-btn
                 v-show="requirementSatisfied(factory, input.outputPart) && showInputOverflow(factory, input.outputPart)"
                 class="rounded"
@@ -190,6 +178,17 @@
                 <span class="ml-2">Redundant!</span>
               </v-chip>
             </div>
+          </td>
+          <td class="delete-col">
+            <v-btn
+              class="rounded"
+              color="red"
+              icon="fas fa-trash"
+              size="small"
+              title="Delete this import"
+              variant="outlined"
+              @click="deleteInput(inputIndex, factory)"
+            />
           </td>
         </tr>
       </tbody>
@@ -553,13 +552,13 @@
       padding-top: 8px !important;
     }
 
-    // Every column but the last shrinks to its widest row and never truncates, so every row lines
-    // up and nothing is cut off; the fix buttons take whatever width is left.
+    // Every column but Share of supply shrinks to its widest row and never truncates, so every row
+    // lines up and nothing is cut off; Share of supply takes whatever width is left.
     .delete-col,
     .item-col,
     .from-col,
     .qty-col,
-    .share-col {
+    .fix-col {
       white-space: nowrap;
       width: 1%;
     }
@@ -593,11 +592,11 @@
       width: 130px;
     }
 
-    // The item button and the factory chip are the same height, and every chip fills the column,
-    // so the From column reads as one block as wide as its longest factory name.
+    // The item field, the factory chip and the quantity are all 56px tall, and every chip fills
+    // the column, so the From column reads as one block as wide as its longest factory name.
     .from-col :deep(.v-chip) {
       font-size: 0.95rem;
-      height: 40px;
+      height: 56px;
       width: 100%;
     }
   }
