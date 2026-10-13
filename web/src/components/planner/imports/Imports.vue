@@ -37,7 +37,7 @@
             :class="{ desynced: isInputChecklistDesynced(input) }"
             :title="checklistTickTitle(inputChecklistDesync(input), 'Mark this import as built')"
             type="checkbox"
-            @click.prevent="toggleChecklistInput(factory, input)"
+            @click.prevent="toggleChecklistInputWithOffer(factory, input, input.factoryId ? findFactory(input.factoryId) : undefined)"
           >
         </div>
         <div class="input-row d-flex align-center">
@@ -241,8 +241,8 @@
     checklistTickTitle,
     inputChecklistDesync,
     isInputChecklistDesynced,
-    toggleChecklistInput,
   } from '@/utils/factory-management/checklist'
+  import { toggleChecklistInputWithOffer } from '@/composables/useLinkedTick'
   import { productRowId } from '@/utils/factory-management/products'
   import { useDebouncedAction } from '@/composables/useDebouncedAction'
   import { markFactoryEdited } from '@/utils/sync-intent'

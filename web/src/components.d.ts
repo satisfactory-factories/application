@@ -64,7 +64,7 @@ declare module 'vue' {
     KoFi: typeof import('./components/ko-fi.vue')['default']
     LastUpdatedIndicator: typeof import('./components/planner/LastUpdatedIndicator.vue')['default']
     LegacyRecoveryDialog: typeof import('./components/sync/LegacyRecoveryDialog.vue')['default']
-    LinkedImportTickDialog: typeof import('./components/planner/LinkedImportTickDialog.vue')['default']
+    LinkedTickDialog: typeof import('./components/planner/LinkedTickDialog.vue')['default']
     MediaPlayer: typeof import('./components/common/MediaPlayer.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     NewTabDialog: typeof import('./components/sync/NewTabDialog.vue')['default']

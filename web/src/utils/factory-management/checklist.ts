@@ -67,12 +67,15 @@ export const toggleChecklistExport = (
 
 // Linked ticks: an export and the import it feeds are the same belt (or train, or drone route)
 // seen from either end, so ticking one and not the other leaves the plan claiming half a link is
-// built. When an export flips, the planner offers to flip the matching import on the destination
-// as well. Only an offer: nothing on the destination changes until the player confirms.
+// built. When either end flips, the planner offers to flip the other end as well: ticking an
+// export offers the matching import on the destination, and ticking an import offers the matching
+// export on the source. Only an offer: nothing on the other factory changes until the player
+// confirms.
 //
-// The import side is FactoryInput.completed, which is kept whether or not the destination has
-// checklist mode on. A player who declines to turn the checklist on there still gets the import
-// stored as ticked, and it is already showing as built the day they do turn it on.
+// Both ends are stored whether or not the other factory has checklist mode on (the import is
+// FactoryInput.completed, the export is checklistExports). A player who declines to turn the
+// checklist on there still gets the tick stored, and it is already showing as built the day they
+// do turn it on.
 //
 // Several import rows can name the same (source, part) pair, so every one of them is a match.
 export const linkedImportsForExport = (
@@ -85,15 +88,33 @@ export const linkedImportsForExport = (
     String(input.factoryId) === String(sourceFactoryId) &&
     input.outputPart === part)
 
-export interface LinkedImportTickOffer {
-  // What the export was just set to, and so what the imports would be set to.
+// The export a destination's import of `part` is drawing on, as the source's dependency engine
+// sees it. Null when the source has no such request (the import was just pointed at it and the
+// factories have not been recalculated, or the source cannot make it at all).
+export const linkedExportRequest = (
+  source: Factory,
+  destinationFactoryId: number | string,
+  part: string
+) =>
+  getRequestsForFactory(source).find(request =>
+    String(request.requestingFactoryId) === String(destinationFactoryId) && request.part === part) ?? null
+
+export interface LinkedTickOffer {
+  // What the ticked end was just set to, and so what the other end would be set to.
   completed: boolean
-  // How many matching import rows would change. Rows already in that state are left out, and
-  // when none would change the dialog offers only the checklist.
-  importCount: number
-  // Ticking an export into a factory with checklist mode off: the player most likely wants it on
-  // there too. Never offered on an untick, which is a step back rather than a sign of interest.
+  // How many rows on the other end would change: matching import rows, or the one export. Rows
+  // already in that state are left out, and when none would change the dialog offers only the
+  // checklist.
+  count: number
+  // Ticking into a factory with checklist mode off: the player most likely wants it on there too.
+  // Never offered on an untick, which is a step back rather than a sign of interest.
   offerEnableChecklist: boolean
+}
+
+const linkedTickOffer = (other: Factory, completed: boolean, count: number): LinkedTickOffer | null => {
+  const offerEnableChecklist = completed && !other.checklistEnabled
+  if (count === 0 && !offerEnableChecklist) return null
+  return { completed, count, offerEnableChecklist }
 }
 
 // What, if anything, to offer after an export has been set to `exportComplete`. Null when there
@@ -103,33 +124,48 @@ export const linkedImportTickOffer = (
   sourceFactoryId: number | string,
   part: string,
   exportComplete: boolean
-): LinkedImportTickOffer | null => {
+): LinkedTickOffer | null => {
   const linked = linkedImportsForExport(destination, sourceFactoryId, part)
   if (linked.length === 0) return null
-  const importCount = linked.filter(input => !!input.completed !== exportComplete).length
-  const offerEnableChecklist = exportComplete && !destination.checklistEnabled
-  if (importCount === 0 && !offerEnableChecklist) return null
-  return { completed: exportComplete, importCount, offerEnableChecklist }
+  return linkedTickOffer(
+    destination,
+    exportComplete,
+    linked.filter(input => !!input.completed !== exportComplete).length
+  )
 }
 
-export interface LinkedImportTickChoice {
-  // Set the matching imports to `completed`.
-  tickImports: boolean
+// The reverse: what to offer the source after an import has been set to `importComplete`. Null
+// when the source has no matching export, or it already agrees and there is no checklist to turn
+// on.
+export const linkedExportTickOffer = (
+  source: Factory,
+  destinationFactoryId: number | string,
+  part: string,
+  importComplete: boolean
+): LinkedTickOffer | null => {
+  if (!linkedExportRequest(source, destinationFactoryId, part)) return null
+  const agrees = isChecklistExportComplete(source, destinationFactoryId, part) === importComplete
+  return linkedTickOffer(source, importComplete, agrees ? 0 : 1)
+}
+
+export interface LinkedTickChoice {
+  // Set the other end to `completed`.
+  tick: boolean
   enableChecklist: boolean
 }
 
-// The player confirmed the offer. Re-derives the matching rows rather than trusting a list taken
-// when the dialog opened, since a peer's edit can replace the inputs array in the meantime.
-// Ticking stamps the desync baseline the same way a direct tick of the import does.
+// The player confirmed an export's offer. Re-derives the matching rows rather than trusting a
+// list taken when the dialog opened, since a peer's edit can replace the inputs array in the
+// meantime. Ticking stamps the desync baseline the same way a direct tick of the import does.
 export const applyLinkedImportTick = (
   destination: Factory,
   sourceFactoryId: number | string,
   part: string,
   completed: boolean,
-  choice: LinkedImportTickChoice
+  choice: LinkedTickChoice
 ): void => {
-  if (!choice.tickImports && !choice.enableChecklist) return
-  if (choice.tickImports) {
+  if (!choice.tick && !choice.enableChecklist) return
+  if (choice.tick) {
     linkedImportsForExport(destination, sourceFactoryId, part).forEach(input => {
       if (!!input.completed === completed) return
       input.completed = completed
@@ -142,6 +178,30 @@ export const applyLinkedImportTick = (
     destination.checklistEnabled = true
   }
   markFactoryEdited(destination)
+}
+
+// The player confirmed an import's offer. Ticking stamps the export's desync baseline with the
+// amount the source is currently asked for, as a direct tick of the export does.
+export const applyLinkedExportTick = (
+  source: Factory,
+  destinationFactoryId: number | string,
+  part: string,
+  completed: boolean,
+  choice: LinkedTickChoice
+): void => {
+  if (!choice.tick && !choice.enableChecklist) return
+  if (choice.tick && isChecklistExportComplete(source, destinationFactoryId, part) !== completed) {
+    const request = linkedExportRequest(source, destinationFactoryId, part)
+    const key = checklistExportKey(destinationFactoryId, part)
+    source.checklistExports[key] = completed
+    if (completed && request) {
+      source.checklistExportSyncedAmounts[key] = request.amount
+    }
+  }
+  if (choice.enableChecklist) {
+    source.checklistEnabled = true
+  }
+  markFactoryEdited(source)
 }
 
 export const toggleChecklistProduct = (factory: Factory, product: FactoryItem): void => {

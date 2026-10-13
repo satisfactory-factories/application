@@ -198,7 +198,7 @@
                         :factory="findFactory(entry.input.factoryId)"
                         @jump="navigateToFactory(entry.input.factoryId)"
                         @open="navigateToFactory(entry.input.factoryId)"
-                        @toggle="toggleChecklistInput(factory, entry.input)"
+                        @toggle="toggleChecklistInputWithOffer(factory, entry.input, findFactory(entry.input.factoryId))"
                       />
                       <template v-else>
                         <input
@@ -285,7 +285,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
-  import { toggleChecklistExportWithOffer } from '@/composables/useLinkedImportTick'
+  import { toggleChecklistExportWithOffer, toggleChecklistInputWithOffer } from '@/composables/useLinkedTick'
   import {
     acknowledgeChecklistDesyncs,
     checklistChipClass,
