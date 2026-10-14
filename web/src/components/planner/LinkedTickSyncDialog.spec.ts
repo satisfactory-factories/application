@@ -68,11 +68,11 @@ describe('LinkedTickSyncDialog', () => {
     await flushPromises()
   }
 
-  it('lists the out of step links after a load', async () => {
+  it('lists the out of sync links after a load', async () => {
     await load()
 
     const text = dialogText()
-    expect(text).toContain('Imports and exports out of step')
+    expect(text).toContain('Imports and exports out of sync')
     expect(text).toContain('Steel MegaFac')
     expect(text).toContain('SAM Processing')
     expect(text).toContain('Import ticked')
@@ -103,6 +103,61 @@ describe('LinkedTickSyncDialog', () => {
     expect(factories[1].inputs[0].completed).toBe(false)
   })
 
+  it('fixes only the links left selected, and remembers the rest as left as is', async () => {
+    const [source, destination] = factories
+    const second = newFactory('Phase 3', 2, 3)
+    const input = { factoryId: source.id, outputPart: 'SteelPlate', amount: 90, completed: true }
+    second.inputs.push(input)
+    second.checklistEnabled = true
+    updateDependency(second, source, input)
+    factories.push(second)
+    await load()
+
+    const ticks = [...document.body.querySelectorAll<HTMLInputElement>('.linked-tick-sync-row input')]
+    expect(ticks).toHaveLength(2)
+    expect(ticks.every(t => t.checked)).toBe(true)
+    // Untick the second link, then fix.
+    ticks[1].click()
+    await flushPromises()
+    button('linked-tick-sync-tick')?.click()
+    await flushPromises()
+
+    expect(isChecklistExportComplete(source, destination.id, 'SteelPipe')).toBe(true)
+    expect(isChecklistExportComplete(source, second.id, 'SteelPlate')).toBe(false)
+
+    await load()
+    expect(isOpen()).toBe(false)
+  })
+
+  it('selects by which end is ticked, all or none', async () => {
+    const [source, destination] = factories
+    source.checklistEnabled = true
+    source.checklistExports[checklistExportKey(destination.id, 'Wire')] = true
+    destination.inputs.push({ factoryId: source.id, outputPart: 'Wire', amount: 30 })
+    await load()
+
+    const checked = () => [...document.body.querySelectorAll<HTMLInputElement>('.linked-tick-sync-row input')]
+      .map(t => t.checked)
+    expect(dialogText()).toContain('Import ticked, export not')
+    expect(dialogText()).toContain('Export ticked, import not')
+
+    button('linked-tick-sync-select-none')?.click()
+    await flushPromises()
+    expect(checked()).toEqual([false, false])
+
+    button('linked-tick-sync-select-exports')?.click()
+    await flushPromises()
+    expect(checked()).toEqual([false, true])
+
+    button('linked-tick-sync-select-imports')?.click()
+    await flushPromises()
+    expect(checked()).toEqual([true, false])
+
+    button('linked-tick-sync-select-all')?.click()
+    await flushPromises()
+    expect(checked()).toEqual([true, true])
+  })
+
   it('does not raise the same links again once they were left as is', async () => {
     await load()
     button('linked-tick-sync-leave')?.click()
@@ -122,6 +177,6 @@ describe('LinkedTickSyncDialog', () => {
     appStore.planRepairs = []
     await flushPromises()
 
-    expect(dialogText()).toContain('Imports and exports out of step')
+    expect(dialogText()).toContain('Imports and exports out of sync')
   })
 })
