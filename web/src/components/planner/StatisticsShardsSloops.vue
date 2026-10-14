@@ -80,10 +80,10 @@
                 @click="navigateToFactory(entry.factory.id)"
               >
                 <td>
-                  <v-chip class="sf-chip small factory">
-                    <i class="fas fa-industry" />
-                    <b class="ml-2">{{ entry.factory.name }}</b>
-                  </v-chip>
+                  <!-- The whole row opens the factory, so the chip only names it. -->
+                  <factory-chip :clickable="false" :factory="entry.factory" :jumpable="false">
+                    <b>{{ entry.factory.name }}</b>
+                  </factory-chip>
                 </td>
                 <td class="text-right"><b>{{ formatNumber(entry.amount) }}</b></td>
               </tr>

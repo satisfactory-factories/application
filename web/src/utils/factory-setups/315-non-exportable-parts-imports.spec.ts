@@ -29,9 +29,10 @@ describe('315 Scenario Plan', () => {
       expect(aluminiumPartsFac.products[1].amount).toBe(50)
       expect(aluminiumPartsFac.products[1].recipe).toBe('AluminumSheet')
     })
-    // It should not have three imports (one in the scenario is purposefully invalid on a non-exportable part)
+    // #315 originally removed the third import, of Copper Ingots from a factory that only imports
+    // them. Since #46 any factory can pass on what it imports, so that import now stands.
     it('should contain the correct inputs', () => {
-      expect(aluminiumPartsFac.inputs.length).toBe(2)
+      expect(aluminiumPartsFac.inputs.length).toBe(3)
       expect(aluminiumPartsFac.inputs[0]).toEqual({
         factoryId: copperIngots.id,
         outputPart: 'CopperIngot',
@@ -42,6 +43,12 @@ describe('315 Scenario Plan', () => {
         factoryId: copperParts.id,
         outputPart: 'CopperSheet',
         amount: 30,
+        completed: false,
+      })
+      expect(aluminiumPartsFac.inputs[2]).toEqual({
+        factoryId: copperParts.id,
+        outputPart: 'CopperIngot',
+        amount: 100,
         completed: false,
       })
     })

@@ -22,7 +22,6 @@
     </v-chip>
 
     <v-switch
-      class="offline-switch"
       color="orange"
       data-testid="offline-switch"
       density="compact"
@@ -430,10 +429,6 @@
   // tray — the username, the connection chip, the tabs, the body copy — starts at one x,
   // and the switch alone poked out of that column. Nudged back by the thumb's overhang
   // rather than the track's: the thumb is the high-contrast edge the eye lines up on.
-  .offline-switch {
-    margin-left: 6px;
-  }
-
   // The same two-row/two-column grid CloudPlanRow lays its cards out on, so the two
   // tabs of this panel agree. Kept in step by hand: scoped styles cannot be shared, and
   // one small grid in two files beat a third component for a purely visual layout.

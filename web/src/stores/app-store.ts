@@ -698,6 +698,13 @@ export const useAppStore = defineStore('app', () => {
           needsCalculation = true
         }
 
+        // For #46: plans saved before imports became exportable stored false, and a plan with
+        // current figures is not recalculated, so its hubs would never be offered as sources.
+        if (factory.parts[part].amountSuppliedViaInput > 0 && !factory.parts[part].exportable) {
+          factory.parts[part].exportable = true
+          needsCalculation = true
+        }
+
         // Patch for #431
         // Raw resource supply used to be double counted when the part was also supplied via
         // inputs or production (e.g. unpackaging Packaged Oil into Crude Oil). Detect the

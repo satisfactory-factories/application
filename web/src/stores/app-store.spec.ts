@@ -18,6 +18,7 @@ import { useGameDataStore } from '@/stores/game-data-store'
 import { config } from '@/config/config'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { create485Scenario } from '@/utils/factory-setups/485-drifted-plan'
+import { create46Scenario } from '@/utils/factory-setups/46-redistribution-hub'
 import { refuseLocalStorageWrites } from '../../testing/storage'
 import { resetStorageWarning } from '@/utils/safe-storage'
 
@@ -192,6 +193,18 @@ describe('app-store', () => {
       expect(factory.parts.CopperIngot.amountRequiredPower).toBe(0)
       expect(factory.parts.CopperIngot.amountSuppliedViaRaw).toBe(0)
       expect(factory.parts.CopperIngot.exportable).toBe(true)
+    })
+
+    it('#46: should make an imported part exportable in a plan saved before hubs existed', () => {
+      const hubFactories = create46Scenario().getFactories()
+      calculateFactories(hubFactories, gameData)
+      const hub = hubFactories[1]
+      // What a build from before #46 saved for a part the hub only imports.
+      hub.parts.IronPlate.exportable = false
+
+      appStore.initFactories(hubFactories)
+
+      expect(hub.parts.IronPlate.exportable).toBe(true)
     })
 
     it('#431: should recalculate factories with double counted raw resource supply', () => {

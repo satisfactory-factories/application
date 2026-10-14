@@ -25,10 +25,7 @@
           </span>
         </v-chip>
         <span>{{ isImport ? 'into' : 'from' }}</span>
-        <v-chip class="sf-chip small factory no-margin">
-          <factory-icon-display :icon="target.icon" size="20" />
-          <span class="ml-2">{{ target.name }}</span>
-        </v-chip>
+        <factory-chip class="no-margin" :clickable="false" :factory="target" :jumpable="false" />
       </div>
       <v-switch
         v-if="current.offer.offerEnableChecklist"
@@ -41,10 +38,7 @@
       >
         <template #label>
           <span class="mr-2">Turn on the checklist for</span>
-          <v-chip class="sf-chip small factory no-margin">
-            <factory-icon-display :icon="target.icon" size="20" />
-            <span class="ml-2">{{ target.name }}</span>
-          </v-chip>
+          <factory-chip class="no-margin" :clickable="false" :factory="target" :jumpable="false" />
         </template>
       </v-switch>
       <v-switch

@@ -68,6 +68,14 @@
                   <v-chip v-if="showExportedChip(factory, partId.toString())" class="sf-chip factory x-small mr-2">
                     <i class="fas fa-truck-container mr-1" />Exported
                   </v-chip>
+                  <v-tooltip v-if="isPartRedistributed(factory, partId.toString())" bottom>
+                    <template #activator="{ props: activatorProps }">
+                      <v-chip v-bind="activatorProps" class="sf-chip blue x-small mr-2">
+                        <i class="fas fa-random mr-1" /><span class="mr-1">Redistributed</span> <i class="fas fa-info-circle" />
+                      </v-chip>
+                    </template>
+                    <span>This factory is a distribution hub for this item: it imports it from {{ getRedistributionSourceNames(factory, partId.toString(), appStore.getFactories()).join(', ') }} and passes it on to the factories that import it from here.</span>
+                  </v-tooltip>
                   <v-chip v-if="showManuallyGatheredChip(factory, partId.toString())" class="sf-chip hand-gathered x-small mr-2">
                     <i class="fas fa-hands mr-1" />Manually gathered
                   </v-chip>
@@ -530,7 +538,7 @@
                   :key="`${partId}-${request.requestingFactoryId}`"
                   class="d-inline-flex align-center"
                 >
-                  <checklist-factory-chip
+                  <factory-chip
                     :checked="factory.checklistEnabled ? isChecklistExportComplete(factory, request.requestingFactoryId, partId.toString()) : undefined"
                     :desynced="isChecklistExportDesynced(factory, request.requestingFactoryId, partId.toString(), request.amount)"
                     :factory="findFactory(request.requestingFactoryId)"
@@ -542,7 +550,7 @@
                     @toggle="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
                   >
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
-                  </checklist-factory-chip>
+                  </factory-chip>
                 </div>
               </div>
             </div>
@@ -617,6 +625,7 @@
   import { addProductToFactory, fixProduct, getProduct } from '@/utils/factory-management/products'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getPartExportRequests } from '@/utils/factory-management/exports'
+  import { getRedistributionSourceNames, isPartRedistributed } from '@/utils/factory-management/redistribution'
   import {
     hasBacklogAdvisory,
     hasNoDemand,

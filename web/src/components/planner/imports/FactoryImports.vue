@@ -11,7 +11,10 @@
       <raw-resources :factory="factory" />
       <imports :factory="factory" />
     </div>
-    <p v-else class="text-body-1">Awaiting product selection.</p>
+    <template v-else>
+      <p class="text-body-1 mb-2">Awaiting product selection, or import a surplus to pass it on from here.</p>
+      <imports :factory="factory" />
+    </template>
   </div>
 </template>
 

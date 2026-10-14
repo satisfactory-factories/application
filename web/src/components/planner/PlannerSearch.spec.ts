@@ -42,7 +42,7 @@ const body = () => document.body
 // list is both shapes; document order still puts the factories first.
 const rows = () => [...body().querySelectorAll<HTMLElement>('.result-row, .result-inline')]
 const rowLabels = () => rows().map(row => [
-  row.querySelector('.row-name')?.textContent?.trim(),
+  row.querySelector('.factory-chip-name')?.textContent?.trim(),
   row.querySelector('.row-usage')?.textContent?.replace(/\s+/g, ' ').trim(),
 ].filter(Boolean).join(' — '))
 const headings = () =>
@@ -101,22 +101,19 @@ describe('PlannerSearch', () => {
     })
   })
 
-  it('marks a grouped result\'s chip with its group colour, and leaves an ungrouped one bare', async () => {
+  it('marks every result\'s chip with its group colour, grey when ungrouped', async () => {
     await search('iron ingot')
 
     const smelter = rows().find(row => row.textContent?.includes('Ingot Smelter'))!
     const plates = rows().find(row => row.textContent?.includes('Plate Works'))!
     const chipOf = (row: HTMLElement) => row.querySelector<HTMLElement>('.row-chip')!
 
-    // The colour rides on the chip as a custom property — see groupStripe for why it cannot be
-    // the border directly.
+    // The colour rides on the shared FactoryChip as a custom property, which its own border reads.
     expect(chipOf(smelter).style.getPropertyValue('--group-color')).toBe('#ff9800')
-    expect(chipOf(smelter).classList).toContain('grouped')
-    expect(smelter.title).toBe('Group: Smelting')
+    expect(chipOf(smelter).title).toBe('Group: Smelting')
 
-    expect(chipOf(plates).style.getPropertyValue('--group-color')).toBe('')
-    expect(chipOf(plates).classList).not.toContain('grouped')
-    expect(plates.title).toBe('')
+    expect(chipOf(plates).style.getPropertyValue('--group-color')).toBe('#6c6c6c')
+    expect(chipOf(plates).title).toBe('Ungrouped')
   })
 
   it('finds a factory by name', async () => {

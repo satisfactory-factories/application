@@ -48,8 +48,14 @@ export const calculateParts = (factory: Factory, gameData: DataInterface) => {
 
   // If factory has no products there is nothing for us to do, so mark as satisfied. Custom
   // buildings count as something to do: a portal room makes nothing, but its upkeep is a real
-  // demand and forgiving it would leave the factory green while its portals sit dead.
-  if (factory.products.length === 0 && (factory.customBuildings?.length ?? 0) === 0) {
+  // demand and forgiving it would leave the factory green while its portals sit dead. So do
+  // export requests: a redistribution hub makes nothing either, and promising away more than it
+  // imports is exactly the shortage it has to show.
+  if (
+    factory.products.length === 0 &&
+    (factory.customBuildings?.length ?? 0) === 0 &&
+    getRequestsForFactory(factory).length === 0
+  ) {
     factory.requirementsSatisfied = true
     return
   }
@@ -343,6 +349,11 @@ export const calculateExportable = (factory: Factory) => {
     }
 
     if (partData.amountSuppliedViaProduction > 0) {
+      partData.exportable = true
+    }
+
+    // Any factory can pass on what it imports, which is what makes a distribution hub (#46).
+    if (partData.amountSuppliedViaInput > 0) {
       partData.exportable = true
     }
   }

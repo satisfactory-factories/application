@@ -154,19 +154,17 @@
                   <b v-else>{{ formatNumber(entry.totalContainers) }}</b>
                 </td>
                 <td>
-                  <v-chip
+                  <factory-chip
                     v-for="source in entry.sources"
                     :key="`${entry.id}-${source.id}`"
-                    class="sf-chip sf-chip-clickable small factory"
-                    @click="navigateToFactory(source.id, `${source.id}-satisfaction-item-${entry.id}`, `${source.id}-satisfaction`)"
+                    :factory="source"
+                    :jumpable="false"
+                    @open="navigateToFactory(source.id, `${source.id}-satisfaction-item-${entry.id}`, `${source.id}-satisfaction`)"
                   >
-                    <factory-icon-display :icon="source.icon" size="20" />
-                    <span class="ml-2">
-                      <b>{{ source.name }}</b>:
-                      &times;{{ formatNumber(source.containers) }}
-                      <span class="text-medium-emphasis">({{ formatNumber(source.amount) }}/min)</span>
-                    </span>
-                  </v-chip>
+                    <b>{{ source.name }}</b>:
+                    &times;{{ formatNumber(source.containers) }}
+                    <span class="text-medium-emphasis">({{ formatNumber(source.amount) }}/min)</span>
+                  </factory-chip>
                 </td>
               </tr>
             </tbody>
@@ -197,7 +195,6 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { calculateDimensionalDepot, DimensionalDepotEntry } from '@/utils/statistics'
   import { DEPOT_EXPANSION_TIERS, DEPOT_UPLOAD_TIERS, useDepotResearch } from '@/composables/useDepotResearch'
-  import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
   import eventBus from '@/utils/eventBus'
   import { useEventBusListener } from '@/composables/useEventBusListener'
 

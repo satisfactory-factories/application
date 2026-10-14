@@ -86,10 +86,10 @@
         @click="emit('navigate', factory.id as number)"
       >
         <td class="border-e-md factory-column">
-          <v-chip class="sf-chip summary-chip factory-chip factory">
-            <factory-icon-display :icon="factory.icon" size="20" />
-            <b class="ml-2">{{ factory.name }}</b>
-          </v-chip>
+          <!-- The whole row opens the factory, so the chip only names it. -->
+          <factory-chip class="summary-chip summary-factory" :clickable="false" :factory="factory" :jumpable="false">
+            <b>{{ factory.name }}</b>
+          </factory-chip>
           <!-- The same chips the sidebar entry wears, under the name for the same reason: a tinted
                row says something is wrong without saying what. Import statuses are the exception,
                going in the column that owns them. -->
@@ -564,7 +564,7 @@
   padding: 6px 12px !important;
 }
 
-.factory-chip {
+.summary-factory {
   font-size: 16px;
   transition: background-color 0.2s;
 
