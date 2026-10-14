@@ -40,9 +40,10 @@
       </div>
     </template>
     <p class="mb-4">
-      {{ rows.length === 1 ? 'This link is' : `These ${rows.length} links are` }} ticked as built
-      at one end but not the other. An export and the import it feeds are the same belt, train or
-      drone route, so both ends should agree.
+      {{ rows.length === 1 ? 'This link is' : `These ${rows.length} links are` }} checked at one end
+      but not the other, so one factory says it is importing an item that the other says it is not
+      exporting, or the other way round. We recommend checking both ends of
+      {{ rows.length === 1 ? 'it' : 'all of them' }}.
     </p>
     <section v-for="section in sections" :key="section.end" class="mb-4">
       <h3 class="text-subtitle-1 font-weight-bold mb-2">{{ section.title }}</h3>
