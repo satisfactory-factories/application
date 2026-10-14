@@ -159,13 +159,17 @@
           <i class="fas fa-flag-checkered mr-1" />End product
         </v-chip>
       </tooltip>
+      <!-- Ignored from the Satisfaction row's Ignore tick, where the choice can be undone; here it
+           only reads back, stood down the same way. -->
       <tooltip
         v-if="shouldShowNotInDemand(product, factory)"
         classes="align-self-center"
-        text="Nothing asks for this product: no recipe in this factory needs it and no other factory imports it.<br>A future update will add support for sinking and dimensional depots, so if you are sinking this, ignore it for now."
+        :text="isNoDemandIgnored(factory, product.id)
+          ? 'You have chosen to ignore this note, so it no longer counts against the factory.<br>Untick Ignore on this item in the Satisfaction section to bring it back.'
+          : 'Nothing asks for this product: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, tick Ignore on this item in the Satisfaction section.'"
       >
-        <v-chip class="sf-chip small status-note">
-          <i class="fas fa-question-circle mr-1" />No demand
+        <v-chip class="sf-chip small" :class="isNoDemandIgnored(factory, product.id) ? 'status-note-ignored' : 'status-note'">
+          <i class="fas fa-question-circle mr-1" />{{ isNoDemandIgnored(factory, product.id) ? 'No demand ignored' : 'No demand' }}
         </v-chip>
       </tooltip>
     </div>
@@ -335,6 +339,7 @@
     updateProductAmountViaRequirement,
   } from '@/utils/factory-management/products'
   import { isEndProduct, isPotentialBlockage, isUnhandledByproduct } from '@/utils/factory-management/status'
+  import { isNoDemandIgnored } from '@/utils/factory-management/disposal'
   import {
     checklistTickTitle,
     isProductChecklistDesynced,

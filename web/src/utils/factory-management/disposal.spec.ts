@@ -16,12 +16,14 @@ import {
   getSinkCount,
   isBacklogIgnored,
   isDepoted,
+  isNoDemandIgnored,
   isSunk,
   MERCER_SPHERES_PER_DEPOT,
   notifyDepotTutorial,
   notifySinkTutorial,
   setBacklogIgnored,
   setDepotCount,
+  setNoDemandIgnored,
   setSinkCount,
   SINK_POWER_MW,
   SINK_TUTORIAL_KEY,
@@ -206,6 +208,47 @@ describe('disposal', () => {
 
       expect(getFactorySinks(factory)).toBe(0)
       expect(getFactoryDepots(factory)).toBe(0)
+    })
+  })
+
+  // Same storage rules as the backlog flag; only what reads it differs.
+  describe('ignoring the no demand note', () => {
+    let factory: Factory
+
+    beforeEach(() => {
+      factory = platesFactory()
+    })
+
+    it('reads as not ignored on a plan that never chose to', () => {
+      expect(isNoDemandIgnored(factory, 'IronPlate')).toBe(false)
+      delete factory.partDisposal
+      expect(isNoDemandIgnored(factory, 'IronPlate')).toBe(false)
+    })
+
+    it('stores only `true` beside the other fields, and drops the record once it says nothing', () => {
+      setNoDemandIgnored(factory, 'IronPlate', true)
+      expect(factory.partDisposal?.IronPlate).toEqual({ sinks: 0, depots: 0, ignoreNoDemand: true })
+
+      setBacklogIgnored(factory, 'IronPlate', true)
+      setSinkCount(factory, 'IronPlate', 1)
+      expect(factory.partDisposal?.IronPlate).toEqual({
+        sinks: 1, depots: 0, ignoreBacklog: true, ignoreNoDemand: true,
+      })
+
+      // Each flag is its own choice: clearing one leaves the other.
+      setBacklogIgnored(factory, 'IronPlate', false)
+      setSinkCount(factory, 'IronPlate', 0)
+      expect(isNoDemandIgnored(factory, 'IronPlate')).toBe(true)
+      expect(isBacklogIgnored(factory, 'IronPlate')).toBe(false)
+
+      setNoDemandIgnored(factory, 'IronPlate', false)
+      expect(factory.partDisposal?.IronPlate).toBeUndefined()
+    })
+
+    it('does not create a record to un-ignore something never ignored, or for an empty part id', () => {
+      setNoDemandIgnored(factory, 'IronPlate', false)
+      setNoDemandIgnored(factory, '', true)
+      expect(factory.partDisposal).toEqual({})
     })
   })
 

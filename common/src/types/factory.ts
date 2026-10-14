@@ -346,6 +346,9 @@ export interface FactoryPartDisposal {
   // The row keeps the warning, dimmed, and the factory stops turning amber for it. Optional and
   // only ever written as `true`, so a plan that never ignored anything saves exactly as before.
   ignoreBacklog?: boolean;
+  // The same choice for the "no demand" note: the user makes this on purpose and does not want the
+  // factory flagged for it. Same rules as `ignoreBacklog`: optional, only ever written as `true`.
+  ignoreNoDemand?: boolean;
 }
 
 export interface Factory {

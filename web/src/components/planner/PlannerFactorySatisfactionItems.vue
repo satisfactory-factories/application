@@ -411,17 +411,39 @@
               </template>
               <!-- Amber rather than red, and it leaves the factory green: making something
                    nothing asks for is often the whole point of the factory. The two chips above
-                   cover the byproduct case, which says the same thing with more consequence. -->
-              <template v-if="hasNoDemand(factory, partId.toString()) && !isPotentialBlockage(factory, partId.toString()) && !isUnhandledByproduct(factory, partId.toString())">
+                   cover the byproduct case, which says the same thing with more consequence.
+                   Ignorable the same way as the backlog chip below, and drawn the same way: see
+                   the comment there. -->
+              <template v-if="hasNoDemandAdvisory(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
-                    <!-- No trailing info icon: the question mark already says the chip is
-                         explaining itself, and hovering it is how you read the rest. -->
-                    <v-chip v-bind="activatorProps" class="sf-chip status-note small">
-                      <i class="fas fa-question-circle mr-2" /><span>No demand</span>
+                    <v-chip
+                      v-bind="activatorProps"
+                      class="sf-chip small ignorable-chip"
+                      :class="showNoDemandIgnored(factory, partId.toString()) ? 'status-note-ignored' : 'status-note'"
+                    >
+                      <div class="d-flex flex-column align-center">
+                        <!-- No trailing info icon: the question mark already says the chip is
+                             explaining itself, and hovering it is how you read the rest. -->
+                        <div class="d-flex align-center">
+                          <i class="fas fa-question-circle mr-2" />
+                          <span>{{ showNoDemandIgnored(factory, partId.toString()) ? 'No demand ignored' : 'No demand' }}</span>
+                        </div>
+                        <label class="chip-ignore d-inline-flex align-center text-caption">
+                          <input
+                            :id="`${factory.id}-satisfaction-${partId.toString()}-ignore-no-demand`"
+                            :checked="isNoDemandIgnored(factory, partId.toString())"
+                            class="chip-ignore-tick"
+                            type="checkbox"
+                            @change="updateNoDemandIgnored(partId.toString(), ($event.target as HTMLInputElement).checked)"
+                          >
+                          <span>Ignore</span>
+                        </label>
+                      </div>
                     </v-chip>
                   </template>
-                  <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, set an AWESOME Sink on it in the Storage column so the line does not back up.</span>
+                  <span v-if="showNoDemandIgnored(factory, partId.toString())">You have chosen to ignore this note, so it no longer counts against the factory.<br>The item still has no demand. Untick Ignore to bring the note back.</span>
+                  <span v-else>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, set an AWESOME Sink on it in the Storage column so the line does not back up, or tick Ignore to stop the note counting against the factory.</span>
                 </v-tooltip>
               </template>
               <!-- Warning tier, so this colours the factory amber: with the Storage column beside
@@ -439,7 +461,7 @@
                   <template #activator="{ props: activatorProps }">
                     <v-chip
                       v-bind="activatorProps"
-                      class="sf-chip small backlog-chip"
+                      class="sf-chip small ignorable-chip"
                       :class="showBacklogIgnored(factory, partId.toString()) ? 'status-warning-ignored' : 'status-warning'"
                     >
                       <div class="d-flex flex-column align-center">
@@ -448,11 +470,11 @@
                           <span class="mr-2">{{ showBacklogIgnored(factory, partId.toString()) ? 'Backlog ignored' : 'Will cause backlog' }}</span>
                           <i class="fas fa-info-circle" />
                         </div>
-                        <label class="backlog-ignore d-inline-flex align-center text-caption">
+                        <label class="chip-ignore d-inline-flex align-center text-caption">
                           <input
                             :id="`${factory.id}-satisfaction-${partId.toString()}-ignore-backlog`"
                             :checked="isBacklogIgnored(factory, partId.toString())"
-                            class="backlog-ignore-tick"
+                            class="chip-ignore-tick"
                             type="checkbox"
                             @change="updateBacklogIgnored(partId.toString(), ($event.target as HTMLInputElement).checked)"
                           >
@@ -628,11 +650,12 @@
   import { getRedistributionSourceNames, isPartRedistributed } from '@/utils/factory-management/redistribution'
   import {
     hasBacklogAdvisory,
-    hasNoDemand,
+    hasNoDemandAdvisory,
     isEndProduct,
     isPotentialBlockage,
     isUnhandledByproduct,
     showBacklogIgnored,
+    showNoDemandIgnored,
   } from '@/utils/factory-management/status'
   import {
     checklistExportDesync,
@@ -667,10 +690,12 @@
     getDepotCount,
     getSinkCount,
     isBacklogIgnored,
+    isNoDemandIgnored,
     notifyDepotTutorial,
     notifySinkTutorial,
     setBacklogIgnored,
     setDepotCount,
+    setNoDemandIgnored,
     setSinkCount,
     SINK_POWER_MW,
   } from '@/utils/factory-management/disposal'
@@ -1017,6 +1042,11 @@
     updateFactory(props.factory)
   }
 
+  const updateNoDemandIgnored = (partId: string, ignored: boolean) => {
+    setNoDemandIgnored(props.factory, partId, ignored)
+    updateFactory(props.factory)
+  }
+
   // Only for the wording of the disabled sink chip's tooltip — the guard itself is showSinkControl.
   const isFluidPart = (partId: string) => !!getGameData()?.items?.parts?.[partId]?.isFluid
 
@@ -1153,10 +1183,10 @@ table {
   }
 }
 
-// The backlog chip grows a second row for the Ignore checkbox. Vuetify fixes a chip's height and
+// The backlog and no demand chips grow a second row for the Ignore checkbox. Vuetify fixes a chip's height and
 // the pill radius would turn a two-row chip into a stadium, so both are released; the padding is
 // uneven on purpose, so the two rows sit snugly rather than floating in a chip sized for one.
-.sf-chip.backlog-chip {
+.sf-chip.ignorable-chip {
   height: auto !important;
   padding: 6px 12px 4px !important;
   border-radius: 14px !important;
@@ -1165,7 +1195,7 @@ table {
 // The Ignore row inside the chip. The tick shares `.checklist-tick`'s drawing below but not its
 // class, which belongs to the checklist feature and which its specs select on. No top margin: the
 // chip's own padding and the title's line height are all the gap this row wants.
-.backlog-ignore {
+.chip-ignore {
   cursor: pointer;
   line-height: 1;
   margin-top: 2px;
@@ -1175,7 +1205,7 @@ table {
 // Smaller than the checklist's tick, since it sits in a chip rather than beside a row of buttons.
 // The check mark is redrawn for the smaller box. Scoped under the chip so it outranks the shared
 // tick rule further down, which would otherwise win on source order.
-.backlog-chip .backlog-ignore-tick {
+.ignorable-chip .chip-ignore-tick {
   height: 14px;
   margin-right: 6px;
   width: 14px;
@@ -1192,7 +1222,7 @@ table {
 // icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
 // nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
 .checklist-tick,
-.backlog-ignore-tick {
+.chip-ignore-tick {
   appearance: none;
   border: 2px solid rgba(255, 255, 255, 0.45);
   border-radius: 3px;

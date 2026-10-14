@@ -95,7 +95,7 @@ export const cleanDisposalCount = (count: unknown): number => {
 // set and cleared saves the same as one that never had them. Exported for load validation, which
 // applies the same rule.
 export const isEmptyDisposal = (record: FactoryPartDisposal): boolean =>
-  record.sinks === 0 && record.depots === 0 && !record.ignoreBacklog
+  record.sinks === 0 && record.depots === 0 && !record.ignoreBacklog && !record.ignoreNoDemand
 
 const write = (factory: Factory, partId: string, field: 'sinks' | 'depots', count: unknown): void => {
   if (!partId) return
@@ -120,15 +120,12 @@ const write = (factory: Factory, partId: string, field: 'sinks' | 'depots', coun
 export const setSinkCount = (factory: Factory, partId: string, count: unknown): void =>
   write(factory, partId, 'sinks', count)
 
-// Whether the user has chosen to live with this part's backlog warning. Says nothing about whether
-// the part is backlogging at all — that is `willBacklog`, and the row only offers the choice while
-// it is.
-export const isBacklogIgnored = (factory: Factory, partId: string): boolean =>
-  getDisposal(factory, partId).ignoreBacklog === true
+// The warnings a part's row lets the user stand down, by the key each choice is stored under.
+type IgnoreFlag = 'ignoreBacklog' | 'ignoreNoDemand'
 
-// Sticky like the counts, so ignoring a warning, then fixing the surplus, then letting it come back
+// Sticky like the counts, so ignoring a warning, then fixing the cause, then letting it come back
 // finds the choice still made. Only ever stored as `true`: clearing it deletes the key.
-export const setBacklogIgnored = (factory: Factory, partId: string, ignored: boolean): void => {
+const writeIgnored = (factory: Factory, partId: string, flag: IgnoreFlag, ignored: boolean): void => {
   if (!partId) return
 
   const existing = factory.partDisposal?.[partId]
@@ -136,20 +133,37 @@ export const setBacklogIgnored = (factory: Factory, partId: string, ignored: boo
   if (!existing) {
     if (!ignored) return
     factory.partDisposal ??= {}
-    factory.partDisposal[partId] = { ...NONE, ignoreBacklog: true }
+    factory.partDisposal[partId] = { ...NONE, [flag]: true }
     return
   }
 
   if (ignored) {
-    existing.ignoreBacklog = true
+    existing[flag] = true
   } else {
-    delete existing.ignoreBacklog
+    delete existing[flag]
   }
 
   if (isEmptyDisposal(existing)) {
     delete factory.partDisposal?.[partId]
   }
 }
+
+// Whether the user has chosen to live with this part's backlog warning. Says nothing about whether
+// the part is backlogging at all — that is `willBacklog`, and the row only offers the choice while
+// it is.
+export const isBacklogIgnored = (factory: Factory, partId: string): boolean =>
+  getDisposal(factory, partId).ignoreBacklog === true
+
+export const setBacklogIgnored = (factory: Factory, partId: string, ignored: boolean): void =>
+  writeIgnored(factory, partId, 'ignoreBacklog', ignored)
+
+// The same choice for the "no demand" note: making something nothing asks for is often the point
+// of the factory. Says nothing about whether the part has demand — that is `hasNoDemand`.
+export const isNoDemandIgnored = (factory: Factory, partId: string): boolean =>
+  getDisposal(factory, partId).ignoreNoDemand === true
+
+export const setNoDemandIgnored = (factory: Factory, partId: string, ignored: boolean): void =>
+  writeIgnored(factory, partId, 'ignoreNoDemand', ignored)
 
 // Per browser rather than per plan: it is the player who needs telling once, and they need it
 // whichever plan they happen to be in when they first reach for a sink.

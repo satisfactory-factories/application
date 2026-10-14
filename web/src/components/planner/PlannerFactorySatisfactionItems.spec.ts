@@ -1,4 +1,4 @@
-// The Ignore checkbox under the "Will cause backlog" chip. The rules behind it (what counts as a
+// The Ignore checkbox under the "Will cause backlog" chip, and its twin under "No demand". The rules behind it (what counts as a
 // backlog, what stops the factory turning amber) live in disposal.spec.ts; this covers what the
 // row does with them: the chip's title and look, the checkbox beneath it, and that ticking it
 // goes through updateFactory so the choice is a real edit.
@@ -12,12 +12,13 @@ import { calculateFactories, newFactory } from '@/utils/factory-management/facto
 import { addProductToFactory } from '@/utils/factory-management/products'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
-import { isBacklogIgnored } from '@/utils/factory-management/disposal'
+import { isBacklogIgnored, isNoDemandIgnored } from '@/utils/factory-management/disposal'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
 const gameData = useGameDataStore().getGameData()
 
-const IGNORE_TICK = 'input.backlog-ignore-tick'
+const IGNORE_TICK = 'input[id$="-ignore-backlog"]'
+const NO_DEMAND_TICK = 'input[id$="-ignore-no-demand"]'
 
 describe('PlannerFactorySatisfactionItems backlog ignore', () => {
   let updateFactory: ReturnType<typeof vi.fn>
@@ -108,5 +109,67 @@ describe('PlannerFactorySatisfactionItems backlog ignore', () => {
 
     expect(plateRow(wrapper).text()).not.toContain('backlog')
     expect(plateRow(wrapper).find(IGNORE_TICK).exists()).toBe(false)
+  })
+})
+
+describe('PlannerFactorySatisfactionItems no demand ignore', () => {
+  let updateFactory: ReturnType<typeof vi.fn>
+
+  // 100/min of plates that nothing asks for at all: the no demand note's case.
+  const buildNoDemandFactory = () => {
+    const factory = reactive(newFactory('Plates', 0, 1)) as Factory
+    addProductToFactory(factory, { id: 'IronPlate', amount: 100, recipe: 'IronPlate' })
+    calculateFactories([factory], gameData)
+    return factory
+  }
+
+  const mountItems = (factory: Factory) => mount(PlannerFactorySatisfactionItems, {
+    propsData: { factory },
+    global: {
+      plugins: [vuetify],
+      provide: {
+        updateFactory,
+        findFactory: () => factory,
+        navigateToFactory: () => {},
+      },
+    },
+  })
+
+  const plateRow = (wrapper: ReturnType<typeof mountItems>) =>
+    wrapper.find('[id$="-satisfaction-item-IronPlate"]')
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    updateFactory = vi.fn()
+  })
+
+  it('shows the note with an unticked Ignore checkbox inside the chip', () => {
+    const row = plateRow(mountItems(buildNoDemandFactory()))
+
+    expect(row.text()).toContain('No demand')
+    expect(row.text()).not.toContain('No demand ignored')
+    expect(row.find('.status-note-ignored').exists()).toBe(false)
+
+    const tick = row.find(NO_DEMAND_TICK)
+    expect((tick.element as HTMLInputElement).checked).toBe(false)
+    expect(tick.element.closest('.v-chip')?.classList.contains('status-note')).toBe(true)
+  })
+
+  it('ticking it records the choice, recalculates, and stands the chip down; unticking undoes it', async () => {
+    const factory = buildNoDemandFactory()
+    const wrapper = mountItems(factory)
+
+    await plateRow(wrapper).find(NO_DEMAND_TICK).setValue(true)
+
+    expect(isNoDemandIgnored(factory, 'IronPlate')).toBe(true)
+    expect(updateFactory).toHaveBeenCalledWith(factory)
+    expect(plateRow(wrapper).text()).toContain('No demand ignored')
+    expect(plateRow(wrapper).find('.status-note-ignored').find(NO_DEMAND_TICK).exists()).toBe(true)
+
+    await plateRow(wrapper).find(NO_DEMAND_TICK).setValue(false)
+
+    expect(isNoDemandIgnored(factory, 'IronPlate')).toBe(false)
+    expect(plateRow(wrapper).text()).not.toContain('No demand ignored')
+    expect(updateFactory).toHaveBeenCalledTimes(2)
   })
 })
