@@ -18,6 +18,7 @@ import {
   countChecklistCompleted,
   countChecklistDesynced,
   countChecklistTotal,
+  findDesyncedLinkedTicks,
   hasChecklistDesync,
   inputChecklistDesync,
   isChecklistComplete,
@@ -33,6 +34,7 @@ import {
   powerProducerChecklistDesync,
   productChecklistDesync,
   resetChecklistState,
+  resolveDesyncedLinkedTicks,
   setChecklistEnabled,
   setChecklistPanelHidden,
   toggleChecklistExport,
@@ -270,6 +272,115 @@ describe('checklist', () => {
 
       applyLinkedExportTick(source, destination.id, 'Cable', false, { tick: true, enableChecklist: false })
       expect(isChecklistExportComplete(source, destination.id, 'Cable')).toBe(false)
+    })
+  })
+
+  describe('plan validator: desynced linked ticks', () => {
+    const buildLink = () => {
+      const source = newFactory('Steel MegaFac', 0, 1)
+      const destination = newFactory('SAM Processing', 1, 2)
+      const input = { factoryId: source.id, outputPart: 'SteelPipe', amount: 225 }
+      destination.inputs.push(input)
+      updateDependency(destination, source, input)
+      return { source, destination, input: destination.inputs[0] }
+    }
+
+    it('flags an import ticked against an unticked export', () => {
+      const { source, destination, input } = buildLink()
+      destination.checklistEnabled = true
+      input.completed = true
+
+      expect(findDesyncedLinkedTicks([source, destination])).toEqual([{
+        sourceFactoryId: source.id,
+        destinationFactoryId: destination.id,
+        part: 'SteelPipe',
+        tickedEnd: 'import',
+      }])
+    })
+
+    it('flags an export ticked against an unticked import', () => {
+      const { source, destination } = buildLink()
+      source.checklistEnabled = true
+      source.checklistExports[checklistExportKey(destination.id, 'SteelPipe')] = true
+
+      expect(findDesyncedLinkedTicks([source, destination])[0]?.tickedEnd).toBe('export')
+    })
+
+    it('counts a link when the checklist is on at either end, and ignores it when off at both', () => {
+      const { source, destination, input } = buildLink()
+      input.completed = true
+
+      expect(findDesyncedLinkedTicks([source, destination])).toEqual([])
+
+      source.checklistEnabled = true
+      expect(findDesyncedLinkedTicks([source, destination])).toHaveLength(1)
+
+      source.checklistEnabled = false
+      destination.checklistEnabled = true
+      expect(findDesyncedLinkedTicks([source, destination])).toHaveLength(1)
+    })
+
+    it('leaves links whose ends agree alone', () => {
+      const { source, destination, input } = buildLink()
+      destination.checklistEnabled = true
+
+      expect(findDesyncedLinkedTicks([source, destination])).toEqual([])
+
+      input.completed = true
+      source.checklistExports[checklistExportKey(destination.id, 'SteelPipe')] = true
+      expect(findDesyncedLinkedTicks([source, destination])).toEqual([])
+    })
+
+    it('reports a link split across several import rows once, and flags rows that disagree', () => {
+      const { source, destination, input } = buildLink()
+      destination.checklistEnabled = true
+      destination.inputs.push({ factoryId: source.id, outputPart: 'SteelPipe', amount: 30, completed: true })
+      input.completed = true
+      source.checklistExports[checklistExportKey(destination.id, 'SteelPipe')] = true
+
+      expect(findDesyncedLinkedTicks([source, destination])).toEqual([])
+
+      input.completed = false
+      expect(findDesyncedLinkedTicks([source, destination])).toHaveLength(1)
+    })
+
+    it('ignores imports with no source, or a source no longer in the plan', () => {
+      const destination = newFactory('SAM Processing', 1, 2)
+      destination.checklistEnabled = true
+      destination.inputs.push({ factoryId: null, outputPart: 'SteelPipe', amount: 0, completed: true })
+      destination.inputs.push({ factoryId: 99, outputPart: 'SteelPipe', amount: 10, completed: true })
+
+      expect(findDesyncedLinkedTicks([destination])).toEqual([])
+    })
+
+    it('ticks the unticked end, stamping its baseline', () => {
+      const { source, destination, input } = buildLink()
+      destination.checklistEnabled = true
+      input.completed = true
+      const links = findDesyncedLinkedTicks([source, destination])
+
+      resolveDesyncedLinkedTicks([source, destination], links, true)
+
+      const key = checklistExportKey(destination.id, 'SteelPipe')
+      expect(source.checklistExports[key]).toBe(true)
+      expect(source.checklistExportSyncedAmounts[key]).toBe(225)
+      expect(input.completed).toBe(true)
+      // The tick is stored, but the source's checklist is the player's call.
+      expect(source.checklistEnabled).toBe(false)
+      expect(findDesyncedLinkedTicks([source, destination])).toEqual([])
+    })
+
+    it('unticks the ticked end', () => {
+      const { source, destination, input } = buildLink()
+      source.checklistEnabled = true
+      source.checklistExports[checklistExportKey(destination.id, 'SteelPipe')] = true
+      const links = findDesyncedLinkedTicks([source, destination])
+
+      resolveDesyncedLinkedTicks([source, destination], links, false)
+
+      expect(isChecklistExportComplete(source, destination.id, 'SteelPipe')).toBe(false)
+      expect(!!input.completed).toBe(false)
+      expect(findDesyncedLinkedTicks([source, destination])).toEqual([])
     })
   })
 

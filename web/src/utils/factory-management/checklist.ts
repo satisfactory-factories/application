@@ -204,6 +204,83 @@ export const applyLinkedExportTick = (
   markFactoryEdited(source)
 }
 
+// Plan validator for linked ticks. The linked-tick offer keeps the two ends of a link together
+// from the moment it shipped, but plans ticked before it (or ticked while the offer was declined)
+// can claim an import is built while its export is not, or the reverse. This finds those links so
+// the planner can say so on load.
+//
+// Only links with the checklist on at one end or both count: with it off at both, neither tick is
+// shown anywhere, so there is nothing on screen for the player to find contradicting itself.
+//
+// One entry per (source, destination, part) link, however many import rows share it. The import
+// end reads as ticked only when every row is, so a link whose rows disagree among themselves is
+// always flagged.
+export interface DesyncedLinkedTick {
+  sourceFactoryId: number
+  destinationFactoryId: number
+  part: string
+  // The end that reads as built.
+  tickedEnd: 'import' | 'export'
+}
+
+export const findDesyncedLinkedTicks = (factories: Factory[]): DesyncedLinkedTick[] => {
+  const byId = new Map(factories.map(factory => [String(factory.id), factory]))
+  const found: DesyncedLinkedTick[] = []
+
+  factories.forEach(destination => {
+    const seen = new Set<string>()
+    destination.inputs.forEach(input => {
+      if (input.factoryId === null || input.factoryId === undefined || !input.outputPart) return
+      const source = byId.get(String(input.factoryId))
+      if (!source || source.id === destination.id) return
+      if (!source.checklistEnabled && !destination.checklistEnabled) return
+
+      const key = checklistExportKey(source.id, input.outputPart)
+      if (seen.has(key)) return
+      seen.add(key)
+
+      const exportComplete = isChecklistExportComplete(source, destination.id, input.outputPart)
+      const rows = linkedImportsForExport(destination, source.id, input.outputPart)
+      if (rows.every(row => !!row.completed === exportComplete)) return
+
+      found.push({
+        sourceFactoryId: source.id,
+        destinationFactoryId: destination.id,
+        part: input.outputPart,
+        tickedEnd: exportComplete ? 'export' : 'import',
+      })
+    })
+  })
+
+  return found
+}
+
+// Puts both ends of each link into the same state: `completed` true ticks the unticked end, false
+// unticks the ticked one. Goes through the same apply functions the linked-tick offer uses, so a
+// tick stamps its desync baseline exactly as a click would, and every factory changed is marked
+// edited. Checklists are left as they are: the tick is stored either way, and turning a
+// checklist on is the player's call.
+export const resolveDesyncedLinkedTicks = (
+  factories: Factory[],
+  links: DesyncedLinkedTick[],
+  completed: boolean
+): void => {
+  const byId = new Map(factories.map(factory => [String(factory.id), factory]))
+  const choice: LinkedTickChoice = { tick: true, enableChecklist: false }
+
+  links.forEach(link => {
+    const source = byId.get(String(link.sourceFactoryId))
+    const destination = byId.get(String(link.destinationFactoryId))
+    if (!source || !destination) return
+    if (linkedImportsForExport(destination, source.id, link.part).some(row => !!row.completed !== completed)) {
+      applyLinkedImportTick(destination, source.id, link.part, completed, choice)
+    }
+    if (isChecklistExportComplete(source, destination.id, link.part) !== completed) {
+      applyLinkedExportTick(source, destination.id, link.part, completed, choice)
+    }
+  })
+}
+
 export const toggleChecklistProduct = (factory: Factory, product: FactoryItem): void => {
   // A desynced product is already ticked: acknowledge the new amount in place rather than
   // unchecking it, which read as "unbuilding" something the player already confirmed.

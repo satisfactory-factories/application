@@ -68,6 +68,7 @@ declare module 'vue' {
     LastUpdatedIndicator: typeof import('./components/planner/LastUpdatedIndicator.vue')['default']
     LegacyRecoveryDialog: typeof import('./components/sync/LegacyRecoveryDialog.vue')['default']
     LinkedTickDialog: typeof import('./components/planner/LinkedTickDialog.vue')['default']
+    LinkedTickSyncDialog: typeof import('./components/planner/LinkedTickSyncDialog.vue')['default']
     MediaPlayer: typeof import('./components/common/MediaPlayer.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     NewTabDialog: typeof import('./components/sync/NewTabDialog.vue')['default']
