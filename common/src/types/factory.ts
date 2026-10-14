@@ -164,13 +164,51 @@ export interface ExportCalculatorFactorySettings {
   // Optional: absent on old saves, initialized lazily by the belt/pipe calculator
   beltGroups?: ExportCalculatorTransportGroup[];
   pipeGroups?: ExportCalculatorTransportGroup[];
+  // How this export actually travels. Absent means nobody has said; the planner may guess from
+  // the times above but never writes a guess here. Belt covers pipes for a fluid export.
+  method?: ExportTransportMethod;
 }
+
+export type ExportTransportMethod = 'belt' | 'train' | 'drone' | 'truck' | 'tractor'
 
 export interface ExportCalculatorSettings {
   selected: string | null;
   factorySettings: {
     [key: string]: ExportCalculatorFactorySettings
   }
+}
+
+export type TrainPlatformType = 'freight' | 'fluid' | 'empty'
+
+// What one car carries: an import of the factory the train unloads at. Null is an empty car.
+export interface TrainCarCargo {
+  factoryId: number;
+  part: string;
+}
+
+export interface TrainCar {
+  cargo: TrainCarCargo | null;
+}
+
+export interface Train {
+  id: string;
+  name: string;
+  roundTripSecs: number;
+  // Locomotives at the front. The first sits at the station; each extra one takes a platform.
+  locomotives: number;
+  cars: TrainCar[];
+}
+
+// An unload station, kept on the factory it is built at. Trains live on the station they unload at.
+export interface TrainStation {
+  id: string;
+  name: string;
+  platforms: TrainPlatformType[];
+  beltsPerPlatform: number;
+  beltMark: number;
+  // Containers on the platform belts, so the docking lockout no longer stalls them.
+  buffered: boolean;
+  trains: Train[];
 }
 
 export interface FactoryDependency {
@@ -375,6 +413,8 @@ export interface Factory {
   // read-time filtering makes a stale key inert and bringing the part back restores the intent.
   // Optional so plans saved before it load untouched; newFactory and initFactories set `{}`.
   partDisposal?: { [partId: string]: FactoryPartDisposal };
+  // Train stations built at this factory. Optional so plans saved before it load untouched.
+  trainStations?: TrainStation[];
   dependencies: FactoryDependency;
   rawResources: { [key: string]: WorldRawResource };
   power: FactoryPower;

@@ -115,6 +115,13 @@ describe('sanitiseTabText', () => {
     expect(sanitiseTabText(tab)).toBe(false)
   })
 
+  it('repairs train station and train names', () => {
+    const factory = { name: 'Iron', trainStations: [{ name: 'North\t', trains: [{ name: 'see https://a.example' }] }] }
+
+    expect(sanitiseFactoryText(factory)).toBe(true)
+    expect(factory.trainStations[0]).toEqual({ name: 'North', trains: [{ name: `see ${LINK_REMOVED}` }] })
+  })
+
   it('survives junk', () => {
     expect(sanitiseTabText(null)).toBe(false)
     expect(sanitiseFactoryText({ name: 3, tasks: 'x' })).toBe(false)
@@ -125,6 +132,11 @@ describe('findTabTextIssue', () => {
   it('names the first field the server would refuse, by its server path', () => {
     const tab = { name: 'Plan', factories: [{ name: 'Iron', notes: '' }, { name: 'Copper', tasks: [{ title: 'ok' }, { title: '{x}' }] }] }
     expect(findTabTextIssue(tab)).toMatchObject({ path: 'factories.1.tasks.1.title', rule: 'braces' })
+  })
+
+  it('reaches train station and train names', () => {
+    const tab = { name: 'Plan', factories: [{ name: 'Iron', trainStations: [{ name: 'North', trains: [{ name: '{x}' }] }] }] }
+    expect(findTabTextIssue(tab)).toMatchObject({ path: 'factories.0.trainStations.0.trains.0.name', rule: 'braces' })
   })
 
   it('is null for a clean tab and for junk', () => {

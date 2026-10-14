@@ -200,11 +200,39 @@ export const exportCalculatorFactorySettingsSchema = z.object({
   tractorTime: num,
   beltGroups: z.array(exportCalculatorTransportGroupSchema).max(CAPS.rowEntries).optional(),
   pipeGroups: z.array(exportCalculatorTransportGroupSchema).max(CAPS.rowEntries).optional(),
+  method: z.enum(['belt', 'train', 'drone', 'truck', 'tractor']).optional(),
 })
 
 export const exportCalculatorSettingsSchema = z.object({
   selected: str.nullable(),
   factorySettings: boundedRecord(exportCalculatorFactorySettingsSchema, CAPS.factoriesPerRoom),
+})
+
+export const trainCarCargoSchema = z.object({
+  factoryId: num,
+  part: key,
+})
+
+export const trainCarSchema = z.object({
+  cargo: trainCarCargoSchema.nullable(),
+})
+
+export const trainSchema = z.object({
+  id,
+  name,
+  roundTripSecs: num,
+  locomotives: num,
+  cars: z.array(trainCarSchema).max(CAPS.rowEntries),
+})
+
+export const trainStationSchema = z.object({
+  id,
+  name,
+  platforms: z.array(z.enum(['freight', 'fluid', 'empty'])).max(CAPS.rowEntries),
+  beltsPerPlatform: num,
+  beltMark: num,
+  buffered: z.boolean(),
+  trains: z.array(trainSchema).max(CAPS.rowEntries),
 })
 
 export const worldRawResourceSchema = z.object({
@@ -320,6 +348,8 @@ export const factorySchema = z.object({
   // Optional, with no default: the map is sticky and a plan that never placed a sink or an
   // uploader has no key at all, which is a different thing from having placed none.
   partDisposal: boundedRecord(factoryPartDisposalSchema, CAPS.itemKeys).optional(),
+  // Optional, no default: a factory with no stations has no key, as it always had.
+  trainStations: z.array(trainStationSchema).max(CAPS.factoryRows).optional(),
   dependencies: factoryDependencySchema,
   rawResources: boundedRecord(worldRawResourceSchema, CAPS.itemKeys),
   power: factoryPowerSchema.default(emptyFactoryPower),

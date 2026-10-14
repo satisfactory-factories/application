@@ -130,6 +130,14 @@ export const sanitiseFactoryText = (factory: unknown): boolean => {
     for (const task of factory.tasks) if (isRecord(task)) changed = repairField(task, 'title', 'task') || changed
   }
   if (isRecord(factory.group)) changed = repairField(factory.group, 'name', 'name') || changed
+  if (Array.isArray(factory.trainStations)) {
+    for (const station of factory.trainStations) {
+      if (!isRecord(station)) continue
+      changed = repairField(station, 'name', 'name') || changed
+      if (!Array.isArray(station.trains)) continue
+      for (const train of station.trains) if (isRecord(train)) changed = repairField(train, 'name', 'name') || changed
+    }
+  }
   return changed
 }
 
@@ -172,10 +180,29 @@ export const findTabTextIssue = (tab: unknown): TextIssue | null => {
       issueAt(factory, 'notes', 'notes', `${at}.notes`) ??
       (isRecord(factory.group) ? issueAt(factory.group, 'name', 'name', `${at}.group.name`) : null)
     if (issue) return issue
-    if (!Array.isArray(factory.tasks)) continue
-    for (const [taskIndex, task] of factory.tasks.entries()) {
-      const taskIssue = isRecord(task) ? issueAt(task, 'title', 'task', `${at}.tasks.${taskIndex}.title`) : null
-      if (taskIssue) return taskIssue
+    if (Array.isArray(factory.tasks)) {
+      for (const [taskIndex, task] of factory.tasks.entries()) {
+        const taskIssue = isRecord(task) ? issueAt(task, 'title', 'task', `${at}.tasks.${taskIndex}.title`) : null
+        if (taskIssue) return taskIssue
+      }
+    }
+    const stationIssue = findStationTextIssue(factory.trainStations, at)
+    if (stationIssue) return stationIssue
+  }
+  return null
+}
+
+const findStationTextIssue = (stations: unknown, at: string): TextIssue | null => {
+  if (!Array.isArray(stations)) return null
+  for (const [stationIndex, station] of stations.entries()) {
+    if (!isRecord(station)) continue
+    const path = `${at}.trainStations.${stationIndex}`
+    const issue = issueAt(station, 'name', 'name', `${path}.name`)
+    if (issue) return issue
+    if (!Array.isArray(station.trains)) continue
+    for (const [trainIndex, train] of station.trains.entries()) {
+      const trainIssue = isRecord(train) ? issueAt(train, 'name', 'name', `${path}.trains.${trainIndex}.name`) : null
+      if (trainIssue) return trainIssue
     }
   }
   return null

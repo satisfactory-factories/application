@@ -55,3 +55,4 @@
 - [Prometheus server config](prometheus-server-config.md) — 180d global retention (not per-target), the unit-file backslash trap, node_exporter, health dashboard; disk alerts are Zabbix
 - [Text sanity rules](text-sanity-rules.md) — one rulebook for names, notes and tasks in planner and server; links banned, old text repaired on load
 - [Plan deletion moves DB metrics](plan-deletion-moves-db-metrics.md) — a cliff in synced factories with edits falling too is deletion; deleted plans leave no trace but Prometheus
+- [Train logistics](train-logistics.md) — per-export transport method and train stations: where the data lives, the lockout throughput model, decisions taken

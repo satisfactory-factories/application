@@ -9,6 +9,9 @@ export enum TransportMethod {
   Tractor = 'tractor'
 }
 
+// What every transport time starts at. A time still at this value was never entered.
+export const DEFAULT_TRANSPORT_TIME = 123
+
 export const initializeCalculatorFactoryPart = (factory: Factory, part: string) => {
   if (!factory.exportCalculator[part]) {
     factory.exportCalculator[part] = {
@@ -25,10 +28,10 @@ export const initializeCalculatorFactorySettings = (factory: Factory, part: stri
 
   if (!factory.exportCalculator[part].factorySettings[factoryId]) {
     factory.exportCalculator[part].factorySettings[factoryId] = {
-      trainTime: 123,
-      droneTime: 123,
-      truckTime: 123,
-      tractorTime: 123,
+      trainTime: DEFAULT_TRANSPORT_TIME,
+      droneTime: DEFAULT_TRANSPORT_TIME,
+      truckTime: DEFAULT_TRANSPORT_TIME,
+      tractorTime: DEFAULT_TRANSPORT_TIME,
     }
   }
 }

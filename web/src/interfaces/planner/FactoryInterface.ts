@@ -11,6 +11,7 @@ export type {
   ExportCalculatorFactorySettings,
   ExportCalculatorSettings,
   ExportCalculatorTransportGroup,
+  ExportTransportMethod,
   Factory,
   FactoryCustomBuilding,
   FactoryCustomBuildingSyncState,
@@ -29,5 +30,10 @@ export type {
   FactoryTask,
   LegacyRawAssumptionFields,
   PartMetrics,
+  Train,
+  TrainCar,
+  TrainCarCargo,
+  TrainPlatformType,
+  TrainStation,
   WorldRawResource,
 } from 'common'
