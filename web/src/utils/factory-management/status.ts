@@ -28,7 +28,7 @@
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { listChecklistDesyncs } from '@/utils/factory-management/checklist'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
-import { isBacklogIgnored } from '@/utils/factory-management/disposal'
+import { isBacklogIgnored, isNoDemandIgnored } from '@/utils/factory-management/disposal'
 import { isSurplusSignificant } from '@/utils/factory-management/parts'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
 
@@ -155,6 +155,24 @@ export const hasNoDemand = (factory: Factory, partId: string): boolean =>
   factory.parts[partId]?.amountRequired === 0 &&
   factory.parts[partId]?.isEndProduct !== true &&
   factoryOutputs(factory).includes(partId)
+
+/**
+ * Whether the row for this part carries a no demand note at all, ignored or not. A byproduct in the
+ * same state gets one of the two byproduct chips instead, which say the same thing with more
+ * consequence, so it never gets this one as well.
+ */
+export const hasNoDemandAdvisory = (factory: Factory, partId: string): boolean =>
+  hasNoDemand(factory, partId) &&
+  !isPotentialBlockage(factory, partId) &&
+  !isUnhandledByproduct(factory, partId)
+
+/**
+ * The no demand note the user has chosen to live with, mirroring `showBacklogIgnored`: the row keeps
+ * it, stood down, and nothing outside the row counts it. Giving the part a consumer takes the chip
+ * away, while the flag stays stored for if the demand goes again.
+ */
+export const showNoDemandIgnored = (factory: Factory, partId: string): boolean =>
+  hasNoDemandAdvisory(factory, partId) && isNoDemandIgnored(factory, partId)
 
 /**
  * A surplus with nowhere to go, so it fills the belt and eventually stops the buildings feeding it.
@@ -411,11 +429,14 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     section: 'products',
     detail: 'Nothing asks for these products: no recipe here needs them and no factory imports them.',
     // Products only. A byproduct in the same state is unhandledByproduct, which is amber and says
-    // something worse; naming the item in both chips would be saying it twice.
+    // something worse; naming the item in both chips would be saying it twice. One the user has
+    // chosen to ignore is not counted, the same as an ignored backlog.
     detect: factory => {
       const byproducts = factoryByproducts(factory)
       return nonEmpty(subjects(
-        factoryProducts(factory).filter(id => !byproducts.includes(id) && hasNoDemand(factory, id))
+        factoryProducts(factory).filter(id =>
+          !byproducts.includes(id) && hasNoDemand(factory, id) && !isNoDemandIgnored(factory, id)
+        )
       ))
     },
     label: list => count(list, 'No demand', 'no demand'),

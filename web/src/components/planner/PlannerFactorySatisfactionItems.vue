@@ -381,7 +381,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip blue small">
-                      <i class="fas fa-flag-checkered mr-2" /><span>End product</span>
+                      <i class="fas fa-flag-checkered mr-2" /><span class="mr-2">End product</span><i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>Nothing in the game consumes this item, so it is the end of its chain.<br>Deliver it to the Space Elevator, or set an AWESOME Sink on it in the Storage column.</span>
@@ -393,7 +393,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip status-note small">
-                      <i class="fas fa-exclamation-triangle mr-2" /><span>Potential blockage</span>
+                      <i class="fas fa-exclamation-triangle mr-2" /><span class="mr-2">Potential blockage</span><i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Set an AWESOME Sink on it in the Storage column, blend it into a recipe that consumes it, or export it.</span>
@@ -403,7 +403,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip status-warning small">
-                      <i class="fas fa-exclamation-triangle mr-2" /><span>Unhandled byproduct</span>
+                      <i class="fas fa-exclamation-triangle mr-2" /><span class="mr-2">Unhandled byproduct</span><i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, or export it to a factory that will.</span>
@@ -411,17 +411,37 @@
               </template>
               <!-- Amber rather than red, and it leaves the factory green: making something
                    nothing asks for is often the whole point of the factory. The two chips above
-                   cover the byproduct case, which says the same thing with more consequence. -->
-              <template v-if="hasNoDemand(factory, partId.toString()) && !isPotentialBlockage(factory, partId.toString()) && !isUnhandledByproduct(factory, partId.toString())">
+                   cover the byproduct case, which says the same thing with more consequence.
+                   Ignorable the same way as the backlog chip below, and drawn the same way: see
+                   the comment there. -->
+              <template v-if="hasNoDemandAdvisory(factory, partId.toString())">
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
-                    <!-- No trailing info icon: the question mark already says the chip is
-                         explaining itself, and hovering it is how you read the rest. -->
-                    <v-chip v-bind="activatorProps" class="sf-chip status-note small">
-                      <i class="fas fa-question-circle mr-2" /><span>No demand</span>
+                    <v-chip
+                      v-bind="activatorProps"
+                      class="sf-chip small ignorable-chip"
+                      :class="showNoDemandIgnored(factory, partId.toString()) ? 'status-note-ignored' : 'status-note'"
+                    >
+                      <div class="d-flex flex-column align-center">
+                        <div class="ignorable-title d-flex align-center">
+                          <span class="mr-2">{{ showNoDemandIgnored(factory, partId.toString()) ? 'No demand ignored' : 'No demand' }}</span>
+                          <i class="fas fa-info-circle" />
+                        </div>
+                        <label class="chip-ignore d-inline-flex align-center text-caption">
+                          <input
+                            :id="`${factory.id}-satisfaction-${partId.toString()}-ignore-no-demand`"
+                            :checked="isNoDemandIgnored(factory, partId.toString())"
+                            class="chip-ignore-tick"
+                            type="checkbox"
+                            @change="updateNoDemandIgnored(partId.toString(), ($event.target as HTMLInputElement).checked)"
+                          >
+                          <span>Ignore</span>
+                        </label>
+                      </div>
                     </v-chip>
                   </template>
-                  <span>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, set an AWESOME Sink on it in the Storage column so the line does not back up.</span>
+                  <span v-if="showNoDemandIgnored(factory, partId.toString())">You have chosen to ignore this note, so it no longer counts against the factory.<br>The item still has no demand. Untick Ignore to bring the note back.</span>
+                  <span v-else>There are no factories or AWESOME Sinks that consume this item, so it is in effect dead.<br>Add a sink or export it to resolve this.<br>If that is deliberate, tick Ignore to stop the note counting against the factory.</span>
                 </v-tooltip>
               </template>
               <!-- Warning tier, so this colours the factory amber: with the Storage column beside
@@ -439,20 +459,20 @@
                   <template #activator="{ props: activatorProps }">
                     <v-chip
                       v-bind="activatorProps"
-                      class="sf-chip small backlog-chip"
+                      class="sf-chip small ignorable-chip"
                       :class="showBacklogIgnored(factory, partId.toString()) ? 'status-warning-ignored' : 'status-warning'"
                     >
                       <div class="d-flex flex-column align-center">
-                        <div class="backlog-title d-flex align-center">
+                        <div class="ignorable-title d-flex align-center">
                           <i class="fas fa-traffic-cone backlog-cone mr-2" />
                           <span class="mr-2">{{ showBacklogIgnored(factory, partId.toString()) ? 'Backlog ignored' : 'Will cause backlog' }}</span>
                           <i class="fas fa-info-circle" />
                         </div>
-                        <label class="backlog-ignore d-inline-flex align-center text-caption">
+                        <label class="chip-ignore d-inline-flex align-center text-caption">
                           <input
                             :id="`${factory.id}-satisfaction-${partId.toString()}-ignore-backlog`"
                             :checked="isBacklogIgnored(factory, partId.toString())"
-                            class="backlog-ignore-tick"
+                            class="chip-ignore-tick"
                             type="checkbox"
                             @change="updateBacklogIgnored(partId.toString(), ($event.target as HTMLInputElement).checked)"
                           >
@@ -628,11 +648,12 @@
   import { getRedistributionSourceNames, isPartRedistributed } from '@/utils/factory-management/redistribution'
   import {
     hasBacklogAdvisory,
-    hasNoDemand,
+    hasNoDemandAdvisory,
     isEndProduct,
     isPotentialBlockage,
     isUnhandledByproduct,
     showBacklogIgnored,
+    showNoDemandIgnored,
   } from '@/utils/factory-management/status'
   import {
     checklistExportDesync,
@@ -667,10 +688,12 @@
     getDepotCount,
     getSinkCount,
     isBacklogIgnored,
+    isNoDemandIgnored,
     notifyDepotTutorial,
     notifySinkTutorial,
     setBacklogIgnored,
     setDepotCount,
+    setNoDemandIgnored,
     setSinkCount,
     SINK_POWER_MW,
   } from '@/utils/factory-management/disposal'
@@ -1017,6 +1040,11 @@
     updateFactory(props.factory)
   }
 
+  const updateNoDemandIgnored = (partId: string, ignored: boolean) => {
+    setNoDemandIgnored(props.factory, partId, ignored)
+    updateFactory(props.factory)
+  }
+
   // Only for the wording of the disabled sink chip's tooltip — the guard itself is showSinkControl.
   const isFluidPart = (partId: string) => !!getGameData()?.items?.parts?.[partId]?.isFluid
 
@@ -1162,10 +1190,10 @@ table {
   }
 }
 
-// The backlog chip grows a second row for the Ignore checkbox. Vuetify fixes a chip's height and
+// The backlog and no demand chips grow a second row for the Ignore checkbox. Vuetify fixes a chip's height and
 // the pill radius would turn a two-row chip into a stadium, so both are released; the padding is
 // uneven on purpose, so the two rows sit snugly rather than floating in a chip sized for one.
-.sf-chip.backlog-chip {
+.sf-chip.ignorable-chip {
   height: auto !important;
   padding: 10px 12px 4px !important;
   border-radius: 14px !important;
@@ -1175,7 +1203,7 @@ table {
 // height the label stood a third taller than the icons beside it. The chip's top padding and the
 // Ignore row's margin take back what the line gave up, so neither row moves and the chip keeps its
 // height.
-.backlog-title {
+.ignorable-title {
   line-height: 14px;
 }
 
@@ -1188,7 +1216,7 @@ table {
 // The Ignore row inside the chip. The tick shares `.checklist-tick`'s drawing below but not its
 // class, which belongs to the checklist feature and which its specs select on. The top margin is
 // the gap the title's taller line used to leave under it.
-.backlog-ignore {
+.chip-ignore {
   cursor: pointer;
   line-height: 1;
   margin-top: 5px;
@@ -1198,7 +1226,7 @@ table {
 // Smaller than the checklist's tick, since it sits in a chip rather than beside a row of buttons.
 // The check mark is redrawn for the smaller box. Scoped under the chip so it outranks the shared
 // tick rule further down, which would otherwise win on source order.
-.backlog-chip .backlog-ignore-tick {
+.ignorable-chip .chip-ignore-tick {
   height: 14px;
   margin-right: 6px;
   width: 14px;
@@ -1219,7 +1247,7 @@ table {
 // icons at Font Awesome Regular, which this app doesn't ship: the unticked box renders as
 // nothing at all. See PlannerFactoryTasks.vue's .task-tick, which this mirrors.
 .checklist-tick,
-.backlog-ignore-tick {
+.chip-ignore-tick {
   appearance: none;
   border: 2px solid rgba(255, 255, 255, 0.45);
   border-radius: 3px;

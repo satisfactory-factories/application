@@ -3,6 +3,7 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { createNewPart } from '@/utils/factory-management/common'
 import { mockPowerProducer, mockProduct } from '@/utils/factory-management/status-fixtures'
+import { setNoDemandIgnored } from '@/utils/factory-management/disposal'
 import {
   factoryStatusClass,
   factoryStatusDefinitions,
@@ -14,6 +15,7 @@ import {
   hasNoDemand,
   highestSeverity,
   isEndProduct,
+  showNoDemandIgnored,
   statusJumpTargets,
   tallyFactoryStatuses,
 } from '@/utils/factory-management/status'
@@ -342,6 +344,19 @@ describe('status', () => {
         label: 'No demand',
         subjects: [{ id: 'IronIngot', type: 'item' }],
       })
+    })
+
+    // Ignoring it is the user saying the product is the point of the factory, so it stops counting.
+    test('does not fire for a product the user has chosen to ignore', () => {
+      factory.parts.IronIngot.amountRequired = 0
+      setNoDemandIgnored(factory, 'IronIngot', true)
+
+      expect(typesOf(factory)).not.toContain('noDemand')
+      expect(showNoDemandIgnored(factory, 'IronIngot')).toBe(true)
+
+      setNoDemandIgnored(factory, 'IronIngot', false)
+      expect(typesOf(factory)).toContain('noDemand')
+      expect(showNoDemandIgnored(factory, 'IronIngot')).toBe(false)
     })
 
     test('does not fire while anything at all asks for the output', () => {

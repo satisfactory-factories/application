@@ -91,6 +91,7 @@ export const repairPartDisposal = (factories: Factory[]): StructuralRepair[] => 
       // Only `true` is ever written, so anything else is hand-edited and reads as not ignored.
       // Quietly normalised: unlike a count, there is no number to have been wrong about.
       if (record.ignoreBacklog !== true) delete record.ignoreBacklog
+      if (record.ignoreNoDemand !== true) delete record.ignoreNoDemand
 
       // Dropped rather than kept at zero, so a repaired plan saves the same as one that never
       // had the counts — matching what clearing them in the UI does.

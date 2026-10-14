@@ -271,6 +271,14 @@
     background-color: transparent !important;
   }
 
+  // The note-tier equivalent, for an ignored "no demand" note.
+  &.status-note-ignored {
+    color: var(--sf-status-note) !important;
+    border-color: var(--sf-status-note-border) !important;
+    border-style: dashed !important;
+    background-color: transparent !important;
+  }
+
   &.node-setting {
     color: var(--sf-node-setting) !important;
     border-color: var(--sf-node-setting-border) !important;
