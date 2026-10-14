@@ -81,14 +81,14 @@
       <v-btn
         id="linked-tick-sync-leave"
         color="error"
-        variant="tonal"
+        variant="text"
         @click="leave"
       >Leave as is</v-btn>
       <v-btn
         id="linked-tick-sync-untick"
-        color="grey"
+        color="amber"
         :disabled="!selected.size"
-        variant="flat"
+        variant="text"
         @click="resolve(false)"
       >Untick both ends</v-btn>
       <v-btn
