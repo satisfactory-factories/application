@@ -1208,7 +1208,8 @@ table {
   &:checked::after {
     height: 8px;
     left: 50%;
-    top: 45%;
+    // A rotated L is heavier at its foot, so its box's centre sits low: 1px up evens the gaps.
+    top: calc(50% - 1px);
     transform: translate(-50%, -50%) rotate(45deg);
     width: 4px;
   }
