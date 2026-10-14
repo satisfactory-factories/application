@@ -7,9 +7,10 @@
      Links are listed under which end is ticked, each with its own checkbox, all ticked to start
      with. Ticking both ends is the main fix: a tick is the player saying they built it. Unticking
      is there too, because a link left ticked at one end after an untick is the other way this
-     goes wrong. Both apply only to the links selected. Whatever is still out of sync when the
-     dialog closes is remembered for that plan for the session, so a tab switch does not raise the
-     same links again. -->
+     goes wrong. Both apply only to the links selected, and the dialog then narrows to the links
+     still out of sync, closing once there are none. Whatever is still out of sync when it is
+     closed is remembered for that plan for the session, so a tab switch does not raise the same
+     links again. -->
 <template>
   <app-dialog
     v-model="isOpen"
@@ -77,11 +78,17 @@
       </label>
     </section>
     <template #actions>
-      <v-btn id="linked-tick-sync-leave" variant="text" @click="leave">Leave as is</v-btn>
+      <v-btn
+        id="linked-tick-sync-leave"
+        color="error"
+        variant="tonal"
+        @click="leave"
+      >Leave as is</v-btn>
       <v-btn
         id="linked-tick-sync-untick"
+        color="grey"
         :disabled="!selected.size"
-        variant="text"
+        variant="flat"
         @click="resolve(false)"
       >Untick both ends</v-btn>
       <v-btn
@@ -182,10 +189,17 @@
     selected.value = new Set(rows.value.filter(predicate).map(row => row.key))
   }
 
+  // Fixes the selected links and keeps going with whatever is still out of sync, so the links
+  // left unselected can be given the other fix, or left. Closes once nothing is left.
   const resolve = (completed: boolean) => {
     const chosen = links.value.filter(link => selected.value.has(linkKey(link)))
     resolveDesyncedLinkedTicks(appStore.getFactories(), chosen, completed)
-    isOpen.value = false
+    const remaining = findDesyncedLinkedTicks(appStore.getFactories())
+    if (remaining.length) {
+      open(remaining)
+    } else {
+      isOpen.value = false
+    }
   }
 
   // Closed any other way (the corner button, Esc, the scrim) counts as leaving it as it is.

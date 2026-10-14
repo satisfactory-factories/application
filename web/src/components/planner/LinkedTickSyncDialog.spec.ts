@@ -103,7 +103,7 @@ describe('LinkedTickSyncDialog', () => {
     expect(factories[1].inputs[0].completed).toBe(false)
   })
 
-  it('fixes only the links left selected, and remembers the rest as left as is', async () => {
+  it('fixes only the selected links, then narrows to the ones still out of sync', async () => {
     const [source, destination] = factories
     const second = newFactory('Phase 3', 2, 3)
     const input = { factoryId: source.id, outputPart: 'SteelPlate', amount: 90, completed: true }
@@ -125,7 +125,16 @@ describe('LinkedTickSyncDialog', () => {
     expect(isChecklistExportComplete(source, destination.id, 'SteelPipe')).toBe(true)
     expect(isChecklistExportComplete(source, second.id, 'SteelPlate')).toBe(false)
 
-    await load()
+    // Still open, now listing only the link left, selected and ready for its own fix.
+    expect(isOpen()).toBe(true)
+    const left = [...document.body.querySelectorAll<HTMLInputElement>('.linked-tick-sync-row input')]
+    expect(left).toHaveLength(1)
+    expect(left[0].checked).toBe(true)
+
+    button('linked-tick-sync-untick')?.click()
+    await flushPromises()
+
+    expect(input.completed).toBe(false)
     expect(isOpen()).toBe(false)
   })
 
