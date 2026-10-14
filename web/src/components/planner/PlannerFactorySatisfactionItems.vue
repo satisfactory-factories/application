@@ -361,10 +361,10 @@
                     <v-chip v-bind="activatorProps" class="sf-chip awesome-sink small">
                       <game-asset
                         class="mr-1 sunk-icon"
-                        height="28"
+                        height="22"
                         subject="awesome-sink"
                         type="item_id"
-                        width="28"
+                        width="22"
                       />
                       <b><span :id="`${factory.id}-satisfaction-${partId.toString()}-sunk`">{{ formatNumber(part.amountRequiredSink ?? 0) }}</span>/min sunk</b>
                     </v-chip>
@@ -1127,7 +1127,8 @@ table {
 // otherwise identical, so the icon alone meant looking twice to tell sink from Uploader.
 // The sink's art is mostly antenna at the top: at its natural size the building itself was a
 // smudge in the bottom half of the icon. The image is zoomed from its base until the building fills
-// the chip's inside height, and the antenna's tip is cropped by the image's own box.
+// its box, and the antenna's tip is cropped by that box. The box is 22px, leaving 3px clear of the
+// chip's border above and below.
 .sunk-icon :deep(.v-img__img) {
   transform: scale(1.25);
   transform-origin: 50% 100%;
@@ -1202,10 +1203,13 @@ table {
   margin-right: 6px;
   width: 14px;
 
+  // Centred in the 10px inside of the box rather than pinned to its top-left corner, and as large
+  // as the box allows: at 7px the mark sat tucked into the corner.
   &:checked::after {
-    height: 7px;
-    left: 2px;
-    top: 0;
+    height: 8px;
+    left: 50%;
+    top: 45%;
+    transform: translate(-50%, -50%) rotate(45deg);
     width: 4px;
   }
 }
