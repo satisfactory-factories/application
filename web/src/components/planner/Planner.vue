@@ -8,6 +8,7 @@
   <dimensional-depot-tutorial />
   <checklist-tutorial />
   <linked-tick-dialog />
+  <linked-tick-sync-dialog />
   <div class="planner-container" :class="{ 'full-width': plannerOptions.fullWidth }">
     <!-- Navigation Drawer for Mobile. Only ever one copy of the sidebar is mounted: the drawer
          cannot open at desktop widths, and the docked one is not shown below them, so the copy
@@ -186,6 +187,7 @@
   import DimensionalDepotTutorial from '@/components/planner/DimensionalDepotTutorial.vue'
   import ChecklistTutorial from '@/components/planner/ChecklistTutorial.vue'
   import LinkedTickDialog from '@/components/planner/LinkedTickDialog.vue'
+  import LinkedTickSyncDialog from '@/components/planner/LinkedTickSyncDialog.vue'
   import PlannerFactoryPager from '@/components/planner/PlannerFactoryPager.vue'
   import DimensionalDepot from '@/components/planner/DimensionalDepot.vue'
   import { flashElement } from '@/utils/navigation-highlight'

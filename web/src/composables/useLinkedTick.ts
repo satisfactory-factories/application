@@ -33,6 +33,11 @@ export interface PendingLinkedTick {
 
 const pending = ref<PendingLinkedTick | null>(null)
 
+// The plan validator's "Leave as is" (LinkedTickSyncDialog), remembered per plan and set of
+// out-of-step links. Kept here at module scope rather than in the dialog because the planner
+// remounts on every navigation, and a choice the player has made should last the session.
+export const linkedTickSyncLeftAsIs = new Set<string>()
+
 // The factory the offer would change.
 export const linkedTickTargetId = (offer: PendingLinkedTick): number =>
   offer.target === 'import' ? offer.destinationFactoryId : offer.sourceFactoryId
