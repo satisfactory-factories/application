@@ -360,11 +360,11 @@
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip awesome-sink small">
                       <game-asset
-                        class="mr-2"
-                        height="18"
+                        class="mr-1 sunk-icon"
+                        height="28"
                         subject="awesome-sink"
                         type="item_id"
-                        width="18"
+                        width="28"
                       />
                       <b><span :id="`${factory.id}-satisfaction-${partId.toString()}-sunk`">{{ formatNumber(part.amountRequiredSink ?? 0) }}</span>/min sunk</b>
                     </v-chip>
@@ -443,8 +443,8 @@
                       :class="showBacklogIgnored(factory, partId.toString()) ? 'status-warning-ignored' : 'status-warning'"
                     >
                       <div class="d-flex flex-column align-center">
-                        <div class="d-flex align-center">
-                          <i class="fas fa-traffic-cone mr-2" />
+                        <div class="backlog-title d-flex align-center">
+                          <i class="fas fa-traffic-cone backlog-cone mr-2" />
                           <span class="mr-2">{{ showBacklogIgnored(factory, partId.toString()) ? 'Backlog ignored' : 'Will cause backlog' }}</span>
                           <i class="fas fa-info-circle" />
                         </div>
@@ -1125,6 +1125,14 @@ table {
 // (BuildingGroup.vue is the model). The chip carries the fill and its destination's colour — a
 // bare outlined input read as a hollow box nothing else in the app has, and the two rows are
 // otherwise identical, so the icon alone meant looking twice to tell sink from Uploader.
+// The sink's art is mostly antenna at the top: at its natural size the building itself was a
+// smudge in the bottom half of the icon. The image is zoomed from its base until the building fills
+// the chip's inside height, and the antenna's tip is cropped by the image's own box.
+.sunk-icon :deep(.v-img__img) {
+  transform: scale(1.25);
+  transform-origin: 50% 100%;
+}
+
 .disposal-chip {
   // Fixed so the two rows line up down the column whatever the counts are.
   width: 106px;
@@ -1158,17 +1166,31 @@ table {
 // uneven on purpose, so the two rows sit snugly rather than floating in a chip sized for one.
 .sf-chip.backlog-chip {
   height: auto !important;
-  padding: 6px 12px 4px !important;
+  padding: 10px 12px 4px !important;
   border-radius: 14px !important;
 }
 
+// One 14px line for the icons and the label, so all three share a box: at the inherited 21px line
+// height the label stood a third taller than the icons beside it. The chip's top padding and the
+// Ignore row's margin take back what the line gave up, so neither row moves and the chip keeps its
+// height.
+.backlog-title {
+  line-height: 14px;
+}
+
+// The cone is a triangle on a wide base, so centred in its box like the info circle it reads as
+// sitting low, its base well under the label's baseline. One pixel up puts it level with the text.
+.backlog-cone {
+  transform: translateY(-1px);
+}
+
 // The Ignore row inside the chip. The tick shares `.checklist-tick`'s drawing below but not its
-// class, which belongs to the checklist feature and which its specs select on. No top margin: the
-// chip's own padding and the title's line height are all the gap this row wants.
+// class, which belongs to the checklist feature and which its specs select on. The top margin is
+// the gap the title's taller line used to leave under it.
 .backlog-ignore {
   cursor: pointer;
   line-height: 1;
-  margin-top: 2px;
+  margin-top: 5px;
   user-select: none;
 }
 
