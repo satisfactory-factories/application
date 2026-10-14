@@ -29,6 +29,7 @@ declare module 'vue' {
     ChecklistDesyncChip: typeof import('./components/planner/ChecklistDesyncChip.vue')['default']
     ChecklistTutorial: typeof import('./components/planner/ChecklistTutorial.vue')['default']
     CloudPlanRow: typeof import('./components/sync/CloudPlanRow.vue')['default']
+    ColorHexField: typeof import('./components/planner/groups/ColorHexField.vue')['default']
     Copyright: typeof import('./components/Copyright.vue')['default']
     CustomBuilding: typeof import('./components/planner/products/CustomBuilding.vue')['default']
     DebounceSpinner: typeof import('./components/planner/DebounceSpinner.vue')['default']

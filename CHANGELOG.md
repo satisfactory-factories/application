@@ -4,6 +4,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## Unreleased
 
+- **Group colours show their hex code.** The colour popover on a factory group now has a hex code box at the bottom, with a copy button. It follows the colour as swatches are picked (the popover now stays open after a pick, so the code can be copied), and typing a code there and pressing Enter applies it. Three-digit shorthand and a pasted leading `#` are both accepted. The custom picker behind the plus button carries the same box, showing the colour as it is dragged.
 - **Names, notes and tasks now follow some text rules.** They can't contain links, curly brackets, backticks, long runs of code-like characters, words over 40 characters (60 in notes and tasks) or, in notes, long text with almost no spaces. The field says which rule a value breaks, and a synced plan holds the edit back until it is fixed. The server applies the same rules to every save, share link and live edit, and refuses a value that breaks one. If the server refuses an edit the planner did not catch, a message names the factory.
 - **Over-long text is refused rather than cut.** Names, notes and task titles over their limits (200, 1,000 and 200 characters) are no longer silently shortened by the server.
 - **Old text is repaired, not refused.** Links in notes and names saved before these rules are replaced with "[link removed]" when a plan loads, when an old share link opens, and when an old cloud save is restored. Invisible characters are stripped, and names are trimmed.

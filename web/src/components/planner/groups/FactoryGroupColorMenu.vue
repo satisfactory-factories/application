@@ -23,7 +23,7 @@
             :data-hover-tooltip="entry.name"
             :style="{ backgroundColor: entry.value }"
             type="button"
-            @click="pick(entry.value)"
+            @click="apply(entry.value)"
           />
           <!-- Anything at all is allowed, the grid is just the shortlist. -->
           <button
@@ -50,10 +50,15 @@
               :data-hover-tooltip="color"
               :style="{ backgroundColor: color }"
               type="button"
-              @click="pick(color)"
+              @click="apply(color)"
             />
           </div>
         </template>
+
+        <!-- The colour the group has now, to copy out or to type over with one from elsewhere. -->
+        <div class="hex-row">
+          <ColorHexField :model-value="modelValue" @update:model-value="apply" />
+        </div>
       </template>
       <template v-else>
         <v-color-picker
@@ -63,6 +68,9 @@
           :modes="['hex']"
           width="216"
         />
+        <div class="hex-row">
+          <ColorHexField v-model="draft" />
+        </div>
         <!-- The shortlist simply omits red and amber; the custom picker can't, so it says why. -->
         <div class="colour-caution mt-2">
           <i class="fas fa-exclamation-triangle mr-1" />
@@ -82,6 +90,7 @@
   import { ref, watch } from 'vue'
   import { groupPalette } from '@/utils/colors'
   import { useGroupColorHistory } from '@/composables/useGroupColorHistory'
+  import ColorHexField from '@/components/planner/groups/ColorHexField.vue'
 
   const props = defineProps<{ modelValue: string }>()
   const emit = defineEmits<{ (event: 'update:modelValue', color: string): void }>()
@@ -100,11 +109,16 @@
 
   const { customColors, remember } = useGroupColorHistory()
 
-  const pick = (color: string) => {
+  // The grid stays open after a pick, so the hex code underneath follows along and can be copied.
+  const apply = (color: string) => {
     // v-color-picker hands back #rrggbbaa in some modes; the alpha is meaningless here.
     const hex = color.slice(0, 7)
     remember(hex)
     emit('update:modelValue', hex)
+  }
+
+  const pick = (color: string) => {
+    apply(color)
     open.value = false
   }
 </script>
@@ -153,6 +167,12 @@
   font-size: 1rem;
   line-height: 1.3;
   color: #bdbdbd;
+}
+
+.hex-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
 }
 
 .custom-trigger {
