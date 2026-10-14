@@ -381,7 +381,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip blue small">
-                      <i class="fas fa-flag-checkered mr-2" /><span>End product</span>
+                      <i class="fas fa-flag-checkered mr-2" /><span class="mr-2">End product</span><i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>Nothing in the game consumes this item, so it is the end of its chain.<br>Deliver it to the Space Elevator, or set an AWESOME Sink on it in the Storage column.</span>
@@ -393,7 +393,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip status-note small">
-                      <i class="fas fa-exclamation-triangle mr-2" /><span>Potential blockage</span>
+                      <i class="fas fa-exclamation-triangle mr-2" /><span class="mr-2">Potential blockage</span><i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Set an AWESOME Sink on it in the Storage column, blend it into a recipe that consumes it, or export it.</span>
@@ -403,7 +403,7 @@
                 <v-tooltip bottom>
                   <template #activator="{ props: activatorProps }">
                     <v-chip v-bind="activatorProps" class="sf-chip status-warning small">
-                      <i class="fas fa-exclamation-triangle mr-2" /><span>Unhandled byproduct</span>
+                      <i class="fas fa-exclamation-triangle mr-2" /><span class="mr-2">Unhandled byproduct</span><i class="fas fa-info-circle" />
                     </v-chip>
                   </template>
                   <span>Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, or export it to a factory that will.</span>
@@ -423,11 +423,9 @@
                       :class="showNoDemandIgnored(factory, partId.toString()) ? 'status-note-ignored' : 'status-note'"
                     >
                       <div class="d-flex flex-column align-center">
-                        <!-- No trailing info icon: the question mark already says the chip is
-                             explaining itself, and hovering it is how you read the rest. -->
                         <div class="ignorable-title d-flex align-center">
-                          <i class="fas fa-question-circle mr-2" />
-                          <span>{{ showNoDemandIgnored(factory, partId.toString()) ? 'No demand ignored' : 'No demand' }}</span>
+                          <span class="mr-2">{{ showNoDemandIgnored(factory, partId.toString()) ? 'No demand ignored' : 'No demand' }}</span>
+                          <i class="fas fa-info-circle" />
                         </div>
                         <label class="chip-ignore d-inline-flex align-center text-caption">
                           <input
@@ -443,7 +441,7 @@
                     </v-chip>
                   </template>
                   <span v-if="showNoDemandIgnored(factory, partId.toString())">You have chosen to ignore this note, so it no longer counts against the factory.<br>The item still has no demand. Untick Ignore to bring the note back.</span>
-                  <span v-else>Nothing asks for this item: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, set an AWESOME Sink on it in the Storage column so the line does not back up, or tick Ignore to stop the note counting against the factory.</span>
+                  <span v-else>There are no factories or AWESOME Sinks that consume this item, so it is in effect dead.<br>Add a sink or export it to resolve this.<br>If that is deliberate, tick Ignore to stop the note counting against the factory.</span>
                 </v-tooltip>
               </template>
               <!-- Warning tier, so this colours the factory amber: with the Storage column beside

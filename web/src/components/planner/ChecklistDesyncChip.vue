@@ -15,6 +15,7 @@
     >
       <i class="fas fa-exclamation-triangle" />
       <span class="ml-2">{{ checklistDesyncChange(desync) }}</span>
+      <i class="fas fa-info-circle ml-2" />
     </v-chip>
   </tooltip>
 </template>

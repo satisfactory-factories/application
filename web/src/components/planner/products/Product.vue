@@ -123,7 +123,7 @@
           :id="`${factory.id}-${product.id}-as-built`"
           class="sf-chip small red"
         >
-          <i class="fas fa-layer-group mr-1" />Groups make {{ formatNumber(asBuiltOutput(product) ?? 0) }}/min
+          <i class="fas fa-layer-group mr-1" />Groups make {{ formatNumber(asBuiltOutput(product) ?? 0) }}/min<i class="fas fa-info-circle ml-1" />
         </v-chip>
       </tooltip>
       <v-btn
@@ -156,7 +156,7 @@
         text="Nothing in the game consumes this item, so it is the end of its chain.<br>The planner assumes you deliver it to the Space Elevator, or sink it."
       >
         <v-chip class="sf-chip small blue">
-          <i class="fas fa-flag-checkered mr-1" />End product
+          <i class="fas fa-flag-checkered mr-1" />End product<i class="fas fa-info-circle ml-1" />
         </v-chip>
       </tooltip>
       <!-- Ignored from the Satisfaction row's Ignore tick, where the choice can be undone; here it
@@ -166,10 +166,10 @@
         classes="align-self-center"
         :text="isNoDemandIgnored(factory, product.id)
           ? 'You have chosen to ignore this note, so it no longer counts against the factory.<br>Untick Ignore on this item in the Satisfaction section to bring it back.'
-          : 'Nothing asks for this product: no recipe in this factory needs it and no other factory imports it.<br>If that is deliberate, tick Ignore on this item in the Satisfaction section.'"
+          : 'There are no factories or AWESOME Sinks that consume this item, so it is in effect dead.<br>Add a sink or export it to resolve this.<br>If that is deliberate, tick Ignore on this item in the Satisfaction section.'"
       >
         <v-chip class="sf-chip small" :class="isNoDemandIgnored(factory, product.id) ? 'status-note-ignored' : 'status-note'">
-          <i class="fas fa-question-circle mr-1" />{{ isNoDemandIgnored(factory, product.id) ? 'No demand ignored' : 'No demand' }}
+          {{ isNoDemandIgnored(factory, product.id) ? 'No demand ignored' : 'No demand' }}<i class="fas fa-info-circle ml-1" />
         </v-chip>
       </tooltip>
     </div>
@@ -214,7 +214,7 @@
             text="Nothing consumes this byproduct, so it will back up and stall the buildings making it unless you sink it.<br>Blending it into a recipe that consumes it, or exporting it, works too. Support for sinking is coming in a future update."
           >
             <v-chip class="sf-chip small status-note">
-              <i class="fas fa-exclamation-triangle mr-1" />Potential blockage
+              <i class="fas fa-exclamation-triangle mr-1" />Potential blockage<i class="fas fa-info-circle ml-1" />
             </v-chip>
           </tooltip>
           <tooltip
@@ -222,7 +222,7 @@
             text="Nothing consumes this byproduct and the AWESOME Sink will not take it, so it fills the machine's output and stalls the buildings making it.<br>Blend it into a recipe that consumes it, or export it to a factory that will."
           >
             <v-chip class="sf-chip small status-warning">
-              <i class="fas fa-exclamation-triangle mr-1" />Unhandled byproduct
+              <i class="fas fa-exclamation-triangle mr-1" />Unhandled byproduct<i class="fas fa-info-circle ml-1" />
             </v-chip>
           </tooltip>
         </template>
