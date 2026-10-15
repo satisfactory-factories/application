@@ -344,14 +344,16 @@ export const factorySchema = z.object({
 })
 
 /**
- * A save's unlocked alternates and the marks made by hand on top. Ids are capped rather than
+ * What a save has unlocked and the marks made by hand on top. Ids are capped rather than
  * checked: the server does not hold the game data.
  */
 export const recipeUnlocksSchema = z.object({
   save: z.object({
     name: z.string().max(CAPS.name),
     readAt: str,
-    alternates: z.array(key).max(CAPS.recipeKeys),
+    recipes: z.array(key).max(CAPS.recipeKeys),
+    buildings: z.array(key).max(CAPS.buildingKeys),
+    tiers: z.array(num).max(CAPS.tiers),
   }).nullable(),
   overrides: boundedRecord(z.boolean(), CAPS.recipeKeys),
 })

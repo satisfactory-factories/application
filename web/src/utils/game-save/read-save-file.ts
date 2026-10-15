@@ -14,18 +14,18 @@ export class IncompatibleSaveError extends Error {
   }
 }
 
-const OPTIONS: ExtractOptions = { recipesOnly: true }
-
 /**
  * Reads a .sav the player picked, on a worker so the page stays responsive while a large save
  * inflates. Falls back to this thread where workers are unavailable.
  */
-export const readSaveFile = async (file: File): Promise<WorldSnapshot> => {
+export const readSaveFile = async (file: File, buildingIds: readonly string[]): Promise<WorldSnapshot> => {
   const bytes: SaveBytes = new Uint8Array(await file.arrayBuffer())
+  // A plain array: a reactive proxy cannot be posted to a worker.
+  const options: ExtractOptions = { unlocksOnly: true, buildingIds: [...buildingIds] }
 
   if (typeof Worker === 'undefined') {
     try {
-      return await readWorldFromSave(bytes, OPTIONS)
+      return await readWorldFromSave(bytes, options)
     } catch (error) {
       throw new IncompatibleSaveError(saveProblemOf(error), error instanceof Error ? error.message : String(error))
     }
@@ -37,7 +37,7 @@ export const readSaveFile = async (file: File): Promise<WorldSnapshot> => {
       worker.onmessage = (event: MessageEvent<ReadWorldResponse>) => resolve(event.data)
       worker.onerror = event => reject(new Error(event.message || 'The save reader stopped unexpectedly.'))
       // Transferred rather than copied: the planner has no further use for the bytes.
-      worker.postMessage({ bytes, options: OPTIONS } satisfies ReadWorldRequest, [bytes.buffer])
+      worker.postMessage({ bytes, options } satisfies ReadWorldRequest, [bytes.buffer])
     })
     if (!response.ok) throw new IncompatibleSaveError(response.problem, response.error)
     return response.snapshot

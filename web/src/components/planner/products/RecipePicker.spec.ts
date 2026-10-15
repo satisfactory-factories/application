@@ -77,9 +77,9 @@ describe('Component: RecipePicker', () => {
     const lock = (recipe: string) => document.querySelector<HTMLElement>(`[data-testid="recipe-lock-${recipe}"]`)
     const row = (recipe: string) => document.querySelector(`[data-recipe="${recipe}"] .recipe-picker-row`)
 
-    const loadSave = (alternates: string[]) => {
+    const loadSave = (recipes: string[]) => {
       useAppStore().getCurrentTab()!.recipeUnlocks = {
-        save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', alternates },
+        save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', recipes, buildings: [], tiers: [] },
         overrides: {},
       }
     }
@@ -104,15 +104,15 @@ describe('Component: RecipePicker', () => {
     })
 
     it('padlocks and greys out an alternate the save has not unlocked', async () => {
-      loadSave(['Alternate_FusedWire'])
+      loadSave(['Wire', 'Alternate_FusedWire'])
       openPicker('Wire')
       await opened!.vm.$nextTick()
 
       expect(lock('Alternate_Wire_2')?.classList).toContain('locked')
       expect(row('Alternate_Wire_2')?.classList).toContain('locked')
       expect(lock('Alternate_FusedWire')?.classList).not.toContain('locked')
-      // Standard recipes are never locked, so they carry no padlock to click.
-      expect(lock('Wire')).toBeNull()
+      // Standard recipes carry one too: a milestone can leave one locked.
+      expect(lock('Wire')?.classList).not.toContain('locked')
     })
 
     it('marks a locked alternate unlocked by hand without selecting it', async () => {

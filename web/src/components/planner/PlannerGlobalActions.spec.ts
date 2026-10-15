@@ -394,7 +394,7 @@ describe('Component: PlannerGlobalActions clipboard', () => {
   })
 
   const loadedSave = () => ({
-    save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', alternates: ['Alternate_Screw'] },
+    save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', recipes: ['Alternate_Screw'], buildings: [], tiers: [] },
     overrides: { Alternate_Wire_1: true },
   })
 

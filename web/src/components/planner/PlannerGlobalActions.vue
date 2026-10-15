@@ -32,19 +32,6 @@
           Show Intro
         </v-btn>
       </tooltip>
-      <tooltip :text="loadSaveTooltip">
-        <v-btn
-          class="ma-1"
-          color="yellow"
-          data-testid="load-save"
-          prepend-icon="fas fa-save"
-          ripple
-          variant="tonal"
-          @click="loadSaveOpen = true"
-        >
-          Load game save
-        </v-btn>
-      </tooltip>
       <tooltip :text="isEmpty ? 'Nothing to clear yet — the plan is already empty.' : 'Delete every factory in this plan. There is no undo, so copy the plan first if you might want it back.'">
         <v-btn
           class="ma-1"
@@ -99,7 +86,6 @@
     </v-col>
   </v-row>
 
-  <load-save-dialog v-model="loadSaveOpen" />
   <export-plan-dialog v-model="exportOpen" @choose="onExportChoice" />
   <import-plan-dialog
     v-model="importOpen"
@@ -113,8 +99,6 @@
 <script setup lang="ts">
   import ExportPlanDialog from '@/components/planner/ExportPlanDialog.vue'
   import ImportPlanDialog from '@/components/planner/ImportPlanDialog.vue'
-  import LoadSaveDialog from '@/components/planner/LoadSaveDialog.vue'
-  import { useRecipeUnlocks } from '@/composables/useRecipeUnlocks'
   import { unlocksForArrivingPlan } from '@/utils/recipe-unlocks'
   import { recordEvent } from '@/utils/record-event'
   import { useAppStore } from '@/stores/app-store'
@@ -138,12 +122,6 @@
   const importOpen = ref(false)
   const importError = ref('')
   const importing = ref(false)
-  const loadSaveOpen = ref(false)
-  const { save: loadedSave } = useRecipeUnlocks()
-
-  const loadSaveTooltip = computed(() => loadedSave.value
-    ? `Alternate recipes are checked against "${loadedSave.value.name}". Load a newer save, or forget this one.`
-    : 'Read a Satisfactory save to see which alternate recipes you have unlocked.')
 
   // Named because it is the reason several of these buttons are disabled, and each says so in its
   // own tooltip rather than leaving the reader to guess at a greyed-out control.

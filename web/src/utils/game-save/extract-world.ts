@@ -63,9 +63,9 @@ export interface ExtractOptions {
    * building and an unrecognised one is dropped rather than invented.
    */
   buildingIds?: readonly string[]
-  // Only the recipes. Skips the node, extractor and census walks, so a save that trips one of
-  // those can still report its unlocks.
-  recipesOnly?: boolean
+  // Only what the save has unlocked: recipes, buildings and progression. Skips the node,
+  // extractor and census walks, so a save that trips one of those can still report its unlocks.
+  unlocksOnly?: boolean
 }
 
 const classOf = (object: SaveObject): string => object.className.match(CLASS_NAME)?.[1] ?? object.className
@@ -235,14 +235,20 @@ export const extractWorld = (parsed: ParsedSave, options: ExtractOptions = {}): 
     throw new SaveFormatError('No available recipes found in FGRecipeManager.', 'noRecipes')
   }
 
-  if (options.recipesOnly) {
-    return { ...newWorldSnapshot(), saveName: options.saveName ?? '', recipes }
+  const known = new Set(options.buildingIds ?? [])
+  const buildings = [...new Set(recipes.standard.map(toBuildingId))].filter(id => known.has(id))
+
+  if (options.unlocksOnly) {
+    return {
+      ...newWorldSnapshot(),
+      saveName: options.saveName ?? '',
+      progression: readProgression(objects),
+      recipes,
+      buildings: buildings.sort(),
+    }
   }
 
   const { nodes, resourceOverrides, purityOverrides } = readNodes(objects)
-
-  const known = new Set(options.buildingIds ?? [])
-  const buildings = [...new Set(recipes.standard.map(toBuildingId))].filter(id => known.has(id))
 
   return {
     ...newWorldSnapshot(),

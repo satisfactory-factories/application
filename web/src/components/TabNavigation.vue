@@ -114,6 +114,7 @@
            there: the bar has no width to spare once the tabs have had theirs. -->
       <last-updated-indicator v-if="!smAndDown" />
       <planner-search :factories="appStore.getFactories()" />
+      <GameOptionsDialog />
       <OptionsDialog />
       <!-- Copy, share and delete used to sit here as three icons. They live in tab
            settings now, behind the pencil on the tab they act on: the bar was

@@ -223,12 +223,14 @@ describe('extractWorld, for a save that cannot be read', () => {
   })
 })
 
-describe('extractWorld with recipesOnly', () => {
-  it('reads the recipes and skips the rest of the world', async () => {
-    const world = extractWorld(await parseSave(loadSaveFixture('fossil-fuel-rich')), { saveName: 'x', recipesOnly: true })
+describe('extractWorld with unlocksOnly', () => {
+  it('reads the unlocks and skips the rest of the world', async () => {
+    const world = extractWorld(await parseSave(loadSaveFixture('fossil-fuel-rich')), { saveName: 'x', buildingIds, unlocksOnly: true })
     const full = worlds['fossil-fuel-rich']
 
     expect(world.recipes).toEqual(full.recipes)
+    expect(world.buildings).toEqual(full.buildings)
+    expect(world.progression).toEqual(full.progression)
     expect(world.nodes).toEqual({})
     expect(world.extractors).toEqual([])
   })

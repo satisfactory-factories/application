@@ -442,8 +442,8 @@ export interface FactoryTab {
   // when raw resources were still assumed. Do not read it as "this plan's raw supply is met" —
   // ask collectRawWizardRows() for that.
   plannerVersion?: string;
-  // Which alternate recipes the player has unlocked, read from their save. Absent means no save
-  // has been loaded, and every recipe counts as unlocked.
+  // Which recipes and buildings the player has unlocked, read from their save. Absent means no
+  // save has been loaded, and everything counts as unlocked.
   recipeUnlocks?: RecipeUnlocks;
 }
 
@@ -452,16 +452,21 @@ export interface RecipeUnlocksSave {
   name: string;
   // ISO timestamp of when the save was read, not when it was written.
   readAt: string;
-  // Alternate recipe ids as the game data names them, e.g. `Alternate_Screw`.
-  alternates: string[];
+  // Every recipe id the save has unlocked, standard and alternate, as the game data names them
+  // (`Screw`, `Alternate_Screw`).
+  recipes: string[];
+  // Building ids as the game data names them, e.g. `assemblermk1`.
+  buildings: string[];
+  // Every tier with at least one milestone bought.
+  tiers: number[];
 }
 
 // One field rather than two so that forgetting the save is a value the sync diff can carry:
 // an absent field means "unchanged" on the wire, never "cleared".
 export interface RecipeUnlocks {
   save: RecipeUnlocksSave | null;
-  // Alternates the player marked by hand: true unlocked, false locked. They win over the save and
-  // are kept when a newer one is loaded.
+  // Recipes the player marked by hand: true unlocked, false locked. They win over the save and are
+  // kept when a newer one is loaded.
   overrides: Record<string, boolean>;
 }
 

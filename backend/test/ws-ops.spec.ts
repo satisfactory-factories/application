@@ -169,7 +169,7 @@ describe('ws ops: the consistency contract', () => {
     it('keeps the unlock list a save was read into, and a forgotten save as forgotten', async () => {
       const a = await joined(owner.token)
       const recipeUnlocks = {
-        save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', alternates: ['Alternate_Screw'] },
+        save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', recipes: ['Alternate_Screw'], buildings: [], tiers: [] },
         overrides: { Alternate_Wire_1: true },
       }
 

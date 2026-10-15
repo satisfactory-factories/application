@@ -5,39 +5,55 @@ import type { RecipeUnlocks, RecipeUnlocksSave } from '@/interfaces/planner/Fact
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
 
 /**
- * Which alternate recipes the player has unlocked, as read from their save.
+ * Which recipes and buildings the player has unlocked, as read from their save.
  *
- * A LEAF: status.ts reads the plan on screen through `isActiveRecipeLocked`, and status.ts must not
- * reach anything that imports factory.ts. The app store keeps the active state current.
+ * A LEAF: status.ts reads the plan on screen through `isActiveRecipeLocked` and
+ * `isActiveBuildingLocked`, and status.ts must not reach anything that imports factory.ts. The app
+ * store keeps the active state current.
  */
 
 /**
  * The save names an alternate `Alternate_Screw` like the game data does, and the parser strips the
- * prefix into its own list. A few alternates carry no prefix at all (Pure Aluminum Ingot), so the
- * standard list is searched too rather than trusting the prefix.
+ * prefix into its own list. Matched against the game data's ids by membership rather than by
+ * prefix: Pure Aluminum Ingot is an alternate with no prefix, and `Alternate_Turbofuel` is standard.
  */
-export const unlockedAlternatesFromWorld = (world: WorldSnapshot, alternateIds: Iterable<string>): string[] => {
+export const unlockedRecipesFromWorld = (world: WorldSnapshot, recipeIds: Iterable<string>): string[] => {
   const available = new Set([
     ...world.recipes.alternates.map(id => `Alternate_${id}`),
     ...world.recipes.standard,
   ])
-  return [...alternateIds].filter(id => available.has(id)).sort()
+  return [...recipeIds].filter(id => available.has(id)).sort()
 }
 
-export const saveFromWorld = (world: WorldSnapshot, alternateIds: Iterable<string>): RecipeUnlocksSave => ({
+export const saveFromWorld = (world: WorldSnapshot, recipeIds: Iterable<string>): RecipeUnlocksSave => ({
   name: world.saveName.slice(0, CAPS.name),
   readAt: world.readAt,
-  alternates: unlockedAlternatesFromWorld(world, alternateIds),
+  recipes: unlockedRecipesFromWorld(world, recipeIds),
+  buildings: [...world.buildings],
+  tiers: [...world.progression.tiers],
 })
 
+// A save stored before buildings and every recipe were kept reads as no save, rather than as one
+// that has unlocked nothing.
+const usableSave = (unlocks: RecipeUnlocks | undefined): RecipeUnlocksSave | null =>
+  unlocks?.save && Array.isArray(unlocks.save.recipes) && Array.isArray(unlocks.save.buildings) ? unlocks.save : null
+
+export const hasUsableSave = (unlocks: RecipeUnlocks | undefined): boolean => !!usableSave(unlocks)
+
 // No save means nothing is locked: the planner behaves as it did before saves could be read.
-export const isAlternateUnlocked = (unlocks: RecipeUnlocks | undefined, recipeId: string): boolean => {
-  if (!unlocks?.save) return true
-  return unlocks.overrides[recipeId] ?? unlocks.save.alternates.includes(recipeId)
+export const isRecipeUnlocked = (unlocks: RecipeUnlocks | undefined, recipeId: string): boolean => {
+  const save = usableSave(unlocks)
+  if (!save) return true
+  return unlocks!.overrides[recipeId] ?? save.recipes.includes(recipeId)
 }
 
-export const isAlternateOverridden = (unlocks: RecipeUnlocks | undefined, recipeId: string): boolean =>
-  !!unlocks?.save && unlocks.overrides[recipeId] !== undefined
+export const isRecipeOverridden = (unlocks: RecipeUnlocks | undefined, recipeId: string): boolean =>
+  !!usableSave(unlocks) && unlocks!.overrides[recipeId] !== undefined
+
+export const isBuildingUnlocked = (unlocks: RecipeUnlocks | undefined, buildingId: string): boolean => {
+  const save = usableSave(unlocks)
+  return !save || save.buildings.includes(buildingId)
+}
 
 // Marks made by hand outlive the save they were made against; a newer save only moves the rest.
 export const withSave = (unlocks: RecipeUnlocks | undefined, save: RecipeUnlocksSave): RecipeUnlocks => ({
@@ -46,34 +62,46 @@ export const withSave = (unlocks: RecipeUnlocks | undefined, save: RecipeUnlocks
 })
 
 /**
- * Flips one alternate. A mark that agrees with the save is dropped rather than stored, so the next
- * save gets to decide that recipe again.
+ * Sets one recipe unlocked or locked. A mark that agrees with the save is dropped rather than
+ * stored, so the next save gets to decide that recipe again.
  */
-export const toggleAlternate = (unlocks: RecipeUnlocks, recipeId: string): RecipeUnlocks => {
-  const unlocked = !isAlternateUnlocked(unlocks, recipeId)
+export const setRecipeUnlocked = (unlocks: RecipeUnlocks, recipeId: string, unlocked: boolean): RecipeUnlocks => {
   const overrides = { ...unlocks.overrides }
 
-  if (unlocked === (unlocks.save?.alternates.includes(recipeId) ?? true)) delete overrides[recipeId]
+  if (unlocked === (usableSave(unlocks)?.recipes.includes(recipeId) ?? true)) delete overrides[recipeId]
   else overrides[recipeId] = unlocked
 
   return { ...unlocks, overrides }
 }
 
+export const toggleRecipe = (unlocks: RecipeUnlocks, recipeId: string): RecipeUnlocks =>
+  setRecipeUnlocked(unlocks, recipeId, !isRecipeUnlocked(unlocks, recipeId))
+
 interface ActiveRecipeUnlocks {
   unlocks: RecipeUnlocks
-  alternates: ReadonlySet<string>
+  recipes: ReadonlySet<string>
+  buildings: ReadonlySet<string>
 }
 
 const active = shallowRef<ActiveRecipeUnlocks | null>(null)
 
-export const setActiveRecipeUnlocks = (unlocks: RecipeUnlocks | undefined, alternates: ReadonlySet<string>) => {
-  active.value = unlocks?.save ? { unlocks, alternates } : null
+/** The game data's recipe and building ids bound what can be locked: an unknown id never is. */
+export const setActiveRecipeUnlocks = (
+  unlocks: RecipeUnlocks | undefined,
+  recipes: ReadonlySet<string>,
+  buildings: ReadonlySet<string>
+) => {
+  active.value = usableSave(unlocks) ? { unlocks: unlocks!, recipes, buildings } : null
 }
 
-// Standard recipes are never locked here: the save's milestones decide those, and that is not modelled yet.
 export const isActiveRecipeLocked = (recipeId: string): boolean => {
   const state = active.value
-  return !!state && state.alternates.has(recipeId) && !isAlternateUnlocked(state.unlocks, recipeId)
+  return !!state && state.recipes.has(recipeId) && !isRecipeUnlocked(state.unlocks, recipeId)
+}
+
+export const isActiveBuildingLocked = (buildingId: string): boolean => {
+  const state = active.value
+  return !!state && state.buildings.has(buildingId) && !isBuildingUnlocked(state.unlocks, buildingId)
 }
 
 /**

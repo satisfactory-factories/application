@@ -240,10 +240,11 @@ describe('status', () => {
     })
   })
 
-  describe('alternateLocked', () => {
-    const alternates = new Set(['Alternate_IngotIron'])
-    const save = (unlocked: string[]) => ({
-      save: { name: 'Test', readAt: '2026-10-15T00:00:00.000Z', alternates: unlocked },
+  describe('recipeLocked and buildingLocked', () => {
+    const recipes = new Set(['Alternate_IngotIron'])
+    const buildings = new Set(['smeltermk1', 'generatorcoal'])
+    const save = (unlocked: string[], unlockedBuildings: string[] = ['smeltermk1', 'generatorcoal']) => ({
+      save: { name: 'Test', readAt: '2026-10-15T00:00:00.000Z', recipes: unlocked, buildings: unlockedBuildings, tiers: [] },
       overrides: {},
     })
 
@@ -251,33 +252,58 @@ describe('status', () => {
       factory.products = [mockProduct('IronIngot', { recipe: 'Alternate_IngotIron' })]
     })
 
-    afterEach(() => setActiveRecipeUnlocks(undefined, alternates))
+    afterEach(() => setActiveRecipeUnlocks(undefined, recipes, buildings))
 
     test('does not fire before a save is loaded', () => {
-      setActiveRecipeUnlocks(undefined, alternates)
-      expect(typesOf(factory)).not.toContain('alternateLocked')
+      setActiveRecipeUnlocks(undefined, recipes, buildings)
+      expect(typesOf(factory)).not.toContain('recipeLocked')
     })
 
     test('does not fire for an alternate the save has unlocked', () => {
-      setActiveRecipeUnlocks(save(['Alternate_IngotIron']), alternates)
-      expect(typesOf(factory)).not.toContain('alternateLocked')
+      setActiveRecipeUnlocks(save(['Alternate_IngotIron']), recipes, buildings)
+      expect(typesOf(factory)).not.toContain('recipeLocked')
     })
 
     test('fires for a locked alternate, naming the product so the chip jumps to its row', () => {
-      setActiveRecipeUnlocks(save([]), alternates)
+      setActiveRecipeUnlocks(save([]), recipes, buildings)
 
-      expect(statusOf(factory, 'alternateLocked')).toMatchObject({
+      expect(statusOf(factory, 'recipeLocked')).toMatchObject({
         severity: 'warning',
         section: 'products',
-        label: 'Alt recipe not unlocked',
+        label: 'Recipe not unlocked',
         subjects: [{ id: 'IronIngot', type: 'item' }],
       })
     })
 
     // About the world, not the arithmetic: the plan still adds up, so the factory must not go red.
     test('never counts as a problem', () => {
-      setActiveRecipeUnlocks(save([]), alternates)
+      setActiveRecipeUnlocks(save([], []), recipes, buildings)
       expect(hasFactoryProblem(factory)).toBe(false)
+    })
+
+    test('flags a product whose building the save has not unlocked', () => {
+      setActiveRecipeUnlocks(save(['Alternate_IngotIron'], []), recipes, buildings)
+
+      expect(statusOf(factory, 'buildingLocked')).toMatchObject({
+        severity: 'warning',
+        label: 'Building not unlocked',
+        subjects: [{ id: 'IronIngot', type: 'item' }],
+      })
+    })
+
+    // Unlocking the recipe in game is the fix for both, so the product is named once.
+    test('leaves a product whose recipe is already flagged to that chip', () => {
+      setActiveRecipeUnlocks(save([], []), recipes, buildings)
+
+      expect(typesOf(factory)).toContain('recipeLocked')
+      expect(typesOf(factory)).not.toContain('buildingLocked')
+    })
+
+    test('flags a generator whose building the save has not unlocked, by its building', () => {
+      factory.powerProducers = [mockPowerProducer('generatorcoal')]
+      setActiveRecipeUnlocks(save(['Alternate_IngotIron'], ['smeltermk1']), recipes, buildings)
+
+      expect(statusOf(factory, 'buildingLocked')?.subjects).toEqual([{ id: 'generatorcoal', type: 'building' }])
     })
   })
 

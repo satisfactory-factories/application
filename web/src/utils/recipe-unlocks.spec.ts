@@ -4,14 +4,16 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { RecipeUnlocks } from '@/interfaces/planner/FactoryInterface'
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
 import {
+  isActiveBuildingLocked,
   isActiveRecipeLocked,
-  isAlternateOverridden,
-  isAlternateUnlocked,
+  isBuildingUnlocked,
+  isRecipeOverridden,
+  isRecipeUnlocked,
   rebaseRecipeUnlocks,
   saveFromWorld,
   setActiveRecipeUnlocks,
-  toggleAlternate,
-  unlockedAlternatesFromWorld,
+  toggleRecipe,
+  unlockedRecipesFromWorld,
   unlocksForArrivingPlan,
   withSave,
 } from '@/utils/recipe-unlocks'
@@ -21,89 +23,113 @@ const progressed = JSON.parse(
   readFileSync(join(__dirname, '../../testing/fixtures/worlds/progressed.json'), 'utf-8')
 ) as WorldSnapshot
 
-const alternateIds = (await fetchGameData()).recipes.filter(recipe => recipe.isAlternate).map(recipe => recipe.id)
+const gameData = await fetchGameData()
+const recipeIds = gameData.recipes.map(recipe => recipe.id)
+const alternateIds = new Set(gameData.recipes.filter(recipe => recipe.isAlternate).map(recipe => recipe.id))
 
-const unlocks = (alternates: string[], overrides: Record<string, boolean> = {}): RecipeUnlocks => ({
-  save: { name: 'Test', readAt: '2026-10-15T00:00:00.000Z', alternates },
+const unlocks = (recipes: string[], overrides: Record<string, boolean> = {}, buildings: string[] = []): RecipeUnlocks => ({
+  save: { name: 'Test', readAt: '2026-10-15T00:00:00.000Z', recipes, buildings, tiers: [] },
   overrides,
 })
 
-describe('unlockedAlternatesFromWorld', () => {
-  it('maps the save\'s prefixless names onto the game data\'s recipe ids', () => {
-    const unlocked = unlockedAlternatesFromWorld(progressed, alternateIds)
+describe('unlockedRecipesFromWorld', () => {
+  const unlocked = unlockedRecipesFromWorld(progressed, recipeIds)
 
-    // 52 in the save, less Turbofuel (an `Alternate_` id the game data counts as standard),
-    // plus Pure Aluminum Ingot below.
-    expect(unlocked).toHaveLength(52)
+  it('maps the save\'s prefixless alternate names onto the game data\'s recipe ids', () => {
+    // 52 in the save, less Turbofuel (an `Alternate_` id the game data counts as standard), plus
+    // Pure Aluminum Ingot below.
+    expect(unlocked.filter(id => alternateIds.has(id))).toHaveLength(52)
     expect(unlocked).toContain('Alternate_SteelRod')
-    expect(unlocked).toContain('Alternate_Screw_2')
   })
 
   // Pure Aluminum Ingot is an alternate with no `Alternate_` prefix, so the save lists it with
   // the standard recipes. Trusting the prefix alone would read it as locked forever.
   it('finds an alternate the game names without the prefix', () => {
-    expect(unlockedAlternatesFromWorld(progressed, alternateIds)).toContain('PureAluminumIngot')
+    expect(unlocked).toContain('PureAluminumIngot')
   })
 
-  it('keeps only alternates, never the standard recipes the save also lists', () => {
-    const unlocked = unlockedAlternatesFromWorld(progressed, alternateIds)
+  it('keeps the standard recipes the save has unlocked, and leaves out the ones it has not', () => {
+    expect(unlocked).toContain('IronPlate')
+    // The case this exists for: a plan built on Nitric Acid by a save that never bought it.
+    expect(recipeIds).toContain('NitricAcid')
+    expect(unlocked).not.toContain('NitricAcid')
+  })
 
-    expect(unlocked).not.toContain('IronPlate')
-    expect(unlocked.every(id => alternateIds.includes(id))).toBe(true)
+  it('never invents an id the game data does not have', () => {
+    expect(unlocked.every(id => recipeIds.includes(id))).toBe(true)
   })
 })
 
 describe('saveFromWorld', () => {
-  it('keeps the session name and when it was read', () => {
-    const save = saveFromWorld({ ...progressed, saveName: 'My World' }, alternateIds)
+  it('keeps the session name, when it was read, its buildings and its tiers', () => {
+    const save = saveFromWorld({ ...progressed, saveName: 'My World' }, recipeIds)
 
     expect(save.name).toBe('My World')
     expect(save.readAt).toBe(progressed.readAt)
+    expect(save.buildings).toEqual(progressed.buildings)
+    expect(save.tiers).toEqual(progressed.progression.tiers)
   })
 })
 
-describe('isAlternateUnlocked', () => {
+describe('isRecipeUnlocked', () => {
   it('counts every recipe as unlocked until a save is loaded', () => {
-    expect(isAlternateUnlocked(undefined, 'Alternate_Screw')).toBe(true)
-    expect(isAlternateUnlocked({ save: null, overrides: { Alternate_Screw: false } }, 'Alternate_Screw')).toBe(true)
+    expect(isRecipeUnlocked(undefined, 'Alternate_Screw')).toBe(true)
+    expect(isRecipeUnlocked({ save: null, overrides: { Alternate_Screw: false } }, 'Alternate_Screw')).toBe(true)
   })
 
   it('reads the save once one is loaded', () => {
-    expect(isAlternateUnlocked(unlocks(['Alternate_Screw']), 'Alternate_Screw')).toBe(true)
-    expect(isAlternateUnlocked(unlocks(['Alternate_Screw']), 'Alternate_Wire_1')).toBe(false)
+    expect(isRecipeUnlocked(unlocks(['Alternate_Screw']), 'Alternate_Screw')).toBe(true)
+    expect(isRecipeUnlocked(unlocks(['Alternate_Screw']), 'NitricAcid')).toBe(false)
   })
 
   it('lets a mark made by hand win over the save', () => {
-    expect(isAlternateUnlocked(unlocks([], { Alternate_Screw: true }), 'Alternate_Screw')).toBe(true)
-    expect(isAlternateUnlocked(unlocks(['Alternate_Screw'], { Alternate_Screw: false }), 'Alternate_Screw')).toBe(false)
+    expect(isRecipeUnlocked(unlocks([], { Alternate_Screw: true }), 'Alternate_Screw')).toBe(true)
+    expect(isRecipeUnlocked(unlocks(['Alternate_Screw'], { Alternate_Screw: false }), 'Alternate_Screw')).toBe(false)
+  })
+
+  // A save stored by an earlier build of this feature kept alternates only. Read as no save, not
+  // as one that has unlocked nothing.
+  it('reads a save of an older shape as no save', () => {
+    const older = { save: { name: 'Old', readAt: '', alternates: [] }, overrides: {} } as unknown as RecipeUnlocks
+
+    expect(isRecipeUnlocked(older, 'NitricAcid')).toBe(true)
   })
 })
 
-describe('toggleAlternate', () => {
-  it('marks a locked alternate unlocked by hand', () => {
-    const next = toggleAlternate(unlocks([]), 'Alternate_Screw')
+describe('isBuildingUnlocked', () => {
+  it('counts every building as unlocked until a save is loaded', () => {
+    expect(isBuildingUnlocked(undefined, 'blender')).toBe(true)
+  })
 
-    expect(isAlternateUnlocked(next, 'Alternate_Screw')).toBe(true)
-    expect(isAlternateOverridden(next, 'Alternate_Screw')).toBe(true)
+  it('reads the save once one is loaded', () => {
+    expect(isBuildingUnlocked(unlocks([], {}, ['blender']), 'blender')).toBe(true)
+    expect(isBuildingUnlocked(unlocks([], {}, ['blender']), 'quantumencoder')).toBe(false)
+  })
+})
+
+describe('toggleRecipe', () => {
+  it('marks a locked recipe unlocked by hand', () => {
+    const next = toggleRecipe(unlocks([]), 'NitricAcid')
+
+    expect(isRecipeUnlocked(next, 'NitricAcid')).toBe(true)
+    expect(isRecipeOverridden(next, 'NitricAcid')).toBe(true)
   })
 
   // Otherwise the mark outlives its reason and the next save can never decide the recipe again.
   it('drops the mark when toggling back to what the save says', () => {
-    const next = toggleAlternate(toggleAlternate(unlocks([]), 'Alternate_Screw'), 'Alternate_Screw')
+    const next = toggleRecipe(toggleRecipe(unlocks([]), 'Alternate_Screw'), 'Alternate_Screw')
 
     expect(next.overrides).toEqual({})
-    expect(isAlternateUnlocked(next, 'Alternate_Screw')).toBe(false)
+    expect(isRecipeUnlocked(next, 'Alternate_Screw')).toBe(false)
   })
 
-  it('can lock an alternate the save has unlocked', () => {
-    const next = toggleAlternate(unlocks(['Alternate_Screw']), 'Alternate_Screw')
-
-    expect(next.overrides).toEqual({ Alternate_Screw: false })
+  it('can lock a recipe the save has unlocked', () => {
+    expect(toggleRecipe(unlocks(['Alternate_Screw']), 'Alternate_Screw').overrides).toEqual({ Alternate_Screw: false })
   })
 
   it('leaves the original untouched', () => {
     const original = unlocks([])
-    toggleAlternate(original, 'Alternate_Screw')
+    toggleRecipe(original, 'Alternate_Screw')
 
     expect(original.overrides).toEqual({})
   })
@@ -113,7 +139,7 @@ describe('withSave', () => {
   it('keeps the marks made by hand when a newer save is loaded', () => {
     const next = withSave(unlocks([], { Alternate_Screw: true }), unlocks(['Alternate_Wire_1']).save!)
 
-    expect(next.save?.alternates).toEqual(['Alternate_Wire_1'])
+    expect(next.save?.recipes).toEqual(['Alternate_Wire_1'])
     expect(next.overrides).toEqual({ Alternate_Screw: true })
   })
 
@@ -122,28 +148,33 @@ describe('withSave', () => {
   })
 })
 
-describe('isActiveRecipeLocked', () => {
-  const alternates = new Set(['Alternate_Screw', 'Alternate_Wire_1'])
+describe('the plan on screen', () => {
+  const recipes = new Set(['Alternate_Screw', 'NitricAcid'])
+  const buildings = new Set(['blender', 'assemblermk1'])
 
-  afterEach(() => setActiveRecipeUnlocks(undefined, alternates))
+  afterEach(() => setActiveRecipeUnlocks(undefined, recipes, buildings))
 
-  it('locks nothing while the plan on screen has no save', () => {
-    setActiveRecipeUnlocks(undefined, alternates)
+  it('locks nothing while it has no save', () => {
+    setActiveRecipeUnlocks(undefined, recipes, buildings)
 
-    expect(isActiveRecipeLocked('Alternate_Screw')).toBe(false)
+    expect(isActiveRecipeLocked('NitricAcid')).toBe(false)
+    expect(isActiveBuildingLocked('blender')).toBe(false)
   })
 
-  it('locks the alternates the save has not unlocked', () => {
-    setActiveRecipeUnlocks(unlocks(['Alternate_Screw']), alternates)
+  it('locks the recipes and buildings the save has not unlocked', () => {
+    setActiveRecipeUnlocks(unlocks(['Alternate_Screw'], {}, ['assemblermk1']), recipes, buildings)
 
     expect(isActiveRecipeLocked('Alternate_Screw')).toBe(false)
-    expect(isActiveRecipeLocked('Alternate_Wire_1')).toBe(true)
+    expect(isActiveRecipeLocked('NitricAcid')).toBe(true)
+    expect(isActiveBuildingLocked('assemblermk1')).toBe(false)
+    expect(isActiveBuildingLocked('blender')).toBe(true)
   })
 
-  it('never locks a standard recipe', () => {
-    setActiveRecipeUnlocks(unlocks([]), alternates)
+  it('never locks an id the game data does not know', () => {
+    setActiveRecipeUnlocks(unlocks([]), recipes, buildings)
 
-    expect(isActiveRecipeLocked('Screw')).toBe(false)
+    expect(isActiveRecipeLocked('SomethingNew')).toBe(false)
+    expect(isActiveBuildingLocked('somethingnew')).toBe(false)
   })
 })
 
@@ -171,8 +202,8 @@ describe('rebaseRecipeUnlocks', () => {
   })
 
   it('keeps the server\'s save unless this client loaded one', () => {
-    expect(rebaseRecipeUnlocks(base, unlocks(['Alternate_Screw'], { A: true }), unlocks(['Newer'])).save?.alternates).toEqual(['Newer'])
-    expect(rebaseRecipeUnlocks(base, unlocks(['Mine']), unlocks(['Newer'])).save?.alternates).toEqual(['Mine'])
+    expect(rebaseRecipeUnlocks(base, unlocks(['Alternate_Screw'], { A: true }), unlocks(['Newer'])).save?.recipes).toEqual(['Newer'])
+    expect(rebaseRecipeUnlocks(base, unlocks(['Mine']), unlocks(['Newer'])).save?.recipes).toEqual(['Mine'])
   })
 
   it('carries a padlock this client took back', () => {

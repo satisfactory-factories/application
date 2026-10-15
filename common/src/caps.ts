@@ -55,4 +55,6 @@ export const CAPS = {
   groupsPerPlan: 300,
   /** Recipe ids in an unlock list or its overrides, against the game's 306 recipes. */
   recipeKeys: 1_000,
+  /** Tiers in an unlock list; the game has ten. */
+  tiers: 50,
 } as const

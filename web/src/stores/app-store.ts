@@ -214,7 +214,8 @@ export const useAppStore = defineStore('app', () => {
     () => [factoryTabs.value[currentFactoryTabIndex.value]?.recipeUnlocks, gameDataStore.gameData] as const,
     ([unlocks, data]) => setActiveRecipeUnlocks(
       unlocks,
-      new Set((data?.recipes ?? []).filter(recipe => recipe.isAlternate).map(recipe => recipe.id))
+      new Set((data?.recipes ?? []).map(recipe => recipe.id)),
+      new Set(Object.keys(data?.buildings ?? {}))
     ),
     { immediate: true }
   )

@@ -2810,8 +2810,8 @@ describe('room-sync-store', () => {
     })
 
     describe('the unlock list a save was read into', () => {
-      const save = (name: string, alternates: string[] = []) =>
-        ({ name, readAt: '2026-10-15T00:00:00.000Z', alternates })
+      const save = (name: string, recipes: string[] = []) =>
+        ({ name, readAt: '2026-10-15T00:00:00.000Z', recipes, buildings: [], tiers: [] })
       const unlocks = (name: string, overrides: Record<string, boolean> = {}) => ({ save: save(name), overrides })
 
       // Baseline: the room already holds a save, as it would once anyone had loaded one.

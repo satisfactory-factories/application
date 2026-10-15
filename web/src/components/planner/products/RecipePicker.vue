@@ -29,7 +29,7 @@
           <span class="recipe-picker-name">{{ item.name }}</span>
           <recipe-picker-tags :alternate="item.alternate" :tier="item.tier" />
           <!-- Only once a save is loaded: until then nothing is locked, so there is nothing to say. -->
-          <tooltip v-if="save && item.isAlternate" :text="lockTooltip(item)">
+          <tooltip v-if="save" :text="lockTooltip(item)">
             <button
               class="recipe-picker-lock"
               :class="{ locked: item.locked, overridden: item.overridden }"
@@ -43,7 +43,6 @@
               <span v-else key="unlocked"><i class="fas fa-lock-open" /></span>
             </button>
           </tooltip>
-          <span v-else-if="save" class="recipe-picker-lock" />
         </span>
       </v-list-item>
     </template>
@@ -89,8 +88,7 @@
       name: recipe.displayName.replace(/^Alternate:\s*/, ''),
       alternate: recipe.displayName.startsWith('Alternate'),
       tier: getRecipeRating(recipe.id),
-      isAlternate: recipe.isAlternate,
-      locked: recipe.isAlternate && !isUnlocked(recipe.id),
+      locked: !isUnlocked(recipe.id),
       overridden: isOverridden(recipe.id),
     }))
     .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name)))
