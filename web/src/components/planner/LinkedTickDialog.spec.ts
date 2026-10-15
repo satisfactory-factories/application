@@ -21,6 +21,8 @@ const gameData = useGameDataStore().getGameData()
 
 const dialogText = () => document.body.querySelector('.v-overlay-container')?.textContent ?? ''
 const button = (id: string) => document.body.querySelector<HTMLElement>(`#${id}`)
+// The other end's tick, inside its factory chip in the dialog.
+const dialogTick = () => document.body.querySelector<HTMLInputElement>('.linked-tick input.checklist-tick')
 const tick = (wrapper: ReturnType<typeof mount>) => wrapper.find('input.checklist-tick')
 
 const buildFactories = () => {
@@ -78,10 +80,10 @@ describe('LinkedTickDialog', () => {
     await flushPromises()
 
     expect(producer.checklistExports['2:IronIngot']).toBe(true)
-    expect(dialogText()).toContain('Also tick the import?')
+    expect(dialogText()).toContain('Also update the import?')
     expect(dialogText()).toContain('Iron Ingot')
     expect(dialogText()).toContain('Phase Three')
-    expect(dialogText()).toContain('Also mark as imported')
+    expect(dialogTick()!.checked).toBe(true)
     expect(dialogText()).toContain('Turn on the checklist for')
     // Only an offer: nothing on the destination has moved yet.
     expect(consumer.inputs[0].completed).toBeFalsy()
@@ -102,7 +104,7 @@ describe('LinkedTickDialog', () => {
     expect(useLinkedTick().pending.value).toBeNull()
   })
 
-  it('switches off and locks the import switch when the checklist switch is turned off', async () => {
+  it('clears the import tick when the checklist switch is turned off', async () => {
     const { producer, consumer } = buildFactories()
     const { satisfaction } = mountAll(producer, consumer)
 
@@ -111,9 +113,7 @@ describe('LinkedTickDialog', () => {
     document.body.querySelector<HTMLInputElement>('#linked-tick-enable-checklist')!.click()
     await flushPromises()
 
-    const importSwitch = document.body.querySelector<HTMLInputElement>('#linked-tick-switch')!
-    expect(importSwitch.checked).toBe(false)
-    expect(importSwitch.disabled).toBe(true)
+    expect(dialogTick()!.checked).toBe(false)
 
     button('linked-tick-apply')!.click()
     await flushPromises()
@@ -122,30 +122,31 @@ describe('LinkedTickDialog', () => {
     expect(consumer.checklistEnabled).toBe(false)
   })
 
-  it('unlocks the import switch, back on, when the checklist switch is turned on again', async () => {
+  it('turns the checklist back on when the cleared import tick is ticked again', async () => {
     const { producer, consumer } = buildFactories()
     const { satisfaction } = mountAll(producer, consumer)
 
     await tick(satisfaction).trigger('click')
     await flushPromises()
-    document.body.querySelector<HTMLInputElement>('#linked-tick-enable-checklist')!.click()
+    const checklistSwitch = document.body.querySelector<HTMLInputElement>('#linked-tick-enable-checklist')!
+    checklistSwitch.click()
     await flushPromises()
-    document.body.querySelector<HTMLInputElement>('#linked-tick-enable-checklist')!.click()
+    dialogTick()!.click()
     await flushPromises()
 
-    const importSwitch = document.body.querySelector<HTMLInputElement>('#linked-tick-switch')!
-    expect(importSwitch.checked).toBe(true)
-    expect(importSwitch.disabled).toBe(false)
+    expect(checklistSwitch.checked).toBe(true)
+    expect(dialogTick()!.checked).toBe(true)
   })
 
-  it('only turns the checklist on when the import toggle is turned off', async () => {
+  it('only turns the checklist on when the import tick is cleared', async () => {
     const { producer, consumer } = buildFactories()
     const { satisfaction } = mountAll(producer, consumer)
 
     await tick(satisfaction).trigger('click')
     await flushPromises()
-    document.body.querySelector<HTMLInputElement>('#linked-tick-switch')!.click()
+    dialogTick()!.click()
     await flushPromises()
+    expect(dialogTick()!.checked).toBe(false)
     button('linked-tick-apply')!.click()
     await flushPromises()
 
@@ -177,7 +178,7 @@ describe('LinkedTickDialog', () => {
     await exportsGroup.find('input.checklist-tick').trigger('click')
     await flushPromises()
 
-    expect(dialogText()).toContain('Also tick the import?')
+    expect(dialogText()).toContain('Also update the import?')
   })
 
   it('offers to untick both ends, without the checklist switch', async () => {
@@ -194,7 +195,8 @@ describe('LinkedTickDialog', () => {
 
     await tick(satisfaction).trigger('click')
     await flushPromises()
-    expect(dialogText()).toContain('Also untick the import?')
+    expect(dialogText()).toContain('Also update the import?')
+    expect(dialogTick()!.checked).toBe(false)
     button('linked-tick-apply')!.click()
     await flushPromises()
 
@@ -237,8 +239,8 @@ describe('LinkedTickDialog', () => {
       await flushPromises()
 
       expect(consumer.inputs[0].completed).toBe(true)
-      expect(dialogText()).toContain('Also tick the export?')
-      expect(dialogText()).toContain('Also mark as exported')
+      expect(dialogText()).toContain('Also update the export?')
+      expect(dialogTick()!.checked).toBe(true)
       expect(dialogText()).toContain('Iron Ingots')
       // The producer's checklist is already on, so there is nothing to offer there.
       expect(dialogText()).not.toContain('Turn on the checklist')
@@ -262,7 +264,7 @@ describe('LinkedTickDialog', () => {
       await importsGroup.find('input.checklist-tick').trigger('click')
       await flushPromises()
 
-      expect(dialogText()).toContain('Also tick the export?')
+      expect(dialogText()).toContain('Also update the export?')
       expect(dialogText()).toContain('Turn on the checklist for')
 
       button('linked-tick-apply')!.click()
@@ -282,11 +284,31 @@ describe('LinkedTickDialog', () => {
       await tick(imports).trigger('click')
       await flushPromises()
 
-      expect(dialogText()).toContain('Also untick the export?')
+      expect(dialogText()).toContain('Also update the export?')
+      expect(dialogTick()!.checked).toBe(false)
       button('linked-tick-apply')!.click()
       await flushPromises()
 
       expect(producer.checklistExports['2:IronIngot']).toBe(false)
+    })
+
+    it('leaves the export ticked when its tick is put back before Apply', async () => {
+      const { producer, consumer } = buildFactories()
+      consumer.checklistEnabled = true
+      consumer.inputs[0].completed = true
+      producer.checklistExports['2:IronIngot'] = true
+      const { imports } = mountAll(producer, consumer)
+
+      await tick(imports).trigger('click')
+      await flushPromises()
+      dialogTick()!.click()
+      await flushPromises()
+      expect(dialogTick()!.checked).toBe(true)
+      button('linked-tick-apply')!.click()
+      await flushPromises()
+
+      expect(consumer.inputs[0].completed).toBe(false)
+      expect(producer.checklistExports['2:IronIngot']).toBe(true)
     })
 
     it('does not ask when the export already matches', async () => {
