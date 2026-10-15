@@ -5,6 +5,7 @@ import type {
   Factory,
   FactoryTab,
   FieldLock,
+  RecipeUnlocks,
   RoomDiff,
   RoomMeta,
   RoomSnapshot,
@@ -54,6 +55,7 @@ import { calculateFactories } from '@/utils/factory-management/factory'
 import eventBus from '@/utils/eventBus'
 import { MAX_FACTORIES_PER_PLAN, planIsOverCap } from '@/utils/plan-size'
 import { describeTextIssue } from '@/utils/text-issues'
+import { rebaseRecipeUnlocks } from '@/utils/recipe-unlocks'
 
 /** Trailing debounce on plan changes: one op per burst of edits, never one per keystroke. */
 export const OP_DEBOUNCE_MS = 400
@@ -374,6 +376,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   // field, so claiming one differs would leave intent nothing could ever satisfy.
   const fieldDiffers = (acked: AckedState, local: RoomContent, field: TabField): boolean => {
     if (field === 'groups') return stableStringify(local.groups) !== acked.groups
+    if (field === 'recipeUnlocks') {
+      return local.recipeUnlocks !== undefined && stableStringify(local.recipeUnlocks) !== acked.recipeUnlocks
+    }
     const value = local[field]
     return value !== undefined && value !== acked[field]
   }
@@ -771,7 +776,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     overlaid: boolean
   }
 
-  const overlayIntent = (engine: RoomEngine, server: RoomContent, tab: FactoryTab): Overlay => {
+  // `priorUnlocks` is the baseline from before this snapshot replaced it: the unlock list is merged
+  // three ways, so a rebase sends only this client's own padlocks and save.
+  const overlayIntent = (engine: RoomEngine, server: RoomContent, tab: FactoryTab, priorUnlocks?: string): Overlay => {
     const local = contentOfTab(tab)
     const localById = new Map(local.factories.map(factory => [factory.id, factory]))
     const serverPrints = engine.acked.factories
@@ -816,6 +823,12 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       }
     }
     if (engine.touchedFields.has('groups')) content.groups = local.groups
+    if (engine.touchedFields.has('recipeUnlocks') && local.recipeUnlocks !== undefined) {
+      const base = priorUnlocks === UNKNOWN_CONTENT
+        ? null
+        : priorUnlocks === undefined ? undefined : JSON.parse(priorUnlocks) as RecipeUnlocks
+      content.recipeUnlocks = rebaseRecipeUnlocks(base, local.recipeUnlocks, server.recipeUnlocks)
+    }
 
     return { content, overlaid }
   }
@@ -855,6 +868,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     tab.depotExpansionTier = content.depotExpansionTier
     tab.plannerVersion = content.plannerVersion
     tab.groups = content.groups
+    tab.recipeUnlocks = content.recipeUnlocks
 
     const next = inDisplayOrder(content.factories)
     tab.factories = next
@@ -882,6 +896,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     const engine = engines.get(roomId)
     if (!room || !engine) return false
 
+    const priorUnlocks = engine.acked.recipeUnlocks
     engine.acked = ackedFromContent(server, revision)
     engine.seeded = true
     engine.pending = null
@@ -894,7 +909,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     let recalculated = false
     const tab = getTab(roomId)
     if (tab) {
-      const overlaid = overlayIntent(engine, server, tab)
+      const overlaid = overlayIntent(engine, server, tab, priorUnlocks)
       writeContentToTab(tab, overlaid.content)
       recalculated = overlaid.overlaid
       if (recalculated) recalculate(tab)
@@ -1061,6 +1076,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       depotUploadTier: copy.depotUploadTier,
       depotExpansionTier: copy.depotExpansionTier,
       plannerVersion: copy.plannerVersion,
+      recipeUnlocks: copy.recipeUnlocks,
     }, { activate: false })
   }
 
@@ -1398,6 +1414,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       Object.assign(engine.acked, { [field]: UNKNOWN_SCALAR[field] })
     }
     if (engine.touchedFields.has('groups')) engine.acked.groups = UNKNOWN_CONTENT
+    if (engine.touchedFields.has('recipeUnlocks')) engine.acked.recipeUnlocks = UNKNOWN_CONTENT
   }
 
   /**

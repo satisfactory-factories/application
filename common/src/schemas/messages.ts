@@ -4,7 +4,7 @@ import { CAPS } from '../caps'
 import { truncateFactory, truncateFactoryTab, truncateRoomDiff } from '../truncate'
 import type { Factory, FactoryTab } from '../types/factory'
 import type { RoomDiff } from '../types/protocol'
-import { factoryGroupSchema, factorySchema, factoryTabSchema } from './factory'
+import { factoryGroupSchema, factorySchema, factoryTabSchema, recipeUnlocksSchema } from './factory'
 import { textSchema } from './text'
 
 const str = z.string().max(CAPS.string)
@@ -20,6 +20,7 @@ export const roomDiffSchema = z.object({
   depotExpansionTier: num.optional(),
   plannerVersion: str.optional(),
   groups: z.array(factoryGroupSchema).max(CAPS.groupsPerPlan).optional(),
+  recipeUnlocks: recipeUnlocksSchema.optional(),
   factories: z.array(factorySchema).max(CAPS.factoriesPerRoom).optional(),
   removedFactoryIds: z.array(num).max(CAPS.factoriesPerRoom).optional(),
 })

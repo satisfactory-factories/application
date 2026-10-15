@@ -393,6 +393,53 @@ describe('Component: PlannerGlobalActions clipboard', () => {
     expect(appStore.getCurrentTab().depotExpansionTier).toBeUndefined()
   })
 
+  const loadedSave = () => ({
+    save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', recipes: ['Alternate_Screw'], buildings: [], tiers: [] },
+    overrides: { Alternate_Wire_1: true },
+  })
+
+  it('paste carries the pasted plan\'s unlocked alternates', async () => {
+    seedFactory()
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ factories: [newFactory('Pasted')], powerTarget: 0, recipeUnlocks: loadedSave() }))
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+    await pasteApplied()
+
+    expect(appStore.getCurrentTab().recipeUnlocks).toEqual(loadedSave())
+  })
+
+  // Absent means "unchanged" on the sync wire, so clearing has to be a value or collaborators keep it.
+  it('paste of a plan with no save forgets the outgoing tab\'s, and says so to the room', async () => {
+    seedFactory()
+    appStore.getCurrentTab().recipeUnlocks = loadedSave()
+    const edited = vi.fn()
+    eventBus.on('tabEdited', edited)
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ factories: [newFactory('Pasted')], powerTarget: 0 }))
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+    await pasteApplied()
+
+    expect(appStore.getCurrentTab().recipeUnlocks).toEqual({ save: null, overrides: {} })
+    expect(edited).toHaveBeenCalledWith('recipeUnlocks')
+    eventBus.off('tabEdited', edited)
+  })
+
+  it('paste of a plan with no save onto a tab with none adds nothing', async () => {
+    seedFactory()
+    vi.spyOn(appStore, 'prepareLoader').mockResolvedValue(undefined)
+    readText.mockResolvedValue(JSON.stringify({ factories: [newFactory('Pasted')], powerTarget: 0 }))
+
+    const subject = mountSubject()
+    await importFromClipboard(subject)
+    await pasteApplied()
+
+    expect(appStore.getCurrentTab().recipeUnlocks).toBeUndefined()
+  })
+
   it('paste replaces the destination tab\'s memberless groups with the pasted plan\'s', async () => {
     seedFactory()
     appStore.getCurrentTab().groups = [{ id: 'old', name: 'Outgoing', color: '#4caf50', order: 0 }]

@@ -24,6 +24,10 @@ describe('POST /rooms/adopt', () => {
     depotUploadTier: 1,
     depotExpansionTier: 3,
     plannerVersion: '0.6.0',
+    recipeUnlocks: {
+      save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', recipes: ['Alternate_Screw'], buildings: [], tiers: [] },
+      overrides: { Alternate_Wire_1: true },
+    },
   })
 
   beforeAll(async () => {
@@ -175,14 +179,15 @@ describe('POST /rooms/adopt', () => {
     expect(stored?.depotUploadTier).toBe(1)
     expect(stored?.depotExpansionTier).toBe(3)
     expect(stored?.plannerVersion).toBe('0.6.0')
+    expect(stored?.recipeUnlocks).toEqual(tab.recipeUnlocks)
   })
 
   // Absent is a meaning: the tiers read as fully researched and an absent stamp means the plan
   // has not been answered for. Writing a value in would answer it on the user's behalf.
   it('leaves the tab settings unset when the local tab never stated them', async () => {
     const roomId = randomUUID()
-    const { depotUploadTier, depotExpansionTier, plannerVersion, ...bare } = localTab(roomId)
-    void [depotUploadTier, depotExpansionTier, plannerVersion]
+    const { depotUploadTier, depotExpansionTier, plannerVersion, recipeUnlocks, ...bare } = localTab(roomId)
+    void [depotUploadTier, depotExpansionTier, plannerVersion, recipeUnlocks]
 
     expect((await adopt(mine, bare)).status).toBe(200)
 
@@ -190,6 +195,7 @@ describe('POST /rooms/adopt', () => {
     expect(stored?.depotUploadTier).toBeUndefined()
     expect(stored?.depotExpansionTier).toBeUndefined()
     expect(stored?.plannerVersion).toBeUndefined()
+    expect(stored?.recipeUnlocks).toBeUndefined()
   })
 
   it('requires a room id, unlike create', async () => {

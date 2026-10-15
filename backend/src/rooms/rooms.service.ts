@@ -429,6 +429,7 @@ export class RoomsService {
         depotExpansionTier: input.depotExpansionTier,
         plannerVersion: input.plannerVersion,
         groups: input.groups ?? [],
+        recipeUnlocks: input.recipeUnlocks,
         lastActivityAt: this.clock.now(),
       })
       return { room: created.toObject(), created: true }

@@ -31,6 +31,7 @@ import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management
 import { isBacklogIgnored, isNoDemandIgnored } from '@/utils/factory-management/disposal'
 import { isSurplusSignificant } from '@/utils/factory-management/parts'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
+import { isActiveBuildingLocked, isActiveRecipeLocked } from '@/utils/recipe-unlocks'
 
 export type FactoryStatusSeverity = 'problem' | 'warning' | 'note'
 
@@ -44,6 +45,8 @@ export type FactoryStatusType =
   'outOfSync' |
   'checklistDesync' |
   'unhandledByproduct' |
+  'recipeLocked' |
+  'buildingLocked' |
   'redundantImport' |
   'duplicateImport' |
   'noDemand' |
@@ -334,6 +337,40 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     detailLabel: list => count(list, 'Unhandled byproduct', 'byproducts that cannot be sunk'),
   },
   {
+    // About the world rather than the plan, so amber by the tier rule. Only ever fires once a save
+    // has been loaded: until then every recipe counts as unlocked.
+    type: 'recipeLocked',
+    severity: 'warning',
+    icon: 'fas fa-lock',
+    chip: true,
+    section: 'products',
+    detail: 'These products use a recipe your save has not unlocked yet. Unlock it in game, pick another recipe, or mark it unlocked with the padlock in the recipe list.',
+    detect: factory => nonEmpty(subjects(
+      factory.products.map(product => product.recipe && isActiveRecipeLocked(product.recipe) ? product.id : null)
+    )),
+    label: list => count(list, 'Recipe not unlocked', 'recipes not unlocked'),
+  },
+  {
+    // A product whose recipe is already flagged is left to that chip: unlocking the recipe in game
+    // is the fix for both, and naming the product twice says the same thing twice.
+    type: 'buildingLocked',
+    severity: 'warning',
+    icon: 'fas fa-lock',
+    chip: true,
+    section: 'products',
+    detail: 'These need a building your save has not unlocked yet. Unlock it in game, or plan around it.',
+    detect: factory => nonEmpty([
+      ...subjects(factory.products.map(product =>
+        product.recipe && !isActiveRecipeLocked(product.recipe) &&
+        isActiveBuildingLocked(product.buildingRequirements?.name ?? '')
+          ? product.id
+          : null
+      )),
+      ...subjects(factory.powerProducers.map(producer => isActiveBuildingLocked(producer.building) ? producer.building : null), 'building'),
+    ]),
+    label: list => count(list, 'Building not unlocked', 'buildings not unlocked'),
+  },
+  {
     type: 'outOfSync',
     severity: 'warning',
     icon: 'fas fa-times-square',
@@ -589,6 +626,22 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     class: 'status-warning',
     label: ['unhandled byproduct', 'unhandled byproducts'],
     sentence: ['factory makes a byproduct that cannot be sunk', 'factories make byproducts that cannot be sunk'],
+  },
+  {
+    key: 'recipeLocked',
+    types: ['recipeLocked'],
+    icon: 'fas fa-lock',
+    class: 'status-warning',
+    label: ['recipe not unlocked', 'recipes not unlocked'],
+    sentence: ['factory uses a recipe the save has not unlocked', 'factories use recipes the save has not unlocked'],
+  },
+  {
+    key: 'buildingLocked',
+    types: ['buildingLocked'],
+    icon: 'fas fa-lock',
+    class: 'status-warning',
+    label: ['building not unlocked', 'buildings not unlocked'],
+    sentence: ['factory needs a building the save has not unlocked', 'factories need buildings the save has not unlocked'],
   },
   {
     key: 'outOfSync',

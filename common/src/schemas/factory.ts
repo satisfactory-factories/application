@@ -344,6 +344,21 @@ export const factorySchema = z.object({
 })
 
 /**
+ * What a save has unlocked and the marks made by hand on top. Ids are capped rather than
+ * checked: the server does not hold the game data.
+ */
+export const recipeUnlocksSchema = z.object({
+  save: z.object({
+    name: z.string().max(CAPS.name),
+    readAt: str,
+    recipes: z.array(key).max(CAPS.recipeKeys),
+    buildings: z.array(key).max(CAPS.buildingKeys),
+    tiers: z.array(num).max(CAPS.tiers),
+  }).nullable(),
+  overrides: boundedRecord(z.boolean(), CAPS.recipeKeys),
+})
+
+/**
  * Tab-owned settings beyond the name, power target and group registry. All optional, and
  * absent carries meaning in every case — the depot tiers read as fully researched, and an
  * absent `plannerVersion` means the plan has not been answered for. Unclamped on purpose:
@@ -359,6 +374,7 @@ export const factoryTabSchema = z.object({
   depotExpansionTier: num.optional(),
   plannerVersion: str.optional(),
   groups: z.array(factoryGroupSchema).max(CAPS.groupsPerPlan).optional(),
+  recipeUnlocks: recipeUnlocksSchema.optional(),
 })
 
 /** Reject unless it matches `^[a-z0-9-]{1,100}$` once lowercased. */

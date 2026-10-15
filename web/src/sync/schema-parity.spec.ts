@@ -25,6 +25,7 @@ import {
   initializeTransportGroups,
 } from '@/utils/factory-management/exportCalculator'
 import { createGroup, moveFactoryToGroup } from '@/utils/factory-management/factory-groups'
+import { toggleRecipe, withSave } from '@/utils/recipe-unlocks'
 import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 import { Factory, FactoryPowerChangeType, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { gameData } from '@/utils/gameData'
@@ -144,6 +145,11 @@ const buildPlan = (): { factories: Factory[], tab: FactoryTab, mine: Factory, co
     depotUploadTier: 1,
     depotExpansionTier: 3,
     plannerVersion: '0.7.0',
+    // A save loaded, then one alternate marked by hand, as the recipe picker does it.
+    recipeUnlocks: toggleRecipe(
+      withSave(undefined, { name: 'Round trip', readAt: '2026-10-15T00:00:00.000Z', recipes: ['Alternate_Screw'], buildings: [], tiers: [] }),
+      'Alternate_Wire_1'
+    ),
   }
 
   // Reorders `factories` in place, so the two are handed back by name rather than by index.

@@ -32,18 +32,6 @@
           Show Intro
         </v-btn>
       </tooltip>
-      <tooltip text="Work in progress: build a plan from a Satisfactory save file.">
-        <v-btn
-          class="ma-1"
-          color="yellow"
-          prepend-icon="fas fa-file-import"
-          ripple
-          variant="tonal"
-          @click="emit('import-world')"
-        >
-          Import world [WIP]
-        </v-btn>
-      </tooltip>
       <tooltip :text="isEmpty ? 'Nothing to clear yet — the plan is already empty.' : 'Delete every factory in this plan. There is no undo, so copy the plan first if you might want it back.'">
         <v-btn
           class="ma-1"
@@ -111,6 +99,7 @@
 <script setup lang="ts">
   import ExportPlanDialog from '@/components/planner/ExportPlanDialog.vue'
   import ImportPlanDialog from '@/components/planner/ImportPlanDialog.vue'
+  import { unlocksForArrivingPlan } from '@/utils/recipe-unlocks'
   import { recordEvent } from '@/utils/record-event'
   import { useAppStore } from '@/stores/app-store'
   import { usePowerTarget } from '@/composables/usePowerTarget'
@@ -145,7 +134,6 @@
   })
 
   const emit = defineEmits<{
-    (event: 'import-world'): void;
     (event: 'clear-all'): void;
   }>()
 
@@ -200,6 +188,7 @@
     // plan. Absent means fully researched, so dropping these would rewrite the plan's capacity.
     depotUploadTier: getCurrentTab()?.depotUploadTier,
     depotExpansionTier: getCurrentTab()?.depotExpansionTier,
+    recipeUnlocks: getCurrentTab()?.recipeUnlocks,
   })
 
   const onExportChoice = async (choice: 'file' | 'clipboard') => {
@@ -260,6 +249,7 @@
     plannerVersion: tab.plannerVersion,
     depotUploadTier: tab.depotUploadTier,
     depotExpansionTier: tab.depotExpansionTier,
+    recipeUnlocks: tab.recipeUnlocks,
   })
 
   const restoreTab = async (tab: FactoryTab, outgoing: ReturnType<typeof snapshotTab>) => {
@@ -269,6 +259,7 @@
     tab.plannerVersion = outgoing.plannerVersion
     tab.depotUploadTier = outgoing.depotUploadTier
     tab.depotExpansionTier = outgoing.depotExpansionTier
+    tab.recipeUnlocks = outgoing.recipeUnlocks
     tab.factories = outgoing.factories
 
     // The failed load hid the planner, so the restored plan needs drawing or the tab reads
@@ -301,6 +292,8 @@
     // somebody else's save.
     tab.depotUploadTier = parsedPlan.depotUploadTier
     tab.depotExpansionTier = parsedPlan.depotExpansionTier
+    tab.recipeUnlocks = unlocksForArrivingPlan(parsedPlan.recipeUnlocks, tab.recipeUnlocks)
+    if (tab.recipeUnlocks !== undefined) markTabEdited('recipeUnlocks')
     // Declared for whatever the blob actually stated. An absent value is not
     // declarable — the diff cannot carry "cleared" — so a blob that states none
     // leaves the room's own settings alone rather than silently clearing them.
@@ -316,6 +309,8 @@
     // Same for the Depot tiers: a bare-array blob predates them entirely.
     delete tab.depotUploadTier
     delete tab.depotExpansionTier
+    tab.recipeUnlocks = unlocksForArrivingPlan(undefined, tab.recipeUnlocks)
+    if (tab.recipeUnlocks !== undefined) markTabEdited('recipeUnlocks')
   }
 
   const refusal = (error: unknown) => error instanceof Error

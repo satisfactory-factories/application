@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { Schema as MongooseSchema } from 'mongoose'
-import type { Factory, FactoryGroup } from 'common'
+import type { Factory, FactoryGroup, RecipeUnlocks } from 'common'
 import type { HydratedDocument } from 'mongoose'
 
 /** How many recent op ids a room remembers, so a retried op replays its ack. */
@@ -95,6 +95,10 @@ export class Room {
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: () => [] })
   groups!: FactoryGroup[]
+
+  // Absent until a save is loaded, which is what makes every recipe count as unlocked.
+  @Prop({ type: MongooseSchema.Types.Mixed })
+  recipeUnlocks?: RecipeUnlocks
 
   @Prop({ type: Number, default: 0 })
   revision!: number

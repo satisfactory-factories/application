@@ -47,10 +47,6 @@ export type Events = {
   // Custom loading screen
   loaderInit: { title?: string, steps: number }
   loaderNextStep: { message: string, step?: number, isFinalStep?: boolean }
-  // World data
-  worldDataShow: boolean
-  worldData: { buildings: any[] }
-
   readyForData: undefined;
   plannerShow: boolean;
   calculationsCompleted: undefined

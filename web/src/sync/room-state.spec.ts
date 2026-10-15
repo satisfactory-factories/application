@@ -194,3 +194,34 @@ describe('contentFromSnapshot', () => {
     expect(contentFromSnapshot(snapshot)).toMatchObject({ powerTarget: 0, groups: [] })
   })
 })
+
+describe('recipeUnlocks', () => {
+  const loaded = {
+    save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', recipes: ['Alternate_Screw'], buildings: [], tiers: [] },
+    overrides: {},
+  }
+
+  it('stays out of the diff on a tab that never loaded a save', () => {
+    expect(buildDiff(ackedFromContent(content([]), 1), content([]))).toBeNull()
+  })
+
+  it('sends the whole list when it changes, and the baseline remembers it', () => {
+    const result = buildDiff(ackedFromContent(content([]), 1), content([], { recipeUnlocks: loaded }))
+
+    expect(result?.diff).toEqual({ recipeUnlocks: loaded })
+    expect(buildDiff(result!.sent, content([], { recipeUnlocks: loaded }))).toBeNull()
+  })
+
+  // An absent field means "unchanged" on the wire, so forgetting has to be a value of its own.
+  it('carries a forgotten save, which a receiver lands on', () => {
+    const forgotten = { save: null, overrides: {} }
+    const result = buildDiff(ackedFromContent(content([], { recipeUnlocks: loaded }), 1), content([], { recipeUnlocks: forgotten }))
+
+    expect(result?.diff.recipeUnlocks).toEqual(forgotten)
+    expect(applyDiffToContent(content([], { recipeUnlocks: loaded }), result!.diff).recipeUnlocks).toEqual(forgotten)
+  })
+
+  it('refuses to replay a baseline whose list was never seen', () => {
+    expect(contentFromAcked({ ...ackedFromContent(content([]), 1), recipeUnlocks: UNKNOWN_CONTENT })).toBeNull()
+  })
+})

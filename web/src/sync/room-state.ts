@@ -1,5 +1,5 @@
 import { toRaw } from 'vue'
-import type { Factory, FactoryGroup, FactoryTab, RoomDiff, RoomSnapshot } from 'common'
+import type { Factory, FactoryGroup, FactoryTab, RecipeUnlocks, RoomDiff, RoomSnapshot } from 'common'
 
 /**
  * The pure half of the sync engine: the acknowledged baseline, the diff between
@@ -16,12 +16,13 @@ export interface RoomContent {
   depotExpansionTier?: number
   plannerVersion?: string
   groups: FactoryGroup[]
+  recipeUnlocks?: RecipeUnlocks
   factories: Factory[]
 }
 
 /**
- * Every tab-owned field a diff can carry. `groups` is the odd one out: it is a list, so it
- * is compared and stored serialized, while the rest are scalars compared by value.
+ * Every tab-owned field a diff can carry. `groups` and `recipeUnlocks` are the odd ones out:
+ * they are compared and stored serialized, while the rest are scalars compared by value.
  */
 export const TAB_SCALARS = [
   'name',
@@ -31,7 +32,7 @@ export const TAB_SCALARS = [
   'plannerVersion',
 ] as const
 
-export const TAB_FIELDS = [...TAB_SCALARS, 'groups'] as const
+export const TAB_FIELDS = [...TAB_SCALARS, 'groups', 'recipeUnlocks'] as const
 export type TabField = typeof TAB_FIELDS[number]
 export type TabScalar = typeof TAB_SCALARS[number]
 
@@ -70,6 +71,8 @@ export interface AckedState {
   plannerVersion?: string
   /** `stableStringify` of the group list. */
   groups: string
+  /** `stableStringify` of the unlock list; absent until a save has been loaded. */
+  recipeUnlocks?: string
   /** Factory id to its serialized record, in the server's own order. */
   factories: Map<number, string>
 }
@@ -99,6 +102,9 @@ export const stableStringify = (value: unknown): string => {
   return `{${parts.join(',')}}`
 }
 
+const serializedUnlocks = (unlocks: RecipeUnlocks | undefined): string | undefined =>
+  unlocks === undefined ? undefined : stableStringify(unlocks)
+
 export const emptyAcked = (revision = 0): AckedState => ({
   revision,
   name: '',
@@ -115,6 +121,7 @@ export const ackedFromContent = (content: RoomContent, revision: number): AckedS
   depotExpansionTier: content.depotExpansionTier,
   plannerVersion: content.plannerVersion,
   groups: stableStringify(content.groups),
+  recipeUnlocks: serializedUnlocks(content.recipeUnlocks),
   factories: new Map(content.factories.map(factory => [factory.id, stableStringify(factory)])),
 })
 
@@ -125,12 +132,13 @@ export const contentFromSnapshot = (snapshot: RoomSnapshot): RoomContent => ({
   depotExpansionTier: snapshot.depotExpansionTier,
   plannerVersion: snapshot.plannerVersion,
   groups: snapshot.groups ?? [],
+  recipeUnlocks: snapshot.recipeUnlocks,
   factories: snapshot.factories ?? [],
 })
 
 /** Null when any part of the baseline is a placeholder, so it cannot be replayed. */
 export const contentFromAcked = (acked: AckedState): RoomContent | null => {
-  if (acked.groups === UNKNOWN_CONTENT) return null
+  if (acked.groups === UNKNOWN_CONTENT || acked.recipeUnlocks === UNKNOWN_CONTENT) return null
   for (const field of TAB_SCALARS) {
     const value = acked[field]
     if (value === UNKNOWN_CONTENT || (typeof value === 'number' && Number.isNaN(value))) return null
@@ -148,6 +156,7 @@ export const contentFromAcked = (acked: AckedState): RoomContent | null => {
     depotExpansionTier: acked.depotExpansionTier,
     plannerVersion: acked.plannerVersion,
     groups: JSON.parse(acked.groups) as FactoryGroup[],
+    recipeUnlocks: acked.recipeUnlocks === undefined ? undefined : JSON.parse(acked.recipeUnlocks) as RecipeUnlocks,
     factories,
   }
 }
@@ -160,6 +169,7 @@ export const contentOfTab = (tab: FactoryTab): RoomContent => ({
   depotExpansionTier: tab.depotExpansionTier,
   plannerVersion: tab.plannerVersion,
   groups: toRaw(tab.groups ?? []).map(group => toRaw(group)),
+  recipeUnlocks: toRaw(tab.recipeUnlocks),
   factories: toRaw(tab.factories).map(factory => toRaw(factory)),
 })
 
@@ -193,6 +203,7 @@ export const applyDiffToContent = (content: RoomContent, diff: RoomDiff): RoomCo
   depotExpansionTier: diff.depotExpansionTier ?? content.depotExpansionTier,
   plannerVersion: diff.plannerVersion ?? content.plannerVersion,
   groups: diff.groups ?? content.groups,
+  recipeUnlocks: diff.recipeUnlocks ?? content.recipeUnlocks,
   factories: touchesFactories(diff) ? mergeFactories(content.factories, diff) : content.factories,
 })
 
@@ -209,6 +220,7 @@ export const applyDiffToAcked = (acked: AckedState, diff: RoomDiff, revision: nu
     depotExpansionTier: diff.depotExpansionTier ?? acked.depotExpansionTier,
     plannerVersion: diff.plannerVersion ?? acked.plannerVersion,
     groups: diff.groups === undefined ? acked.groups : stableStringify(diff.groups),
+    recipeUnlocks: diff.recipeUnlocks === undefined ? acked.recipeUnlocks : stableStringify(diff.recipeUnlocks),
     factories,
   }
 }
@@ -248,6 +260,12 @@ export const buildDiff = (acked: AckedState, local: RoomContent): DiffResult | n
   const groups = stableStringify(local.groups)
   if (groups !== acked.groups) diff.groups = JSON.parse(groups) as FactoryGroup[]
 
+  // Optional like the scalars: a tab that never loaded a save has nothing to say about it.
+  const recipeUnlocks = serializedUnlocks(local.recipeUnlocks)
+  if (recipeUnlocks !== undefined && recipeUnlocks !== acked.recipeUnlocks) {
+    diff.recipeUnlocks = JSON.parse(recipeUnlocks) as RecipeUnlocks
+  }
+
   if (Object.keys(diff).length === 0) return null
 
   return {
@@ -260,6 +278,7 @@ export const buildDiff = (acked: AckedState, local: RoomContent): DiffResult | n
       depotExpansionTier: local.depotExpansionTier ?? acked.depotExpansionTier,
       plannerVersion: local.plannerVersion ?? acked.plannerVersion,
       groups,
+      recipeUnlocks: recipeUnlocks ?? acked.recipeUnlocks,
       factories: sentFactories,
     },
   }

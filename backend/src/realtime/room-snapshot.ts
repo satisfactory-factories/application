@@ -19,6 +19,7 @@ export const toRoomSnapshot = (room: Room): RoomSnapshot => ({
   depotExpansionTier: room.depotExpansionTier,
   plannerVersion: room.plannerVersion,
   groups: room.groups,
+  recipeUnlocks: room.recipeUnlocks,
   revision: room.revision,
 })
 

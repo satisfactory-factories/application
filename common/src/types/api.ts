@@ -1,4 +1,4 @@
-import type { Factory, FactoryGroup } from './factory'
+import type { Factory, FactoryGroup, RecipeUnlocks } from './factory'
 import type { RoomListEntry } from './protocol'
 import type { SyncedPreferences } from '../schemas/preferences'
 import type { TextIssue } from '../text-rules'
@@ -82,6 +82,7 @@ export interface RoomContentPayload {
   depotExpansionTier?: number
   plannerVersion?: string
   groups?: FactoryGroup[]
+  recipeUnlocks?: RecipeUnlocks
 }
 
 export interface CreateRoomBody extends RoomContentPayload {

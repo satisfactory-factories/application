@@ -22,7 +22,7 @@ export const contentPrint = (factory: Factory): string => {
 }
 
 /** Tab-owned fields that are plan content. The room's name is not, and nor is its group list. */
-const CONTENT_FIELDS = ['powerTarget', 'depotUploadTier', 'depotExpansionTier'] as const
+const CONTENT_FIELDS = ['powerTarget', 'depotUploadTier', 'depotExpansionTier', 'recipeUnlocks'] as const
 
 /**
  * Whether an inbound op actually changed what the plan says, measured against the

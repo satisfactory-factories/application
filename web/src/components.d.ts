@@ -55,6 +55,7 @@ declare module 'vue' {
     FactorySummaryTable: typeof import('./components/planner/FactorySummaryTable.vue')['default']
     GameAsset: typeof import('./components/GameAsset.vue')['default']
     GameAssetContent: typeof import('./components/GameAssetContent.vue')['default']
+    GameOptionsDialog: typeof import('./components/GameOptionsDialog.vue')['default']
     Graph: typeof import('./components/graph/Graph.vue')['default']
     GroupProductIcon: typeof import('./components/planner/groups/GroupProductIcon.vue')['default']
     HoverTooltip: typeof import('./components/HoverTooltip.vue')['default']
@@ -134,8 +135,6 @@ declare module 'vue' {
     UpdateAvailableToast: typeof import('./components/UpdateAvailableToast.vue')['default']
     UpdateRequiredDialog: typeof import('./components/UpdateRequiredDialog.vue')['default']
     VersionPrompt: typeof import('./components/sync/VersionPrompt.vue')['default']
-    WorldData: typeof import('./components/planner/WorldData.vue')['default']
-    WorldImport: typeof import('./components/planner/WorldImport.vue')['default']
     YoutubeEmbed: typeof import('./components/YoutubeEmbed.vue')['default']
   }
 }
