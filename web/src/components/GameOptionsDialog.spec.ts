@@ -78,6 +78,7 @@ describe('Component: GameOptionsDialog', () => {
     await vi.waitFor(() => expect(find('load-save-error')).not.toBeNull())
     expect(find('load-save-error')!.textContent).toBe('That save is not compatible. It is not a Satisfactory save file.')
     expect(find('load-save-detail')!.textContent).toContain('No zlib chunk header found')
+    expect(find('load-save-failed')!.textContent).toContain('Please copy this error and report it on our Discord, along with your save file.')
     expect(tab().recipeUnlocks).toBeUndefined()
   })
 
@@ -119,5 +120,21 @@ describe('Component: GameOptionsDialog', () => {
     await flushPromises()
 
     expect(tab().recipeUnlocks).toEqual({ save: null, overrides: {} })
+  })
+
+  it('copies the error, its details and the file name for a report', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    await open()
+    await chooseFile(new File(['not a save'], 'notes.sav'))
+    await vi.waitFor(() => expect(find('copy-save-error')).not.toBeNull())
+
+    find('copy-save-error')!.click()
+    await flushPromises()
+
+    const report = writeText.mock.calls[0][0] as string
+    expect(report).toContain('That save is not compatible. It is not a Satisfactory save file.')
+    expect(report).toContain('Details: No zlib chunk header found')
+    expect(report).toContain('File: notes.sav')
   })
 })

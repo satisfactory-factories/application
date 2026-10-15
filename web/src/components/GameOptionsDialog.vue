@@ -56,12 +56,35 @@
       <v-progress-linear color="primary" indeterminate rounded />
     </div>
 
-    <div v-if="error" class="mb-3" data-testid="load-save-failed">
+    <v-sheet v-if="error" class="pa-3 mb-3 rounded" color="surface-light" data-testid="load-save-failed">
       <p class="mb-1 text-red" data-testid="load-save-error">{{ error }}</p>
-      <p v-if="errorDetail" class="mb-0 text-caption text-medium-emphasis" data-testid="load-save-detail">
+      <p v-if="errorDetail" class="mb-2 text-caption text-medium-emphasis" data-testid="load-save-detail">
         Details: {{ errorDetail }}
       </p>
-    </div>
+      <p class="mb-2">Please copy this error and report it on our Discord, along with your save file.</p>
+      <div class="d-flex flex-wrap ga-2">
+        <v-btn
+          data-testid="copy-save-error"
+          prepend-icon="fas fa-copy"
+          size="small"
+          variant="tonal"
+          @click="copyError"
+        >
+          Copy error
+        </v-btn>
+        <v-btn
+          class="bg-indigo-darken-2"
+          :href="DISCORD_INVITE"
+          prepend-icon="fab fa-discord"
+          rel="noopener"
+          size="small"
+          target="_blank"
+          variant="flat"
+        >
+          Report on Discord
+        </v-btn>
+      </div>
+    </v-sheet>
 
     <div class="d-flex align-center flex-wrap ga-2 mb-3">
       <v-btn
@@ -164,6 +187,7 @@
   import eventBus from '@/utils/eventBus'
 
   const TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  const DISCORD_INVITE = 'https://discord.gg/vcFsjcWAFv'
 
   const open = ref(false)
   const { save, overrides, isUnlocked, isOverridden, setUnlocked, loadSave, forgetSave } = useRecipeUnlocks()
@@ -239,6 +263,19 @@
       errorDetail.value = cause instanceof Error ? cause.message : String(cause)
     } finally {
       busy.value = false
+    }
+  }
+
+  // What a report needs: the reason, the reader's own words and which file it was.
+  const copyError = async () => {
+    const report = [error.value, errorDetail.value && `Details: ${errorDetail.value}`, `File: ${fileName.value}`]
+      .filter(Boolean)
+      .join('\n')
+    try {
+      await navigator.clipboard.writeText(report)
+      eventBus.emit('toast', { message: 'Error copied. Paste it into Discord with your save file.', type: 'success' })
+    } catch {
+      eventBus.emit('toast', { message: 'Could not copy it. Select the error above and copy it instead.', type: 'info' })
     }
   }
 
