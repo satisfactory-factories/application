@@ -148,6 +148,21 @@ const isPartNeeded = (factory: Factory, part: string): boolean => {
 }
 
 /**
+ * Where a part stands for the import dialog, which ranks its item list on this: what still needs an
+ * import first, then what is imported but still short (it needs a second source), then what is
+ * already covered. Null for a part the factory does not need, which a hub may still pick up.
+ * A raw resource with a shortage and no import counts as missing, like any other part.
+ */
+export type ImportNeed = 'missing' | 'short' | 'imported' | 'satisfied'
+
+export const getImportNeed = (factory: Factory, part: string): ImportNeed | null => {
+  if (!isPartNeeded(factory, part)) return null
+  const imported = factory.inputs.some(input => input.outputPart === part)
+  if (factory.parts[part].satisfied) return imported ? 'imported' : 'satisfied'
+  return imported ? 'short' : 'missing'
+}
+
+/**
  * The parts the import dialog offers. With `anySurplus` off, only what this factory actually needs;
  * on, any part another factory has spare, which is how a hub picks up stock it does not consume.
  * `includeLoops` keeps a part whose only sources would close a loop, so the dialog can explain it.

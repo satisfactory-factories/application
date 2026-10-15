@@ -45,7 +45,7 @@
             />
           </template>
           <template #item="{ props: itemProps, item }">
-            <v-list-item v-bind="itemProps" :subtitle="item.needed ? 'Needed by this factory' : undefined">
+            <v-list-item v-bind="itemProps" :data-need="item.need ?? undefined">
               <template #prepend>
                 <game-asset
                   class="mr-2"
@@ -54,6 +54,11 @@
                   type="item"
                   width="28px"
                 />
+              </template>
+              <template v-if="item.need" #subtitle>
+                <span :class="needCaptions[item.need].class" data-testid="import-item-need">
+                  {{ needCaptions[item.need].text }}
+                </span>
               </template>
             </v-list-item>
           </template>
@@ -125,7 +130,9 @@
   import { useAppStore } from '@/stores/app-store'
   import {
     getImportableParts,
+    getImportNeed,
     getImportSources,
+    ImportNeed,
     ImportSource,
   } from '@/utils/factory-management/redistribution'
 
@@ -176,17 +183,27 @@
     }
   }
 
+  // The item list runs in tiers: needed and not imported at all, then imported but still short (a
+  // second source would help), then needs already covered, then anything else spare in the plan.
+  // Covered items stay pickable, so a factory can still take them from somewhere new.
+  const needOrder: Record<ImportNeed, number> = { missing: 0, short: 1, imported: 2, satisfied: 2 }
+  const needCaptions: Record<ImportNeed, { text: string, class: string }> = {
+    missing: { text: 'Not imported yet', class: 'text-medium-emphasis' },
+    short: { text: 'Imported, but not enough', class: 'text-amber' },
+    imported: { text: 'Imported and satisfied', class: 'text-green' },
+    satisfied: { text: 'Already satisfied', class: 'text-green' },
+  }
+
   const allItems = computed(() => {
     const factories = getFactories()
-    const needed = new Set(getImportableParts(props.factory, factories, false, true))
-    const byName = (a: { title: string }, b: { title: string }) => a.title.localeCompare(b.title)
-    const items = getImportableParts(props.factory, factories, true, true)
-      .map(part => ({ title: getPartDisplayName(part), value: part, needed: needed.has(part) }))
+    const tier = (need: ImportNeed | null) => need ? needOrder[need] : 3
 
-    return [
-      ...items.filter(item => item.needed).sort(byName),
-      ...items.filter(item => !item.needed).sort(byName),
-    ]
+    return getImportableParts(props.factory, factories, true, true)
+      .map(part => {
+        const need = getImportNeed(props.factory, part)
+        return { title: getPartDisplayName(part), value: part, need, needed: need !== null }
+      })
+      .sort((a, b) => tier(a.need) - tier(b.need) || a.title.localeCompare(b.title))
   })
 
   const anyNeeded = computed(() => allItems.value.some(item => item.needed))
