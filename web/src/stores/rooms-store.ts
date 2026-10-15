@@ -621,6 +621,7 @@ export const useRoomsStore = defineStore('rooms', () => {
         depotExpansionTier: tab.depotExpansionTier,
         plannerVersion: tab.plannerVersion,
         groups: toRaw(tab.groups ?? []),
+        recipeUnlocks: toRaw(tab.recipeUnlocks),
       })
 
       if (name !== tab.name) appStore.renameTab(tab.id, name)

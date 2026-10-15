@@ -15,7 +15,6 @@
   <planner-global-actions
     class="py-2"
     @clear-all="emit('clearAll')"
-    @import-world="emit('importWorld')"
   />
   <v-divider color="#ccc" thickness="2px" />
   <copyright />
@@ -35,6 +34,5 @@
     (event: 'createFactory', groupId?: string | null): void;
     (event: 'updateFactories', factories: Factory[]): void;
     (event: 'clearAll'): void;
-    (event: 'importWorld'): void;
   }>()
 </script>

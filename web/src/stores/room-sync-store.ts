@@ -374,6 +374,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   // field, so claiming one differs would leave intent nothing could ever satisfy.
   const fieldDiffers = (acked: AckedState, local: RoomContent, field: TabField): boolean => {
     if (field === 'groups') return stableStringify(local.groups) !== acked.groups
+    if (field === 'recipeUnlocks') {
+      return local.recipeUnlocks !== undefined && stableStringify(local.recipeUnlocks) !== acked.recipeUnlocks
+    }
     const value = local[field]
     return value !== undefined && value !== acked[field]
   }
@@ -816,6 +819,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       }
     }
     if (engine.touchedFields.has('groups')) content.groups = local.groups
+    if (engine.touchedFields.has('recipeUnlocks') && local.recipeUnlocks !== undefined) {
+      content.recipeUnlocks = local.recipeUnlocks
+    }
 
     return { content, overlaid }
   }
@@ -855,6 +861,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     tab.depotExpansionTier = content.depotExpansionTier
     tab.plannerVersion = content.plannerVersion
     tab.groups = content.groups
+    tab.recipeUnlocks = content.recipeUnlocks
 
     const next = inDisplayOrder(content.factories)
     tab.factories = next
@@ -1061,6 +1068,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       depotUploadTier: copy.depotUploadTier,
       depotExpansionTier: copy.depotExpansionTier,
       plannerVersion: copy.plannerVersion,
+      recipeUnlocks: copy.recipeUnlocks,
     }, { activate: false })
   }
 
@@ -1398,6 +1406,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       Object.assign(engine.acked, { [field]: UNKNOWN_SCALAR[field] })
     }
     if (engine.touchedFields.has('groups')) engine.acked.groups = UNKNOWN_CONTENT
+    if (engine.touchedFields.has('recipeUnlocks')) engine.acked.recipeUnlocks = UNKNOWN_CONTENT
   }
 
   /**

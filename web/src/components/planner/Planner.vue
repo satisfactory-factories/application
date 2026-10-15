@@ -1,7 +1,5 @@
 <template>
   <introduction source="planner" />
-  <world-import :show-import-world-popup @close-world-import="closeWorldImport" />
-  <world-data v-if="showWorldData" />
 
   <building-group-tutorial />
   <awesome-sink-tutorial />
@@ -19,7 +17,6 @@
         loaded-from="navigation"
         @clear-all="clearAll"
         @create-factory="createFactory"
-        @import-world="importWorld"
         @update-factories="updateFactoriesList"
       />
     </Teleport>
@@ -41,7 +38,6 @@
             loaded-from="planner"
             @clear-all="clearAll"
             @create-factory="createFactory"
-            @import-world="importWorld"
             @update-factories="updateFactoriesList"
           />
         </v-container>
@@ -347,9 +343,6 @@
   const planVisible = ref(false)
   const navigationReady = ref(false)
 
-  const showImportWorldPopup = ref<boolean>(false)
-  const showWorldData = ref<boolean>(false)
-
   const showSidebar = ref<boolean>(localStorage.getItem('sidebarOpen') !== 'false')
   const sidebarPeek = ref<boolean>(false)
 
@@ -516,10 +509,6 @@
   // Mounting is the honest ask, since nothing here is on screen until a chain reports
   // back — and a transition fires on a schedule the store cannot reason about.
   onMounted(() => eventBus.emit('readyForData'))
-
-  useEventBusListener('worldDataShow', (value: boolean) => {
-    showWorldData.value = value
-  })
 
   useEventBusListener('navigationReady', () => {
     console.log('Planner: Received navigationReady event, teleporting factory list')
@@ -842,15 +831,6 @@
     } else {
       console.error('Factory not found to delete?!')
     }
-  }
-
-  const importWorld = () => {
-    console.log('Open Import World')
-    showImportWorldPopup.value = true
-  }
-
-  const closeWorldImport = () => {
-    showImportWorldPopup.value = false
   }
 
   const clearAll = () => {

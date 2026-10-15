@@ -206,6 +206,7 @@ const contentUpdate = (diff: RoomDiff, factories: Factory[] | null): Record<stri
   if (diff.depotExpansionTier !== undefined) update.depotExpansionTier = diff.depotExpansionTier
   if (diff.plannerVersion !== undefined) update.plannerVersion = diff.plannerVersion
   if (diff.groups !== undefined) update.groups = diff.groups
+  if (diff.recipeUnlocks !== undefined) update.recipeUnlocks = diff.recipeUnlocks
   if (factories !== null) update.factories = factories
 
   return update

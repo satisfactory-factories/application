@@ -30,14 +30,13 @@
     "mitt": "^3.0.1",
     "pinia": "^4.0.2",
     "roboto-fontface": "^0.10.0",
-    "sav2json": "^1.0.1",
     "vue": "^3.5.40",
     "vuedraggable": "^4.1.0",
     "vuetify": "^4.0.0"
   },
   "devDependencies": {
-    "@fortawesome/fontawesome-free": "^7.0.0",
     "@babel/types": "^8.0.0",
+    "@fortawesome/fontawesome-free": "^7.0.0",
     "@pinia/testing": "^2.0.1",
     "@playwright/test": "catalog:",
     "@stylistic/eslint-plugin": "5.10.0",

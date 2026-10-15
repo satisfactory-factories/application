@@ -28,6 +28,7 @@ import { config } from '@/config/config'
 import { recordEvent } from '@/utils/record-event'
 import { writeLocalStorage } from '@/utils/safe-storage'
 import { canAddFactory } from '@/utils/plan-size'
+import { setActiveRecipeUnlocks } from '@/utils/recipe-unlocks'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -207,6 +208,16 @@ export const useAppStore = defineStore('app', () => {
       prepareLoader(currentFactoryTab.value.factories)
     })
   })
+
+  // The status registry reads the plan on screen's unlock list, and cannot import this store.
+  watch(
+    () => [factoryTabs.value[currentFactoryTabIndex.value]?.recipeUnlocks, gameDataStore.gameData] as const,
+    ([unlocks, data]) => setActiveRecipeUnlocks(
+      unlocks,
+      new Set((data?.recipes ?? []).filter(recipe => recipe.isAlternate).map(recipe => recipe.id))
+    ),
+    { immediate: true }
+  )
 
   // ==== PLAN PERSISTENCE
   // Previously a deep watcher persisted factoryTabs on every reactive flush — on large
@@ -1094,6 +1105,7 @@ export const useAppStore = defineStore('app', () => {
           // replaced rather than the one arriving.
           legacyTab.depotUploadTier = undefined
           legacyTab.depotExpansionTier = undefined
+          legacyTab.recipeUnlocks = undefined
         }
         // Recalculated, not trusted, and ONLY here. This array was written by a client that meant
         // something different by it - raw resources were assumed supplied - so its stored ledger
@@ -1120,6 +1132,7 @@ export const useAppStore = defineStore('app', () => {
         // plan against this browser's last save rather than their own.
         tab.depotUploadTier = data.depotUploadTier
         tab.depotExpansionTier = data.depotExpansionTier
+        tab.recipeUnlocks = data.recipeUnlocks
       }
       markPlanReplaced(outgoing, data.factories ?? [])
       // Deliberately NOT forced here. This tab was written by a current client, so its quantities
@@ -1149,6 +1162,7 @@ export const useAppStore = defineStore('app', () => {
       groups,
       depotUploadTier,
       depotExpansionTier,
+      recipeUnlocks,
     } = tab
 
     // A tab's id is its room id, so two tabs sharing one would have the room write into
@@ -1182,6 +1196,8 @@ export const useAppStore = defineStore('app', () => {
       // upload speed the sender planned for and hiding every over-capacity warning.
       depotUploadTier,
       depotExpansionTier,
+      // The save the sender loaded is a fact about the plan, the same as the tiers.
+      recipeUnlocks,
     })
 
     // A tab the room list brought in shouldn't yank the user off what they were doing.
@@ -1258,6 +1274,7 @@ export const useAppStore = defineStore('app', () => {
       plannerVersion: copy.plannerVersion,
       depotUploadTier: copy.depotUploadTier,
       depotExpansionTier: copy.depotExpansionTier,
+      recipeUnlocks: copy.recipeUnlocks,
     })
   }
 

@@ -69,6 +69,7 @@ declare module 'vue' {
     LegacyRecoveryDialog: typeof import('./components/sync/LegacyRecoveryDialog.vue')['default']
     LinkedTickDialog: typeof import('./components/planner/LinkedTickDialog.vue')['default']
     LinkedTickSyncDialog: typeof import('./components/planner/LinkedTickSyncDialog.vue')['default']
+    LoadSaveDialog: typeof import('./components/planner/LoadSaveDialog.vue')['default']
     MediaPlayer: typeof import('./components/common/MediaPlayer.vue')['default']
     Navigation: typeof import('./components/Navigation.vue')['default']
     NewTabDialog: typeof import('./components/sync/NewTabDialog.vue')['default']
@@ -134,8 +135,6 @@ declare module 'vue' {
     UpdateAvailableToast: typeof import('./components/UpdateAvailableToast.vue')['default']
     UpdateRequiredDialog: typeof import('./components/UpdateRequiredDialog.vue')['default']
     VersionPrompt: typeof import('./components/sync/VersionPrompt.vue')['default']
-    WorldData: typeof import('./components/planner/WorldData.vue')['default']
-    WorldImport: typeof import('./components/planner/WorldImport.vue')['default']
     YoutubeEmbed: typeof import('./components/YoutubeEmbed.vue')['default']
   }
 }

@@ -5,6 +5,7 @@ import {
   factorySchema,
   firstTextIssue,
   invitePasswordSchema,
+  recipeUnlocksSchema,
   slugSchema,
   textSchema,
   truncateFactoryTab,
@@ -25,6 +26,7 @@ const roomContent = {
   depotExpansionTier: z.number().optional(),
   plannerVersion: z.string().max(CAPS.string).optional(),
   groups: z.array(factoryGroupSchema).optional(),
+  recipeUnlocks: recipeUnlocksSchema.optional(),
 }
 
 export const createRoomSchema = z.object({ roomId: roomId.optional(), name: roomName, ...roomContent })

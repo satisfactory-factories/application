@@ -56,3 +56,4 @@
 - [Text sanity rules](text-sanity-rules.md) — one rulebook for names, notes and tasks in planner and server; links banned, old text repaired on load
 - [Plan deletion moves DB metrics](plan-deletion-moves-db-metrics.md) — a cliff in synced factories with edits falling too is deletion; deleted plans leave no trace but Prometheus
 - [Game save format](game-save-format.md) — reading a 1.2 .sav; a save is a diff not a snapshot, and the ways a wrong parse stays silent
+- [Recipe unlocks from a save](recipe-unlocks.md) — which alternates a loaded save locks; id mapping traps, one tab field so forgetting syncs, the leaf the chip reads

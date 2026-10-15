@@ -29,5 +29,7 @@ export type {
   FactoryTask,
   LegacyRawAssumptionFields,
   PartMetrics,
+  RecipeUnlocks,
+  RecipeUnlocksSave,
   WorldRawResource,
 } from 'common'

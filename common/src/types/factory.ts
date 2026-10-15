@@ -442,6 +442,27 @@ export interface FactoryTab {
   // when raw resources were still assumed. Do not read it as "this plan's raw supply is met" —
   // ask collectRawWizardRows() for that.
   plannerVersion?: string;
+  // Which alternate recipes the player has unlocked, read from their save. Absent means no save
+  // has been loaded, and every recipe counts as unlocked.
+  recipeUnlocks?: RecipeUnlocks;
+}
+
+// The save an unlock list was read from.
+export interface RecipeUnlocksSave {
+  name: string;
+  // ISO timestamp of when the save was read, not when it was written.
+  readAt: string;
+  // Alternate recipe ids as the game data names them, e.g. `Alternate_Screw`.
+  alternates: string[];
+}
+
+// One field rather than two so that forgetting the save is a value the sync diff can carry:
+// an absent field means "unchanged" on the wire, never "cleared".
+export interface RecipeUnlocks {
+  save: RecipeUnlocksSave | null;
+  // Alternates the player marked by hand: true unlocked, false locked. They win over the save and
+  // are kept when a newer one is loaded.
+  overrides: Record<string, boolean>;
 }
 
 // Fields saved plans still carry from before raw supply stopped being assumable. Typed only so

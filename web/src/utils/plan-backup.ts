@@ -4,7 +4,7 @@
  * The tab id is deliberately absent: restoring replaces the current tab and keeps its own id.
  * Anything written here has to stay readable by the paste path, which is the only way back in.
  */
-import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
+import { Factory, FactoryGroup, RecipeUnlocks } from '@/interfaces/planner/FactoryInterface'
 
 export interface PlanBlob {
   name?: string
@@ -21,6 +21,8 @@ export interface PlanBlob {
   // so a blob that dropped these would silently hand a tier-0 plan 16x the upload speed.
   depotUploadTier?: number
   depotExpansionTier?: number
+  // The alternates the plan's save has unlocked. Absent means no save was loaded.
+  recipeUnlocks?: RecipeUnlocks
 }
 
 export const serializePlan = (blob: PlanBlob): string => JSON.stringify(blob)

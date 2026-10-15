@@ -9,7 +9,7 @@
 
 import { extractWorld } from '@/utils/game-save/extract-world'
 import type { ExtractOptions } from '@/utils/game-save/extract-world'
-import { parseSave } from '@/utils/game-save/save-parser'
+import { parseSave, readSessionName } from '@/utils/game-save/save-parser'
 import type { SaveBytes } from '@/utils/game-save/chunks'
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
 
@@ -30,7 +30,10 @@ export type ReadWorldResponse =
 export const readWorldFromSave = async (
   bytes: SaveBytes,
   options: ExtractOptions = {},
-): Promise<WorldSnapshot> => extractWorld(await parseSave(bytes), options)
+): Promise<WorldSnapshot> => extractWorld(await parseSave(bytes), {
+  ...options,
+  saveName: options.saveName ?? readSessionName(bytes),
+})
 
 /**
  * The worker's message handler, exported so it can be tested without spawning one.

@@ -166,6 +166,35 @@ describe('ws ops: the consistency contract', () => {
       expect(room?.plannerVersion).toBe('0.6.0')
     })
 
+    it('keeps the unlock list a save was read into, and a forgotten save as forgotten', async () => {
+      const a = await joined(owner.token)
+      const recipeUnlocks = {
+        save: { name: 'My World', readAt: '2026-10-15T00:00:00.000Z', alternates: ['Alternate_Screw'] },
+        overrides: { Alternate_Wire_1: true },
+      }
+
+      a.client.send(op({ recipeUnlocks }, 0))
+      await a.client.next('op_ack')
+      expect((await readRoom())?.recipeUnlocks).toEqual(recipeUnlocks)
+
+      a.client.send(op({ recipeUnlocks: { save: null, overrides: {} } }, 1))
+      await a.client.next('op_ack')
+      expect((await readRoom())?.recipeUnlocks).toEqual({ save: null, overrides: {} })
+
+      const b = await greet(member.token)
+      b.send({ type: 'join', roomId })
+      expect((await b.next('snapshot')).room.recipeUnlocks).toEqual({ save: null, overrides: {} })
+    })
+
+    it('refuses an unlock list past its cap', async () => {
+      const a = await joined(owner.token)
+      const alternates = Array.from({ length: 1_001 }, (_, index) => `Alternate_${index}`)
+
+      a.client.send(op({ recipeUnlocks: { save: { name: 'Big', readAt: 'x', alternates }, overrides: {} } }, 0))
+      await expect(a.client.next('op_reject')).resolves.toMatchObject({ reason: 'invalid' })
+      expect((await readRoom())?.recipeUnlocks).toBeUndefined()
+    })
+
     it('hands the tab settings back in the join snapshot', async () => {
       const a = await joined(owner.token)
       a.client.send(op({ depotUploadTier: 0 }, 0))

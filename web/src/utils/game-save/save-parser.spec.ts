@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { inflateSaveBody, SaveFormatError } from '@/utils/game-save/chunks'
 import { loadSaveFixture, SaveFixture } from '@/utils/game-save/fixtures'
-import { parseSave, parseSaveBody } from '@/utils/game-save/save-parser'
+import { parseSave, parseSaveBody, readSessionName } from '@/utils/game-save/save-parser'
 
 // Every 1.2 world holds the same physical map objects however it was generated, so these counts
 // are the cheapest proof that the header walk started in the right place and stayed aligned.
@@ -67,5 +67,19 @@ describe('parseSave', () => {
     const body = await inflateSaveBody(loadSaveFixture('vanilla'))
 
     expect(() => parseSaveBody(body.subarray(0, Math.floor(body.length / 2)))).toThrow(SaveFormatError)
+  })
+})
+
+describe('readSessionName', () => {
+  it.each([
+    ['vanilla', 'Vanilla'],
+    ['node-randomised', 'Test 1.2'],
+    ['vanilla-all-pure', 'Base nodes all pure'],
+  ] as const)('reads the session name from the %s header', (name, expected) => {
+    expect(readSessionName(loadSaveFixture(name))).toBe(expected)
+  })
+
+  it('gives up quietly on bytes that are not a save', () => {
+    expect(readSessionName(new Uint8Array(8))).toBe('')
   })
 })

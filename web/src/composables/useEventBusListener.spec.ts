@@ -9,24 +9,24 @@ describe('useEventBusListener', () => {
     eventBus.all.clear()
   })
 
-  const handlerCount = () => eventBus.all.get('worldDataShow')?.length ?? 0
+  const handlerCount = () => eventBus.all.get('plannerShow')?.length ?? 0
 
   it('removes its handler when the component unmounts', () => {
     const handler = vi.fn()
     const Listener = defineComponent({
       setup () {
-        useEventBusListener('worldDataShow', handler)
+        useEventBusListener('plannerShow', handler)
         return () => h('div')
       },
     })
 
     const wrapper = mount(Listener)
-    eventBus.emit('worldDataShow', true)
+    eventBus.emit('plannerShow', true)
     expect(handler).toHaveBeenCalledWith(true)
     expect(handlerCount()).toBe(1)
 
     wrapper.unmount()
-    eventBus.emit('worldDataShow', false)
+    eventBus.emit('plannerShow', false)
     expect(handler).toHaveBeenCalledTimes(1)
     expect(handlerCount()).toBe(0)
   })
@@ -34,7 +34,7 @@ describe('useEventBusListener', () => {
   it('does not accumulate handlers across repeated mounts', () => {
     const Listener = defineComponent({
       setup () {
-        useEventBusListener('worldDataShow', () => {})
+        useEventBusListener('plannerShow', () => {})
         return () => h('div')
       },
     })
@@ -45,14 +45,14 @@ describe('useEventBusListener', () => {
 
   it('removes its handler when an effect scope is stopped', () => {
     const scope = effectScope()
-    scope.run(() => useEventBusListener('worldDataShow', () => {}))
+    scope.run(() => useEventBusListener('plannerShow', () => {}))
     expect(handlerCount()).toBe(1)
     scope.stop()
     expect(handlerCount()).toBe(0)
   })
 
   it('returns a stop function for use outside a scope', () => {
-    const stop = useEventBusListener('worldDataShow', () => {})
+    const stop = useEventBusListener('plannerShow', () => {})
     expect(handlerCount()).toBe(1)
     stop()
     expect(handlerCount()).toBe(0)

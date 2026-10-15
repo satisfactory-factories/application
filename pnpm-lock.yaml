@@ -447,9 +447,6 @@ importers:
       roboto-fontface:
         specifier: ^0.10.0
         version: 0.10.0
-      sav2json:
-        specifier: ^1.0.1
-        version: 1.0.1
       vue:
         specifier: ^3.5.40
         version: 3.5.43(typescript@6.0.3)
@@ -5224,9 +5221,6 @@ packages:
     resolution: {integrity: sha512-4EjSuRTyG8M4yRXXY1PT9OUV5zz23xBxJkbIAprohKHqf6HOU4MCpE3U3vAC+iO1gxobBjESNbcj8rYAQZWnyA==}
     engines: {node: '>=20.19.0'}
     hasBin: true
-
-  sav2json@1.0.1:
-    resolution: {integrity: sha512-tLGP/XnCi905d1EL+fluxJMj0U/QRvruoW1LOIMomoPU+AlQFYet1Q++0Ob3ckRkKoVpGyFX24exzPZ+X/4g4Q==}
 
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
@@ -11459,8 +11453,6 @@ snapshots:
       source-map-js: 1.2.1
     optionalDependencies:
       '@parcel/watcher': 2.6.0
-
-  sav2json@1.0.1: {}
 
   saxes@6.0.0:
     dependencies:

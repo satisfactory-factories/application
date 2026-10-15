@@ -1,4 +1,4 @@
-import type { Factory, FactoryGroup } from './factory'
+import type { Factory, FactoryGroup, RecipeUnlocks } from './factory'
 import type { TextIssue } from '../text-rules'
 
 /**
@@ -121,6 +121,7 @@ export interface RoomSnapshot {
   depotExpansionTier?: number
   plannerVersion?: string
   groups: FactoryGroup[]
+  recipeUnlocks?: RecipeUnlocks
   revision: number
 }
 
@@ -141,6 +142,8 @@ export interface RoomDiff {
   depotExpansionTier?: number
   plannerVersion?: string
   groups?: FactoryGroup[]
+  /** Replaced whole. Forgetting the save is `{ save: null }`, so it never needs clearing. */
+  recipeUnlocks?: RecipeUnlocks
   factories?: Factory[]
   removedFactoryIds?: number[]
 }

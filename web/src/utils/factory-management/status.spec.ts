@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { createNewPart } from '@/utils/factory-management/common'
 import { mockPowerProducer, mockProduct } from '@/utils/factory-management/status-fixtures'
 import { setNoDemandIgnored } from '@/utils/factory-management/disposal'
+import { setActiveRecipeUnlocks } from '@/utils/recipe-unlocks'
 import {
   factoryStatusClass,
   factoryStatusDefinitions,
@@ -236,6 +237,47 @@ describe('status', () => {
         subjects: [],
       })
       expect(statusOf(factory, 'outOfSync')?.section).toBeUndefined()
+    })
+  })
+
+  describe('alternateLocked', () => {
+    const alternates = new Set(['Alternate_IngotIron'])
+    const save = (unlocked: string[]) => ({
+      save: { name: 'Test', readAt: '2026-10-15T00:00:00.000Z', alternates: unlocked },
+      overrides: {},
+    })
+
+    beforeEach(() => {
+      factory.products = [mockProduct('IronIngot', { recipe: 'Alternate_IngotIron' })]
+    })
+
+    afterEach(() => setActiveRecipeUnlocks(undefined, alternates))
+
+    test('does not fire before a save is loaded', () => {
+      setActiveRecipeUnlocks(undefined, alternates)
+      expect(typesOf(factory)).not.toContain('alternateLocked')
+    })
+
+    test('does not fire for an alternate the save has unlocked', () => {
+      setActiveRecipeUnlocks(save(['Alternate_IngotIron']), alternates)
+      expect(typesOf(factory)).not.toContain('alternateLocked')
+    })
+
+    test('fires for a locked alternate, naming the product so the chip jumps to its row', () => {
+      setActiveRecipeUnlocks(save([]), alternates)
+
+      expect(statusOf(factory, 'alternateLocked')).toMatchObject({
+        severity: 'warning',
+        section: 'products',
+        label: 'Alt recipe not unlocked',
+        subjects: [{ id: 'IronIngot', type: 'item' }],
+      })
+    })
+
+    // About the world, not the arithmetic: the plan still adds up, so the factory must not go red.
+    test('never counts as a problem', () => {
+      setActiveRecipeUnlocks(save([]), alternates)
+      expect(hasFactoryProblem(factory)).toBe(false)
     })
   })
 

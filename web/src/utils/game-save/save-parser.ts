@@ -121,3 +121,21 @@ export const parseSaveBody = (body: SaveBytes): ParsedSave => {
 
 export const parseSave = async (bytes: SaveBytes): Promise<ParsedSave> =>
   parseSaveBody(await inflateSaveBody(bytes))
+
+/**
+ * The session name the player typed when they started the world, from the uncompressed header:
+ * three int32 versions, then the save's file name, the map, the map options and the session name.
+ * Best effort: a header this cannot read is not a reason to refuse the save.
+ */
+export const readSessionName = (bytes: SaveBytes): string => {
+  try {
+    const reader = new BinaryReader(bytes)
+    reader.skip(12)
+    reader.readString() // save file name
+    reader.readString() // map
+    reader.readString() // map options, which carry the player's platform identity: never kept
+    return reader.readString()
+  } catch {
+    return ''
+  }
+}

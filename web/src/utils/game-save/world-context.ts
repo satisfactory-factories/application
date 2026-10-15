@@ -2,7 +2,7 @@
  * What the calculation engine asks a world.
  *
  * Pure functions over a snapshot, with no store access, so a pass can call them without changing
- * calculateFactory()'s order. Every one of them answers permissively when there is no world:
+ * the order the engine's passes run in. Every one of them answers permissively when there is no world:
  * a plan with no save attached is measured exactly as it was before this existed, so nothing a
  * user already built starts failing the moment the feature ships.
  */

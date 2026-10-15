@@ -31,6 +31,7 @@ import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management
 import { isBacklogIgnored, isNoDemandIgnored } from '@/utils/factory-management/disposal'
 import { isSurplusSignificant } from '@/utils/factory-management/parts'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
+import { isActiveRecipeLocked } from '@/utils/recipe-unlocks'
 
 export type FactoryStatusSeverity = 'problem' | 'warning' | 'note'
 
@@ -44,6 +45,7 @@ export type FactoryStatusType =
   'outOfSync' |
   'checklistDesync' |
   'unhandledByproduct' |
+  'alternateLocked' |
   'redundantImport' |
   'duplicateImport' |
   'noDemand' |
@@ -334,6 +336,21 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     detailLabel: list => count(list, 'Unhandled byproduct', 'byproducts that cannot be sunk'),
   },
   {
+    // About the world rather than the plan, so amber by the tier rule. Only ever fires once a save
+    // has been loaded: until then every recipe counts as unlocked.
+    type: 'alternateLocked',
+    severity: 'warning',
+    icon: 'fas fa-lock',
+    chip: true,
+    section: 'products',
+    detail: 'These products use an alternate recipe your save has not unlocked yet. Unlock it in game, pick another recipe, or mark it unlocked with the padlock in the recipe list.',
+    detect: factory => nonEmpty(subjects(
+      factory.products.map(product => product.recipe && isActiveRecipeLocked(product.recipe) ? product.id : null)
+    )),
+    label: list => count(list, 'Alt recipe not unlocked', 'alt recipes not unlocked'),
+    detailLabel: list => count(list, 'Alternate recipe not unlocked', 'alternate recipes not unlocked'),
+  },
+  {
     type: 'outOfSync',
     severity: 'warning',
     icon: 'fas fa-times-square',
@@ -589,6 +606,14 @@ const tallyChipDefinitions: TallyChipDefinition[] = [
     class: 'status-warning',
     label: ['unhandled byproduct', 'unhandled byproducts'],
     sentence: ['factory makes a byproduct that cannot be sunk', 'factories make byproducts that cannot be sunk'],
+  },
+  {
+    key: 'alternateLocked',
+    types: ['alternateLocked'],
+    icon: 'fas fa-lock',
+    class: 'status-warning',
+    label: ['alt recipe not unlocked', 'alt recipes not unlocked'],
+    sentence: ['factory uses an alternate recipe the save has not unlocked', 'factories use alternate recipes the save has not unlocked'],
   },
   {
     key: 'outOfSync',
