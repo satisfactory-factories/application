@@ -2809,6 +2809,57 @@ describe('room-sync-store', () => {
       expect(lastOp().diff.depotExpansionTier).toBe(3)
     })
 
+    describe('the unlock list a save was read into', () => {
+      const save = (name: string, alternates: string[] = []) =>
+        ({ name, readAt: '2026-10-15T00:00:00.000Z', alternates })
+      const unlocks = (name: string, overrides: Record<string, boolean> = {}) => ({ save: save(name), overrides })
+
+      // Baseline: the room already holds a save, as it would once anyone had loaded one.
+      const syncWithSave = () => {
+        const tab = syncAt(fixture, 4)
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 5, { recipeUnlocks: unlocks('World') }), revision: 5 })
+        return tab
+      }
+
+      // Two padlocks set at once. Resending the whole list would undo the peer's.
+      it('keeps a peer\'s padlock when its own lands second', () => {
+        vi.useFakeTimers()
+        const tab = syncWithSave()
+
+        tab.recipeUnlocks = unlocks('World', { Alternate_FusedWire: true })
+        eventBus.emit('tabEdited', 'recipeUnlocks')
+        vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+        receive({
+          type: 'op_reject',
+          roomId: ROOM,
+          opId: lastOp().opId,
+          reason: 'stale_base',
+          snapshot: snapshotOf(fixture, 6, { recipeUnlocks: unlocks('World', { Alternate_Wire_1: true }) }),
+        })
+
+        const merged = unlocks('World', { Alternate_Wire_1: true, Alternate_FusedWire: true })
+        expect(tab.recipeUnlocks).toEqual(merged)
+        expect(lastOp().diff.recipeUnlocks).toEqual(merged)
+      })
+
+      it('keeps a newer save a peer loaded while this client was offline', () => {
+        vi.useFakeTimers()
+        const tab = syncWithSave()
+        store.enterOffline()
+
+        tab.recipeUnlocks = unlocks('World', { Alternate_FusedWire: true })
+        eventBus.emit('tabEdited', 'recipeUnlocks')
+        vi.advanceTimersByTime(OP_DEBOUNCE_MS)
+
+        store.exitOffline()
+        latest().open()
+        receive(helloOk)
+        receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(fixture, 7, { recipeUnlocks: unlocks('World, later') }), revision: 7 })
+
+        expect(tab.recipeUnlocks).toEqual(unlocks('World, later', { Alternate_FusedWire: true }))
+      })
+    })
+
     // Dismissing the raw-resources notice is the user answering for this plan. Without this the
     // rebase puts the unanswered plan back and the notice returns on the next reconnect.
     it('carries the answered-for stamp', () => {

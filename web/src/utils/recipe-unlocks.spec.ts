@@ -7,6 +7,7 @@ import {
   isActiveRecipeLocked,
   isAlternateOverridden,
   isAlternateUnlocked,
+  rebaseRecipeUnlocks,
   saveFromWorld,
   setActiveRecipeUnlocks,
   toggleAlternate,
@@ -157,5 +158,32 @@ describe('unlocksForArrivingPlan', () => {
 
   it('adds nothing when neither plan had a save', () => {
     expect(unlocksForArrivingPlan(undefined, undefined)).toBeUndefined()
+  })
+})
+
+describe('rebaseRecipeUnlocks', () => {
+  const base = unlocks(['Alternate_Screw'])
+
+  it('lays this client\'s padlock over a peer\'s', () => {
+    const merged = rebaseRecipeUnlocks(base, unlocks(['Alternate_Screw'], { A: true }), unlocks(['Alternate_Screw'], { B: false }))
+
+    expect(merged.overrides).toEqual({ A: true, B: false })
+  })
+
+  it('keeps the server\'s save unless this client loaded one', () => {
+    expect(rebaseRecipeUnlocks(base, unlocks(['Alternate_Screw'], { A: true }), unlocks(['Newer'])).save?.alternates).toEqual(['Newer'])
+    expect(rebaseRecipeUnlocks(base, unlocks(['Mine']), unlocks(['Newer'])).save?.alternates).toEqual(['Mine'])
+  })
+
+  it('carries a padlock this client took back', () => {
+    const merged = rebaseRecipeUnlocks(unlocks([], { A: true }), unlocks([]), unlocks([], { A: true, B: true }))
+
+    expect(merged.overrides).toEqual({ B: true })
+  })
+
+  it('lets the local list win whole when the baseline is unknown', () => {
+    const local = unlocks(['Mine'], { A: true })
+
+    expect(rebaseRecipeUnlocks(null, local, unlocks(['Newer']))).toBe(local)
   })
 })

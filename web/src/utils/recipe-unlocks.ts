@@ -1,5 +1,6 @@
 import { shallowRef } from 'vue'
 import { CAPS } from 'common'
+import { stableStringify } from '@/sync/room-state'
 import type { RecipeUnlocks, RecipeUnlocksSave } from '@/interfaces/planner/FactoryInterface'
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
 
@@ -83,3 +84,27 @@ export const unlocksForArrivingPlan = (
   arriving: RecipeUnlocks | undefined,
   current: RecipeUnlocks | undefined
 ): RecipeUnlocks | undefined => arriving ?? (current ? { save: null, overrides: {} } : undefined)
+
+/**
+ * This client's own changes laid over the server's list, for a rebase. Resending the whole local
+ * list would undo a peer's padlock, or put back an older save over a newer one. With no known
+ * baseline (null, after a restart) there is nothing to tell mine from theirs, so mine wins whole.
+ */
+export const rebaseRecipeUnlocks = (
+  base: RecipeUnlocks | undefined | null,
+  local: RecipeUnlocks,
+  server: RecipeUnlocks | undefined
+): RecipeUnlocks => {
+  if (base === null || server === undefined) return local
+
+  const changedSave = stableStringify(local.save) !== stableStringify(base?.save ?? null)
+  const overrides = { ...server.overrides }
+  for (const id of new Set([...Object.keys(local.overrides), ...Object.keys(base?.overrides ?? {})])) {
+    const mine = local.overrides[id]
+    if (mine === base?.overrides[id]) continue
+    if (mine === undefined) delete overrides[id]
+    else overrides[id] = mine
+  }
+
+  return { save: changedSave ? local.save : server.save, overrides }
+}

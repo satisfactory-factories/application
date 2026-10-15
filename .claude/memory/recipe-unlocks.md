@@ -25,6 +25,11 @@ the store-bound half in `composables/useRecipeUnlocks.ts`, the dialog in `LoadSa
 - **The status chip reads a leaf.** `status.ts` must not import the app store, so the store's watcher pushes the plan on
   screen into `setActiveRecipeUnlocks` and `alternateLocked` reads `isActiveRecipeLocked`. It is a warning, never a problem:
   the plan still adds up.
+- **A rebase merges three ways** (`rebaseRecipeUnlocks`, fed the baseline from before the snapshot replaced it), so a
+  resend carries only this client's own padlocks and save. A whole-list resend would undo a peer's padlock.
+- **A plan arriving without a save states the forgetting** (`unlocksForArrivingPlan`), or collaborators keep the old save.
+- **A save with no recipes is refused**, with a player-facing reason per `SaveProblem` carried across the worker; otherwise it
+  would load as a world with every alternate locked. The load reads recipes only (`recipesOnly`).
 - **A hand mark that agrees with the save is dropped**, so the next save decides that recipe again. Marks survive a newer save;
   **Forget save** clears them.
 - The save header's session name (4th string after three int32 versions) is shown; the map-options string before it carries
