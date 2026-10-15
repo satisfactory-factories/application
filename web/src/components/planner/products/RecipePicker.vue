@@ -9,12 +9,15 @@
     label="Recipe"
     :model-value="modelValue"
     variant="outlined"
+    @update:focused="focused = $event"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <template #selection="{ item }">
-      <span class="recipe-picker-row">
+      <span class="recipe-picker-selection">
         <span class="recipe-picker-name">{{ item.name }}</span>
-        <recipe-picker-tags :alternate="item.alternate" :tier="item.tier" />
+        <span class="recipe-picker-selection-tags" :class="{ hidden: focused }">
+          <recipe-picker-tags :alternate="item.alternate" :tier="item.tier" />
+        </span>
       </span>
     </template>
     <template #item="{ props: itemProps, item }">
@@ -36,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue'
+  import { computed, ref } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getRecipeRating, matchesRecipeQuery, RECIPE_RATINGS_SOURCE, RecipeTier, TIER_ORDER } from '@/utils/recipe-ratings'
   import type { FilterFunction } from 'vuetify'
@@ -70,6 +73,9 @@
   const filterRecipe: FilterFunction = (_value, query, item) =>
     matchesRecipeQuery(item?.raw.title ?? '', item?.raw.tier, query)
 
+  // The tags step aside while typing, or the search text wraps the field onto a second line.
+  const focused = ref(false)
+
   const hasRatings = computed(() => items.value.some(item => item.tier))
 </script>
 
@@ -80,6 +86,32 @@
   gap: 6px;
   min-width: 0;
   width: 100%;
+}
+
+.recipe-picker :deep(.v-field__input) {
+  flex-wrap: nowrap;
+}
+
+.recipe-picker-selection {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.recipe-picker-selection-tags {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 6px;
+  max-width: 80px;
+  opacity: 1;
+  overflow: hidden;
+  transition: opacity 0.15s ease, max-width 0.15s ease, margin-left 0.15s ease;
+
+  &.hidden {
+    margin-left: 0;
+    max-width: 0;
+    opacity: 0;
+  }
 }
 
 .recipe-picker-name {

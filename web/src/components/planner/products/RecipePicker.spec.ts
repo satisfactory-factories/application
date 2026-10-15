@@ -46,4 +46,17 @@ describe('Component: RecipePicker', () => {
     expect(subject.find('[data-testid="recipe-alt-tag"]').exists()).toBe(false)
     expect(subject.find('[data-testid^="recipe-tier-"]').exists()).toBe(false)
   })
+
+  it('fades the tags out while the field is focused, and back in after', async () => {
+    const subject = mountPicker('Wire', 'Alternate_FusedWire')
+    const tags = () => subject.find('.recipe-picker-selection-tags')
+
+    expect(tags().classes()).not.toContain('hidden')
+    subject.findComponent(VAutocomplete).vm.$emit('update:focused', true)
+    await subject.vm.$nextTick()
+    expect(tags().classes()).toContain('hidden')
+    subject.findComponent(VAutocomplete).vm.$emit('update:focused', false)
+    await subject.vm.$nextTick()
+    expect(tags().classes()).not.toContain('hidden')
+  })
 })
