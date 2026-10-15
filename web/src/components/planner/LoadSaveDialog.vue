@@ -26,7 +26,7 @@
         <span class="ml-2 text-medium-emphasis">read {{ readAt }}</span>
       </div>
       <div class="mt-1" data-testid="loaded-save-summary">
-        {{ save.alternates.length }} of {{ alternateCount }} alternate recipes unlocked<span v-if="overrideCount">, {{ overrideCount }} marked by hand</span>.
+        {{ save.alternates.length }} of {{ alternateCount }} alternate recipes unlocked in this save<span v-if="overrideCount">, and {{ overrideCount }} marked by hand</span>.
       </div>
     </v-sheet>
 
