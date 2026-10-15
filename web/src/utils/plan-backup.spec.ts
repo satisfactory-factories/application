@@ -40,16 +40,17 @@ describe('plan-backup', () => {
     expect(parsed.depotExpansionTier).toBe(2)
   })
 
-  it('names the file after the plan and the day', () => {
+  it('names the file after the plan and the local date and time', () => {
     const link = document.createElement('a')
     const click = vi.spyOn(link, 'click').mockImplementation(() => {})
     vi.spyOn(document, 'createElement').mockReturnValue(link)
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:plan')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 
-    downloadPlan(blob(), new Date('2026-08-08T22:15:00Z'))
+    // Built from local fields, so the expectation holds in whatever zone the suite runs in.
+    downloadPlan(blob(), new Date(2026, 7, 8, 22, 15, 3))
 
-    expect(link.download).toBe('satisfactory-mael-s-megaplan-2026-08-08.json')
+    expect(link.download).toBe('satisfactory-mael-s-megaplan-2026-08-08-221503.json')
     expect(click).toHaveBeenCalledOnce()
   })
 
@@ -60,8 +61,8 @@ describe('plan-backup', () => {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:plan')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
 
-    downloadPlan({ ...blob(), name: undefined }, new Date('2026-08-08T22:15:00Z'))
+    downloadPlan({ ...blob(), name: undefined }, new Date(2026, 0, 2, 3, 4, 5))
 
-    expect(link.download).toBe('satisfactory-plan-2026-08-08.json')
+    expect(link.download).toBe('satisfactory-plan-2026-01-02-030405.json')
   })
 })
