@@ -37,6 +37,7 @@
     <span class="factory-chip-name ml-2">
       <slot>{{ factory.name }}</slot>
     </span>
+    <slot name="append" />
     <v-btn
       v-if="jumpable"
       class="chip-jump-btn ml-2"

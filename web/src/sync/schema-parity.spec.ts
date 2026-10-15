@@ -25,6 +25,13 @@ import {
   initializeTransportGroups,
 } from '@/utils/factory-management/exportCalculator'
 import { createGroup, moveFactoryToGroup } from '@/utils/factory-management/factory-groups'
+import {
+  addTrain,
+  addTrainCar,
+  addTrainStation,
+  setExportTransportMethod,
+  setTrainCarPart,
+} from '@/utils/factory-management/train-logistics'
 import { addBuildingGroup } from '@/utils/factory-management/building-groups/common'
 import { Factory, FactoryPowerChangeType, ItemType } from '@/interfaces/planner/FactoryInterface'
 import { gameData } from '@/utils/gameData'
@@ -136,6 +143,18 @@ const buildPlan = (): { factories: Factory[], tab: FactoryTab, mine: Factory, co
   initializeTransportGroups(pipeSettings, 300, 'pipes')
   addTransportGroup(pipeSettings, 300, 'pipes')
 
+  // A train export: the method on the export, a loading station with a train on it, and the
+  // receiving station it unloads at, with a loaded car, an empty car and a platform that is not freight.
+  setExportTransportMethod(mine, 'IronIngot', 2, 'train')
+  const loading = addTrainStation(mine, { name: 'Smelter yard', platforms: 3 })
+  loading.platforms[2] = 'empty'
+  loading.buffered = true
+  const receiving = addTrainStation(consumer, { name: 'North', platforms: 2 })
+  const train = addTrain(loading, { name: 'Ingot train', part: 'IronIngot', destination: { factoryId: 2, stationId: receiving.id } })
+  train.roundTripSecs = 300
+  addTrainCar(train)
+  setTrainCarPart(train.cars[1], null)
+
   const tab: FactoryTab = {
     id: 'f2a0c1b2-0000-4000-8000-000000000001',
     name: 'Round trip',
@@ -212,6 +231,9 @@ describe('schema parity with what the planner actually stores', () => {
     ])
     expect(mine.exportCalculator.IronIngot.factorySettings['2'].beltGroups).toHaveLength(2)
     expect(mine.exportCalculator.LiquidOil.factorySettings['2'].pipeGroups).toHaveLength(2)
+    expect(mine.exportCalculator.IronIngot.factorySettings['2'].method).toBe('train')
+    expect(mine.trainStations?.[0].trains[0].cars.map(car => car.part)).toEqual(['IronIngot', null, 'IronIngot'])
+    expect(mine.trainStations?.[0].trains[0].destination).toEqual({ factoryId: 2, stationId: consumer.trainStations?.[0].id })
     expect(mine.products[0].buildingGroups[0].somersloops).toBe(1)
     expect(mine.powerProducers[2].buildingGroups[0].supplyMatrixes).toBe(true)
     expect(mine.powerProducers[1].byproduct).toEqual({ part: 'NuclearWaste', amount: expect.any(Number) })

@@ -570,6 +570,13 @@
                     @toggle="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, partId.toString(), request.amount, findFactory(request.requestingFactoryId))"
                   >
                     <b>{{ findFactory(request.requestingFactoryId).name }}</b>: {{ formatNumber(request.amount) }}/min
+                    <template #append>
+                      <export-transport-chip
+                        :consumer="findFactory(request.requestingFactoryId)"
+                        :part="partId.toString()"
+                        :producer="factory"
+                      />
+                    </template>
                   </factory-chip>
                 </div>
               </div>
@@ -703,6 +710,7 @@
   import eventBus from '@/utils/eventBus'
   import { markFactoryEdited } from '@/utils/sync-intent'
   import ExportCalculator from '@/components/planner/satisfaction/calculator/ExportCalculator.vue'
+  import ExportTransportChip from '@/components/planner/satisfaction/ExportTransportChip.vue'
   import AddShortageDialog from '@/components/planner/satisfaction/AddShortageDialog.vue'
   import {
     initializeCalculatorFactoryPart,

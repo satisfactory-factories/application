@@ -10,10 +10,12 @@
     <div v-if="Object.keys(factory.rawResources).length > 0 || Object.keys(factory.parts).length > 0">
       <raw-resources :factory="factory" />
       <imports :factory="factory" />
+      <receiving-stations :factory="factory" />
     </div>
     <template v-else>
       <p class="text-body-1 mb-2">Awaiting product selection, or import a surplus to pass it on from here.</p>
       <imports :factory="factory" />
+      <receiving-stations :factory="factory" />
     </template>
   </div>
 </template>
@@ -23,6 +25,7 @@
   import { Factory } from '@/interfaces/planner/FactoryInterface'
   import RawResources from '@/components/planner/imports/RawResources.vue'
   import Imports from '@/components/planner/imports/Imports.vue'
+  import ReceivingStations from '@/components/planner/imports/ReceivingStations.vue'
   import FactoryStatusChips from '@/components/planner/FactoryStatusChips.vue'
   import { FactoryStatus, getSectionStatuses, highestSeverity } from '@/utils/factory-management/status'
 

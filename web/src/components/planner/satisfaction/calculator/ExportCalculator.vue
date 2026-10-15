@@ -5,108 +5,75 @@
         Please select a factory from the buttons above in Exports.
       </p>
     </div>
-    <template v-if="selectedFactory && factorySettings">
-      <v-row class="ma-0">
-        <!-- Train -->
-        <v-col class="method-col pa-0 d-flex flex-column" cols="12" md="3">
-          <div class="method-header text-center py-2">
-            <div class="d-flex align-center text-h6 justify-center">
-              <game-asset subject="electric-locomotive" type="vehicle" />
-              <span class="ml-2">Train</span>
-              <tooltip-info text="It is assumed you are using a pair of train stations with no intermediate stops and no loading rules.<br>NOTE: This is an <b>approximation</b>. The round time may differ by traffic conditions, routing and other variables." />
-            </div>
-            <v-chip color="green" density="compact">Great accuracy <tooltip-info text="Subject to inaccuracies due to traffic, acceleration forces (e.g. if stopped on a<br>hill due to traffic, takes a LONG time to speed up), and waiting times at stations. Otherwise very accurate." /></v-chip>
-          </div>
-          <div v-if="request" class="pt-4 px-2">
-            <train-calculator v-if="request" :factory="factory" :factory-settings="factorySettings" :request="request" />
-          </div>
-        </v-col>
-        <!-- Drone -->
-        <v-col class="method-col pa-0 d-flex flex-column" :class="{ 'method-col--disabled': isFluidExport }" cols="12" md="3">
-          <div class="method-header text-center py-2">
-            <div class="d-flex align-center text-h6 justify-center">
-              <game-asset subject="drone" type="vehicle" />
-              <span class="ml-2">Drone</span>
-              <tooltip-info text="It is assumed you are using <b>one</b> pair of drone stations, and that there is no waiting time.<br>If you have a significant amount of waiting time, you should create more port pairs. As long as pairs are geographically near each other, this calculator will be accurate.<br>It is practically impossible to calculate waiting time, so reducing it will make this calculator more accurate." />
-            </div>
-            <v-chip color="blue" density="compact">Excellent accuracy <tooltip-info text="Extremely accurate as drones are based on a 'flight on rails' system,<br> disregarding terrain and all variables except for waiting time and fuel exhaustion." /></v-chip>
-          </div>
-          <div v-if="request" class="pt-4 px-2">
-            <p v-if="isFluidExport">
-              Drones cannot transport fluids in their liquid form. Package them first — packaged fluids are solids and travel as regular cargo.
-            </p>
-            <drone-calculator v-else :factory-settings="factorySettings" :request="request" />
-          </div>
-        </v-col>
-        <!-- Truck -->
-        <v-col class="method-col pa-0 d-flex flex-column" cols="12" md="3">
-          <div class="method-header text-center py-2">
-            <div class="d-flex align-center text-h6 justify-center">
-              <game-asset :subject="isFluidExport ? 'fluid-truck' : 'truck'" type="vehicle" />
-              <span class="ml-2">Truck</span>
-              <tooltip-info text="It is assumed you are using <b>one</b> pair of truck stations, with no intermediate stops,  the trucks are fully loaded and fuelled efficiently.<br>Note: This calculation is an <b>estimation</b> due to variables such as queueing time at stations, vehicle collisions, mis-routing, traffic, etc." />
-            </div>
-            <v-chip color="amber" density="compact">Ok accuracy <tooltip-info text="Highly subject to the game's ability to handle the player's recordings, with inconsistencies often occurring resulting in delays.<br>Also subject to traffic, acceleration forces and even creature collisions when near the player." /></v-chip>
-          </div>
-          <div v-if="request" class="pt-4 px-2">
-            <truck-calculator :factory="factory" :factory-settings="factorySettings" :request="request" />
-          </div>
-        </v-col>
-        <!-- Tractor -->
-        <v-col class="method-col pa-0 d-flex flex-column" :class="{ 'method-col--disabled': isFluidExport }" cols="12" md="3">
-          <div class="method-header text-center py-2">
-            <div class="d-flex align-center text-h6 justify-center">
-              <game-asset subject="tractor" type="vehicle" />
-              <span class="ml-2">Tractor</span>
-              <tooltip-info text="It is assumed you are using <b>one</b> pair of truck stations, with no intermediate stops,  the tractors are fully loaded and fuelled efficiently.<br>Note: This calculation is an <b>estimation</b> due to variables such as queueing time at stations, vehicle collisions, mis-routing, traffic, etc." />
-            </div>
-            <v-chip color="amber" density="compact">Ok accuracy <tooltip-info text="Highly subject to the game's ability to perform the player's recordings, with inconsistencies often occurring resulting in delays.<br>Also subject to traffic, acceleration forces and even creature collisions when near the player." /></v-chip>
-          </div>
-          <div v-if="request" class="pt-4 px-2">
-            <p v-if="isFluidExport">
-              Tractors cannot transport fluids in their liquid form. Package them first — packaged fluids are solids and travel as regular cargo.
-            </p>
-            <tractor-calculator v-else :factory="factory" :factory-settings="factorySettings" :request="request" />
-          </div>
-        </v-col>
-      </v-row>
-      <!-- Belts (solids) -->
-      <div v-if="request && !isFluidExport" class="belt-section">
-        <div class="method-header text-center py-2">
-          <div class="d-flex align-center text-h6 justify-center">
-            <game-asset subject="conveyor-belt-mk-5" type="building" />
-            <span class="ml-2">Belts</span>
-            <tooltip-info text="Shows how many belts of the chosen mark it takes to carry this export.<br>Add more belt groups to split the load across multiple belts (e.g. via splitters), mixing belt marks as you wish." />
-          </div>
-          <v-chip color="green" density="compact">Perfect accuracy <tooltip-info text="Belts move items at a constant rate, so the calculation is exact." /></v-chip>
-        </div>
-        <div class="pt-2 px-2">
-          <belt-pipe-calculator :factory="factory" :factory-settings="factorySettings" kind="belts" :request="request" />
-        </div>
+    <template v-if="selectedFactory && factorySettings && request">
+      <!-- One method per export. Unset shows no tab chosen; a guess shows its tab, marked as a guess. -->
+      <div class="d-flex align-center flex-wrap ga-3 px-4 pb-3">
+        <v-btn-toggle
+          class="method-tabs"
+          color="primary"
+          density="comfortable"
+          divided
+          :model-value="transport.method"
+          variant="outlined"
+          @update:model-value="chooseMethod"
+        >
+          <v-btn
+            v-for="option in methodOptions"
+            :key="option.value"
+            :class="{ guessed: guessed && transport.method === option.value }"
+            :disabled="option.disabled"
+            :value="option.value"
+          >
+            <game-asset height="24" :subject="option.asset" :type="option.assetType" width="24" />
+            <span class="ml-2">{{ option.label }}</span>
+          </v-btn>
+        </v-btn-toggle>
+        <span v-if="guessed" class="text-body-2 method-note">
+          <i class="fas fa-question-circle mr-1" />Guessed from a time in the old calculator. Choose a method to confirm it.
+        </span>
+        <span v-else-if="!transport.method" class="text-body-2 method-note">
+          <i class="fas fa-question-circle mr-1" />Transport not set. Choose how this export travels.
+        </span>
       </div>
-      <!-- Pipes (fluids) -->
-      <div v-if="request && isFluidExport" class="belt-section">
-        <div class="method-header text-center py-2">
-          <div class="d-flex align-center text-h6 justify-center">
-            <game-asset subject="pipeline-mk-2" type="building" />
-            <span class="ml-2">Pipes</span>
-            <tooltip-info text="Shows how many pipelines of the chosen mark it takes to carry this export.<br>Add more pipe groups to split the load across multiple pipelines (e.g. via junctions), mixing marks as you wish." />
-          </div>
-          <v-chip color="green" density="compact">Perfect accuracy <tooltip-info text="Pipelines move fluids at a constant rate, so the calculation is exact." /></v-chip>
-        </div>
-        <div class="pt-2 px-2">
-          <belt-pipe-calculator :factory="factory" :factory-settings="factorySettings" kind="pipes" :request="request" />
-        </div>
+
+      <div v-if="transport.method === 'train'" class="method-body px-4">
+        <train-stations :factory-settings="factorySettings" :part="part" :producer="factory" :request="request" />
+      </div>
+
+      <div v-else-if="transport.method === 'drone'" class="method-body px-4">
+        <p v-if="isFluidExport">
+          Drones cannot transport fluids in their liquid form. Package them first; packaged fluids are solids and travel as regular cargo.
+        </p>
+        <drone-calculator v-else :factory-settings="factorySettings" :request="request" />
+      </div>
+
+      <div v-else-if="transport.method === 'truck'" class="method-body px-4">
+        <truck-calculator :factory="factory" :factory-settings="factorySettings" :request="request" />
+      </div>
+
+      <div v-else-if="transport.method === 'tractor'" class="method-body px-4">
+        <p v-if="isFluidExport">
+          Tractors cannot transport fluids in their liquid form. Package them first; packaged fluids are solids and travel as regular cargo.
+        </p>
+        <tractor-calculator v-else :factory="factory" :factory-settings="factorySettings" :request="request" />
+      </div>
+
+      <div v-else-if="transport.method === 'belt'" class="method-body px-4">
+        <belt-pipe-calculator :factory="factory" :factory-settings="factorySettings" :kind="isFluidExport ? 'pipes' : 'belts'" :request="request" />
       </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { computed, inject } from 'vue'
+  import { ExportTransportMethod, Factory } from '@/interfaces/planner/FactoryInterface'
   import { getPartExportRequestByRequestingFactory } from '@/utils/factory-management/exports'
-  import TrainCalculator from '@/components/planner/satisfaction/calculator/TrainCalculator.vue'
+  import { exportTransport, setExportTransportMethod } from '@/utils/factory-management/train-logistics'
+  import { useRailNetwork } from '@/composables/useRailNetwork'
+  import TrainStations from '@/components/planner/satisfaction/calculator/TrainStations.vue'
   import { useGameDataStore } from '@/stores/game-data-store'
+  import { markFactoryEdited } from '@/utils/sync-intent'
 
   const props = defineProps<{
     factory: Factory
@@ -114,6 +81,8 @@
   }>()
 
   const gameData = useGameDataStore().getGameData()
+  const findFactory = inject('findFactory') as (factoryId: string | number) => Factory | undefined
+  const { network } = useRailNetwork()
 
   const calculatorSettings = props.factory.exportCalculator[props.part]
 
@@ -131,6 +100,32 @@
 
   const isFluidExport = request ? isFluid(request.part) : false
 
+  const transport = computed(() => exportTransport(
+    props.factory,
+    props.part,
+    selectedFactory ? findFactory(selectedFactory) : undefined,
+    network.value,
+  ))
+
+  const guessed = computed(() => transport.value.state === 'guessed')
+
+  const methodOptions = computed(() => [
+    isFluidExport
+      ? { value: 'belt', label: 'Pipe', asset: 'pipeline-mk-2', assetType: 'building', disabled: false }
+      : { value: 'belt', label: 'Belt', asset: 'conveyor-belt-mk-5', assetType: 'building', disabled: false },
+    { value: 'train', label: 'Train', asset: 'electric-locomotive', assetType: 'vehicle', disabled: false },
+    { value: 'drone', label: 'Drone', asset: 'drone', assetType: 'vehicle', disabled: isFluidExport },
+    { value: 'truck', label: 'Truck', asset: isFluidExport ? 'fluid-truck' : 'truck', assetType: 'vehicle', disabled: false },
+    { value: 'tractor', label: 'Tractor', asset: 'tractor', assetType: 'vehicle', disabled: isFluidExport },
+  ] as { value: ExportTransportMethod, label: string, asset: string, assetType: 'building' | 'vehicle', disabled: boolean }[])
+
+  // Choosing a tab is the player saying how it travels, which also confirms a guess. Clicking the
+  // chosen tab again leaves it chosen: a method is changed, never cleared.
+  const chooseMethod = (method: ExportTransportMethod | null | undefined) => {
+    if (!method || !selectedFactory) return
+    setExportTransportMethod(props.factory, props.part, Number(selectedFactory), method)
+    markFactoryEdited(props.factory)
+  }
 </script>
 
 <style lang="scss" scoped>
@@ -144,22 +139,16 @@ $divider: thin solid #4b4b4b;
   padding: 12px 0 16px;
 }
 
-.method-col--disabled {
-  // Transport methods that cannot carry the selected (fluid) export.
-  opacity: 0.45;
+.method-body {
+  border-top: $divider;
+  padding-top: 12px;
 }
 
-.method-col + .method-col {
-  // Stacked on small screens, side by side from md up — divider follows suit.
-  border-top: $divider;
-
-  @media (min-width: 960px) {
-    border-top: none;
-    border-left: $divider;
-  }
+.method-note {
+  color: var(--sf-status-warning);
 }
 
-.belt-section {
-  border-top: $divider;
+.method-tabs .guessed {
+  border-style: dashed !important;
 }
 </style>
