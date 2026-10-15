@@ -70,6 +70,7 @@
   import { ExportTransportMethod, Factory } from '@/interfaces/planner/FactoryInterface'
   import { getPartExportRequestByRequestingFactory } from '@/utils/factory-management/exports'
   import { exportTransport, setExportTransportMethod } from '@/utils/factory-management/train-logistics'
+  import { useRailNetwork } from '@/composables/useRailNetwork'
   import TrainStations from '@/components/planner/satisfaction/calculator/TrainStations.vue'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { markFactoryEdited } from '@/utils/sync-intent'
@@ -81,6 +82,7 @@
 
   const gameData = useGameDataStore().getGameData()
   const findFactory = inject('findFactory') as (factoryId: string | number) => Factory | undefined
+  const { network } = useRailNetwork()
 
   const calculatorSettings = props.factory.exportCalculator[props.part]
 
@@ -102,7 +104,7 @@
     props.factory,
     props.part,
     selectedFactory ? findFactory(selectedFactory) : undefined,
-    gameData,
+    network.value,
   ))
 
   const guessed = computed(() => transport.value.state === 'guessed')

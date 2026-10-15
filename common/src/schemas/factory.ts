@@ -208,13 +208,13 @@ export const exportCalculatorSettingsSchema = z.object({
   factorySettings: boundedRecord(exportCalculatorFactorySettingsSchema, CAPS.factoriesPerRoom),
 })
 
-export const trainCarCargoSchema = z.object({
-  factoryId: num,
-  part: key,
+export const trainCarSchema = z.object({
+  part: key.nullable(),
 })
 
-export const trainCarSchema = z.object({
-  cargo: trainCarCargoSchema.nullable(),
+export const trainDestinationSchema = z.object({
+  factoryId: num,
+  stationId: id,
 })
 
 export const trainSchema = z.object({
@@ -223,6 +223,7 @@ export const trainSchema = z.object({
   roundTripSecs: num,
   locomotives: num,
   cars: z.array(trainCarSchema).max(CAPS.rowEntries),
+  destination: trainDestinationSchema.nullable(),
 })
 
 export const trainStationSchema = z.object({

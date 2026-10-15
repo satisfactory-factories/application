@@ -5,7 +5,7 @@ import {
   Factory,
   Train,
   TrainCar,
-  TrainCarCargo,
+  TrainDestination,
   TrainPlatformType,
   TrainStation,
 } from '@/interfaces/planner/FactoryInterface'
@@ -26,7 +26,8 @@ export const FLUID_CAR_CAPACITY = 1600
 // Two trains on six-minute round trips; only used to suggest a new station's layout.
 const ASSUMED_LOCK_SHARE = 0.15
 
-export const cargoKey = (cargo: TrainCarCargo) => `${cargo.factoryId}:${cargo.part}`
+export const stationKey = (factoryId: number, stationId: string) => `${factoryId}:${stationId}`
+export const routeKey = (producerId: number, consumerId: number, part: string) => `${producerId}>${consumerId}:${part}`
 
 export const carCapacity = (part: string, gameData: DataInterface): number => {
   const data = gameData.items.parts[part]
@@ -68,8 +69,20 @@ export const addTrainStation = (
   return station
 }
 
-export const removeTrainStation = (factory: Factory, stationId: string) => {
+// Trains elsewhere that unloaded here lose their destination rather than pointing at nothing.
+// Returns the factories whose trains changed, so the caller can declare them edited.
+export const removeTrainStation = (factory: Factory, stationId: string, factories: Factory[]): Factory[] => {
   factory.trainStations = (factory.trainStations ?? []).filter(station => station.id !== stationId)
+  return factories.filter(other => {
+    let changed = false
+    other.trainStations?.forEach(station => station.trains.forEach(train => {
+      if (train.destination?.factoryId === factory.id && train.destination.stationId === stationId) {
+        train.destination = null
+        changed = true
+      }
+    }))
+    return changed
+  })
 }
 
 export const setStationPlatformCount = (station: TrainStation, count: number) => {
@@ -81,7 +94,7 @@ export const setStationPlatformCount = (station: TrainStation, count: number) =>
 // A new train copies the station's first train's round trip, else the export's old train time.
 export const addTrain = (
   station: TrainStation,
-  options: { name: string, cargo: TrainCarCargo | null, fallbackRoundTripSecs?: number },
+  options: { name: string, part: string | null, destination: TrainDestination | null, fallbackRoundTripSecs?: number },
 ): Train => {
   const fallback = options.fallbackRoundTripSecs && options.fallbackRoundTripSecs !== DEFAULT_TRANSPORT_TIME
     ? options.fallbackRoundTripSecs
@@ -91,9 +104,8 @@ export const addTrain = (
     name: options.name.trim() || `Train ${station.trains.length + 1}`,
     roundTripSecs: station.trains[0]?.roundTripSecs ?? fallback,
     locomotives: 1,
-    cars: Array.from({ length: Math.max(1, freightPlatformCount(station)) }, () => ({
-      cargo: options.cargo ? { ...options.cargo } : null,
-    })),
+    cars: Array.from({ length: Math.max(1, freightPlatformCount(station)) }, () => ({ part: options.part })),
+    destination: options.destination ? { ...options.destination } : null,
   }
   station.trains.push(train)
   return train
@@ -109,8 +121,7 @@ export const setTrainLocomotives = (train: Train, count: number) => {
 
 // A new car carries what the last one does, the common case on a single-cargo train.
 export const addTrainCar = (train: Train) => {
-  const last = train.cars.at(-1)?.cargo
-  train.cars.push({ cargo: last ? { ...last } : null })
+  train.cars.push({ part: train.cars.at(-1)?.part ?? null })
 }
 
 export const removeTrainCar = (train: Train, carIndex: number) => {
@@ -118,34 +129,44 @@ export const removeTrainCar = (train: Train, carIndex: number) => {
   train.cars.splice(carIndex, 1)
 }
 
-export const setTrainCarCargo = (car: TrainCar, cargo: TrainCarCargo | null) => {
-  car.cargo = cargo ? { ...cargo } : null
+export const setTrainCarPart = (car: TrainCar, part: string | null) => {
+  car.part = part
+}
+
+export const setTrainDestination = (train: Train, destination: TrainDestination | null) => {
+  train.destination = destination ? { ...destination } : null
 }
 
 export interface CarFlow {
   carIndex: number
-  platformIndex: number // -1 when the car hangs past the last platform
-  cargo: TrainCarCargo | null
+  part: string | null
   capacityPerMin: number
   deliveredPerMin: number
 }
 
 export interface TrainFlow {
   train: Train
+  origin: Factory
+  loadingStation: TrainStation
+  destination?: { factory: Factory, station: TrainStation }
   cars: CarFlow[]
 }
 
 export interface PlatformFlow {
   index: number
   type: TrainPlatformType
-  deliveredPerMin: number
+  loadPerMin: number
+  unloadPerMin: number
   clearPerMin: number
   overloaded: boolean
 }
 
 export interface StationFlow {
+  factory: Factory
   station: TrainStation
-  trains: TrainFlow[]
+  // Trains that load here, and trains from elsewhere that unload here.
+  outgoing: TrainFlow[]
+  incoming: TrainFlow[]
   platforms: PlatformFlow[]
   // Share of each minute some train is docked and the belts are stopped.
   lockShare: number
@@ -155,23 +176,21 @@ export interface StationFlow {
   overhangingCars: number
 }
 
-export interface CargoFlow {
-  cargo: TrainCarCargo
+export interface ExportFlow {
+  producerId: number
+  consumerId: number
+  part: string
   requested: number
   capacity: number
   delivered: number
   short: number
 }
 
-export interface RailFlow {
-  stations: StationFlow[]
-  cargo: Record<string, CargoFlow>
+export interface NetworkFlow {
+  trains: TrainFlow[]
+  stations: Record<string, StationFlow>
+  exports: Record<string, ExportFlow>
 }
-
-const requestedAmount = (consumer: Factory, cargo: TrainCarCargo) =>
-  consumer.inputs
-    .filter(input => input.factoryId === cargo.factoryId && input.outputPart === cargo.part)
-    .reduce((sum, input) => sum + input.amount, 0)
 
 const perMinute = (load: number, roundTripSecs: number) => roundTripSecs > 0 ? load * 60 / roundTripSecs : 0
 
@@ -181,6 +200,11 @@ const platformClearRate = (station: TrainStation, type: TrainPlatformType, lockS
   const speed = speeds[Math.min(station.beltMark, type === 'fluid' ? 2 : 6)] ?? 0
   return station.beltsPerPlatform * speed * (station.buffered ? 1 : 1 - lockShare)
 }
+
+const requestedAmount = (consumer: Factory, producerId: number, part: string) =>
+  consumer.inputs
+    .filter(input => input.factoryId === producerId && input.outputPart === part)
+    .reduce((sum, input) => sum + input.amount, 0)
 
 // Trains a station takes before another one slows it down. Each train brings full cars, and every
 // dock stops the platforms emptying, so throughput is the lesser of the two; the best whole number
@@ -192,7 +216,7 @@ const roomForTrains = (station: TrainStation, flows: TrainFlow[]): number | null
   const platforms = freightPlatformCount(station)
   const beltRate = platformClearRate(station, 'freight', 0)
   const avgTripMins = timed.reduce((sum, flow) => sum + flow.train.roundTripSecs, 0) / timed.length / 60
-  const avgCars = timed.reduce((sum, flow) => sum + flow.cars.filter(car => car.platformIndex !== -1).length, 0) / timed.length
+  const avgCars = timed.reduce((sum, flow) => sum + Math.min(flow.cars.length, platforms), 0) / timed.length
   const throughput = (trains: number) => Math.min(
     trains * avgCars * carLoad / avgTripMins,
     platforms * beltRate * Math.max(0, 1 - trains * DOCK_LOCKOUT_SECS / 60 / avgTripMins),
@@ -202,59 +226,91 @@ const roomForTrains = (station: TrainStation, flows: TrainFlow[]): number | null
   return best - timed.length
 }
 
-export const analyseRail = (consumer: Factory, gameData: DataInterface): RailFlow => {
-  const stations = consumer.trainStations ?? []
-
-  const trainCars = stations.map(station => station.trains.map(train => train.cars.map((car, carIndex): CarFlow => {
-    const platformIndex = carPlatformIndex(train, carIndex)
-    return {
-      carIndex,
-      platformIndex: platformIndex < station.platforms.length ? platformIndex : -1,
-      cargo: car.cargo,
-      capacityPerMin: car.cargo ? perMinute(carCapacity(car.cargo.part, gameData), train.roundTripSecs) : 0,
-      deliveredPerMin: 0,
-    }
-  })))
-
-  // An export spread over several cars (or trains, or stations) fills them evenly.
-  const cargo: Record<string, CargoFlow> = {}
-  trainCars.flat(2).forEach(car => {
-    if (!car.cargo) return
-    const key = cargoKey(car.cargo)
-    cargo[key] ??= { cargo: car.cargo, requested: requestedAmount(consumer, car.cargo), capacity: 0, delivered: 0, short: 0 }
-    cargo[key].capacity += car.capacityPerMin
+const stationFlow = (factory: Factory, station: TrainStation, trains: TrainFlow[]): StationFlow => {
+  const outgoing = trains.filter(flow => flow.origin.id === factory.id && flow.loadingStation.id === station.id)
+  const incoming = trains.filter(flow => flow.destination?.factory.id === factory.id && flow.destination.station.id === station.id)
+  const touching = [...outgoing, ...incoming]
+  const lockShare = Math.min(1, touching.reduce(
+    (sum, flow) => sum + (flow.train.roundTripSecs > 0 ? DOCK_LOCKOUT_SECS / flow.train.roundTripSecs : 0), 0))
+  const atPlatform = (flows: TrainFlow[], index: number) => flows.reduce((sum, flow) =>
+    sum + flow.cars.filter(car => carPlatformIndex(flow.train, car.carIndex) === index).reduce((cars, car) => cars + car.deliveredPerMin, 0), 0)
+  const platforms = station.platforms.map((type, index): PlatformFlow => {
+    const loadPerMin = atPlatform(outgoing, index)
+    const unloadPerMin = atPlatform(incoming, index)
+    const clearPerMin = platformClearRate(station, type, lockShare)
+    return { index, type, loadPerMin, unloadPerMin, clearPerMin, overloaded: loadPerMin + unloadPerMin > clearPerMin + 0.5 }
   })
-  Object.values(cargo).forEach(flow => {
+  return {
+    factory,
+    station,
+    outgoing,
+    incoming,
+    platforms,
+    lockShare,
+    roomForTrains: roomForTrains(station, touching),
+    emptyCars: outgoing.reduce((sum, flow) => sum + flow.cars.filter(car => !car.part).length, 0),
+    overhangingCars: touching.reduce((sum, flow) =>
+      sum + flow.cars.filter(car => carPlatformIndex(flow.train, car.carIndex) >= station.platforms.length).length, 0),
+  }
+}
+
+// Every train in the plan, from its loading station to its receiving station. An export spread
+// over several cars, trains or stations fills them evenly.
+export const analyseNetwork = (factories: Factory[], gameData: DataInterface): NetworkFlow => {
+  const byId = new Map(factories.map(factory => [factory.id, factory]))
+
+  const trains: TrainFlow[] = factories.flatMap(origin => (origin.trainStations ?? []).flatMap(loadingStation =>
+    loadingStation.trains.map((train): TrainFlow => {
+      const destFactory = train.destination ? byId.get(train.destination.factoryId) : undefined
+      const destStation = destFactory?.trainStations?.find(station => station.id === train.destination?.stationId)
+      return {
+        train,
+        origin,
+        loadingStation,
+        destination: destFactory && destStation ? { factory: destFactory, station: destStation } : undefined,
+        cars: train.cars.map((car, carIndex) => ({
+          carIndex,
+          part: car.part,
+          capacityPerMin: car.part ? perMinute(carCapacity(car.part, gameData), train.roundTripSecs) : 0,
+          deliveredPerMin: 0,
+        })),
+      }
+    })))
+
+  const exports: Record<string, ExportFlow> = {}
+  trains.forEach(flow => {
+    if (!flow.destination) return
+    const consumer = flow.destination.factory
+    flow.cars.forEach(car => {
+      if (!car.part) return
+      const key = routeKey(flow.origin.id, consumer.id, car.part)
+      exports[key] ??= {
+        producerId: flow.origin.id,
+        consumerId: consumer.id,
+        part: car.part,
+        requested: requestedAmount(consumer, flow.origin.id, car.part),
+        capacity: 0,
+        delivered: 0,
+        short: 0,
+      }
+      exports[key].capacity += car.capacityPerMin
+    })
+  })
+  Object.values(exports).forEach(flow => {
     flow.delivered = Math.min(flow.requested, flow.capacity)
     flow.short = Math.max(0, flow.requested - flow.capacity)
   })
-  trainCars.flat(2).forEach(car => {
-    const flow = car.cargo ? cargo[cargoKey(car.cargo)] : undefined
-    car.deliveredPerMin = flow && flow.capacity > 0 ? car.capacityPerMin * flow.delivered / flow.capacity : 0
-  })
+  trains.forEach(flow => flow.cars.forEach(car => {
+    const route = flow.destination && car.part ? exports[routeKey(flow.origin.id, flow.destination.factory.id, car.part)] : undefined
+    car.deliveredPerMin = route && route.capacity > 0 ? car.capacityPerMin * route.delivered / route.capacity : 0
+  }))
 
-  const stationFlows = stations.map((station, stationIndex): StationFlow => {
-    const trains = station.trains.map((train, trainIndex) => ({ train, cars: trainCars[stationIndex][trainIndex] }))
-    const lockShare = Math.min(1, station.trains.reduce(
-      (sum, train) => sum + (train.roundTripSecs > 0 ? DOCK_LOCKOUT_SECS / train.roundTripSecs : 0), 0))
-    const cars = trains.flatMap(flow => flow.cars)
-    const platforms = station.platforms.map((type, index): PlatformFlow => {
-      const deliveredPerMin = cars.filter(car => car.platformIndex === index).reduce((sum, car) => sum + car.deliveredPerMin, 0)
-      const clearPerMin = platformClearRate(station, type, lockShare)
-      return { index, type, deliveredPerMin, clearPerMin, overloaded: deliveredPerMin > clearPerMin + 0.5 }
-    })
-    return {
-      station,
-      trains,
-      platforms,
-      lockShare,
-      roomForTrains: roomForTrains(station, trains),
-      emptyCars: cars.filter(car => !car.cargo).length,
-      overhangingCars: cars.filter(car => car.platformIndex === -1).length,
-    }
-  })
+  const stations: Record<string, StationFlow> = {}
+  factories.forEach(factory => (factory.trainStations ?? []).forEach(station => {
+    stations[stationKey(factory.id, station.id)] = stationFlow(factory, station, trains)
+  }))
 
-  return { stations: stationFlows, cargo }
+  return { trains, stations, exports }
 }
 
 export type TransportState = 'unset' | 'guessed' | 'pending' | 'ok' | 'short'
@@ -290,7 +346,7 @@ export const exportTransport = (
   producer: Factory,
   part: string,
   consumer: Factory | undefined,
-  gameData: DataInterface,
+  network: NetworkFlow,
 ): ExportTransport => {
   if (!consumer) return { state: 'unset', shortBy: 0 }
   const settings = getExportSettings(producer, part, consumer.id)
@@ -300,16 +356,19 @@ export const exportTransport = (
   }
   if (settings.method !== 'train') return { method: settings.method, state: 'ok', shortBy: 0 }
 
-  const rail = analyseRail(consumer, gameData)
-  const key = cargoKey({ factoryId: producer.id, part })
-  const flow = rail.cargo[key]
+  const flow = network.exports[routeKey(producer.id, consumer.id, part)]
   if (!flow) return { method: 'train', state: 'pending', shortBy: 0 }
 
-  const overloaded = rail.stations.some(station => station.platforms.some(platform =>
-    platform.overloaded && station.trains.some(train =>
-      train.cars.some(car => car.platformIndex === platform.index && car.cargo && cargoKey(car.cargo) === key))))
-  const shortBy = flow.short
-  return { method: 'train', state: shortBy > 0.5 || overloaded ? 'short' : 'ok', shortBy }
+  // A platform that cannot keep up, at either end, holds the route back however many cars run it.
+  const onRoute = network.trains.filter(train => train.origin.id === producer.id && train.destination?.factory.id === consumer.id &&
+    train.cars.some(car => car.part === part))
+  const overloaded = onRoute.some(train => [
+    network.stations[stationKey(producer.id, train.loadingStation.id)],
+    network.stations[stationKey(consumer.id, train.destination!.station.id)],
+  ].some(station => station?.platforms.some(platform => platform.overloaded &&
+    train.cars.some(car => car.part === part && carPlatformIndex(train.train, car.carIndex) === platform.index))))
+
+  return { method: 'train', state: flow.short > 0.5 || overloaded ? 'short' : 'ok', shortBy: flow.short }
 }
 
 export const formatRoundTrip = (secs: number) => {

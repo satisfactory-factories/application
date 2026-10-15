@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, TrainStation } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 import { gameData } from '@/utils/gameData'
 import {
@@ -10,7 +10,7 @@ import {
   addTrain,
   addTrainCar,
   addTrainStation,
-  analyseRail,
+  analyseNetwork,
   carCapacity,
   carPlatformIndex,
   exportTransport,
@@ -18,9 +18,12 @@ import {
   guessTransportMethod,
   parseRoundTrip,
   removeTrainCar,
+  removeTrainStation,
+  routeKey,
   setExportTransportMethod,
   setStationPlatformCount,
   setTrainLocomotives,
+  stationKey,
   suggestStationLayout,
 } from '@/utils/factory-management/train-logistics'
 
@@ -28,6 +31,15 @@ describe('train-logistics', () => {
   let mine: Factory
   let quarry: Factory
   let megafac: Factory
+  let factories: Factory[]
+
+  // A loading station at the mine and a receiving station at the MegaFac, four platforms each.
+  let mineStation: TrainStation
+  let receiving: TrainStation
+
+  const toMegafac = () => ({ factoryId: megafac.id, stationId: receiving.id })
+  const network = () => analyseNetwork(factories, gameData)
+  const receivingFlow = () => network().stations[stationKey(megafac.id, receiving.id)]
 
   beforeEach(() => {
     mine = newFactory('Mine', 0, 1)
@@ -35,6 +47,9 @@ describe('train-logistics', () => {
     megafac = newFactory('MegaFac', 2, 3)
     megafac.inputs.push({ factoryId: 1, outputPart: 'Stone', amount: 1800 })
     megafac.inputs.push({ factoryId: 2, outputPart: 'Stone', amount: 1200 })
+    factories = [mine, quarry, megafac]
+    mineStation = addTrainStation(mine, { name: 'Mine loading', platforms: 4, beltMark: 6 })
+    receiving = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 6 })
   })
 
   describe('capacities and layout', () => {
@@ -51,8 +66,7 @@ describe('train-logistics', () => {
     })
 
     it('puts each extra locomotive on a platform, pushing the cars along', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4 })
-      const train = addTrain(station, { name: 'A', cargo: null })
+      const train = addTrain(mineStation, { name: 'A', part: null, destination: null })
       expect(carPlatformIndex(train, 0)).toBe(0)
       setTrainLocomotives(train, 2)
       expect(carPlatformIndex(train, 0)).toBe(1)
@@ -61,14 +75,14 @@ describe('train-logistics', () => {
 
   describe('editing stations and trains', () => {
     it('adds a station with freight platforms and a default name', () => {
-      const station = addTrainStation(megafac, { name: '  ', platforms: 4 })
+      const station = addTrainStation(quarry, { name: '  ', platforms: 4 })
       expect(station.name).toBe('Station 1')
       expect(station.platforms).toEqual(['freight', 'freight', 'freight', 'freight'])
-      expect(megafac.trainStations).toHaveLength(1)
+      expect(quarry.trainStations).toHaveLength(1)
     })
 
     it('grows and shrinks the platform row from the end', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 2 })
+      const station = addTrainStation(quarry, { name: 'Q', platforms: 2 })
       station.platforms[1] = 'empty'
       setStationPlatformCount(station, 3)
       expect(station.platforms).toEqual(['freight', 'empty', 'freight'])
@@ -76,103 +90,121 @@ describe('train-logistics', () => {
       expect(station.platforms).toEqual(['freight'])
     })
 
-    it('gives a new train a car per freight platform, and the first train\'s round trip', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4 })
-      const first = addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' }, fallbackRoundTripSecs: 537 })
+    it('gives a new train a car per loading platform, its destination, and the first train\'s round trip', () => {
+      const first = addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac(), fallbackRoundTripSecs: 537 })
       expect(first.roundTripSecs).toBe(537)
-      expect(first.cars).toHaveLength(4)
+      expect(first.cars).toEqual([{ part: 'Stone' }, { part: 'Stone' }, { part: 'Stone' }, { part: 'Stone' }])
+      expect(first.destination).toEqual(toMegafac())
       first.roundTripSecs = 300
-      const second = addTrain(station, { name: 'B', cargo: null, fallbackRoundTripSecs: 999 })
-      expect(second.roundTripSecs).toBe(300)
+      expect(addTrain(mineStation, { name: 'B', part: null, destination: null, fallbackRoundTripSecs: 999 }).roundTripSecs).toBe(300)
     })
 
     it('treats an untouched old train time as no time at all', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4 })
-      expect(addTrain(station, { name: 'A', cargo: null, fallbackRoundTripSecs: 123 }).roundTripSecs).toBe(0)
+      expect(addTrain(mineStation, { name: 'A', part: null, destination: null, fallbackRoundTripSecs: 123 }).roundTripSecs).toBe(0)
     })
 
-    it('copies the last car\'s cargo onto a new car, and never removes the last car', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 1 })
-      const train = addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } })
+    it('copies the last car\'s part onto a new car, and never removes the last car', () => {
+      const station = addTrainStation(quarry, { name: 'Q', platforms: 1 })
+      const train = addTrain(station, { name: 'A', part: 'Stone', destination: null })
       addTrainCar(train)
-      expect(train.cars[1].cargo).toEqual({ factoryId: 1, part: 'Stone' })
+      expect(train.cars[1].part).toBe('Stone')
       removeTrainCar(train, 0)
       removeTrainCar(train, 0)
       expect(train.cars).toHaveLength(1)
     })
+
+    it('clears the destination of trains that unloaded at a removed station', () => {
+      const train = addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() })
+      const changed = removeTrainStation(megafac, receiving.id, factories)
+      expect(train.destination).toBeNull()
+      expect(changed).toEqual([mine])
+      expect(megafac.trainStations).toEqual([])
+    })
   })
 
-  describe('analyseRail', () => {
-    it('fills an export\'s cars evenly and adds them up per platform', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 6 })
-      const train = addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } })
-      train.roundTripSecs = 300
+  describe('analyseNetwork', () => {
+    it('fills an export\'s cars evenly, loading and unloading the same amount at each end', () => {
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 300
 
-      const rail = analyseRail(megafac, gameData)
-      const flow = rail.cargo['1:Stone']
+      const flows = network()
+      const flow = flows.exports[routeKey(1, 3, 'Stone')]
       // 3,200 a car every five minutes is 640/min a car, 2,560/min for four: more than the 1,800 asked.
       expect(flow.capacity).toBeCloseTo(2560)
       expect(flow.delivered).toBe(1800)
       expect(flow.short).toBe(0)
-      expect(rail.stations[0].platforms.map(platform => platform.deliveredPerMin)).toEqual([450, 450, 450, 450])
+      expect(flows.stations[stationKey(3, receiving.id)].platforms.map(platform => platform.unloadPerMin)).toEqual([450, 450, 450, 450])
+      expect(flows.stations[stationKey(1, mineStation.id)].platforms.map(platform => platform.loadPerMin)).toEqual([450, 450, 450, 450])
+    })
+
+    it('lists trains from every exporter at the receiving station', () => {
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 300
+      const quarryStation = addTrainStation(quarry, { name: 'Quarry loading', platforms: 4 })
+      addTrain(quarryStation, { name: 'B', part: 'Stone', destination: toMegafac() }).roundTripSecs = 360
+
+      const flow = receivingFlow()
+      expect(flow.incoming.map(train => train.train.name)).toEqual(['A', 'B'])
+      expect(flow.outgoing).toEqual([])
+      // 1,800/min from the mine plus 1,200/min from the quarry, four platforms each.
+      expect(flow.platforms[0].unloadPerMin).toBeCloseTo(750)
+    })
+
+    it('carries nothing on a train with no receiving station', () => {
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: null }).roundTripSecs = 300
+      expect(network().exports).toEqual({})
     })
 
     it('leaves the platform under an empty car with nothing', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 6 })
-      const train = addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } })
+      const train = addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() })
       train.roundTripSecs = 300
-      train.cars[0].cargo = null
+      train.cars[0].part = null
 
-      const station0 = analyseRail(megafac, gameData).stations[0]
-      expect(station0.emptyCars).toBe(1)
-      expect(station0.platforms[0].deliveredPerMin).toBe(0)
-      expect(station0.platforms[1].deliveredPerMin).toBeCloseTo(600)
+      const flows = network()
+      expect(flows.stations[stationKey(1, mineStation.id)].emptyCars).toBe(1)
+      expect(flows.stations[stationKey(3, receiving.id)].platforms[0].unloadPerMin).toBe(0)
+      expect(flows.stations[stationKey(3, receiving.id)].platforms[1].unloadPerMin).toBeCloseTo(600)
     })
 
-    it('counts a car past the last platform as overhanging', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 2 })
-      const train = addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } })
-      setTrainLocomotives(train, 2)
-      expect(analyseRail(megafac, gameData).stations[0].overhangingCars).toBe(1)
+    it('counts cars past the last platform at a shorter receiving station', () => {
+      setStationPlatformCount(receiving, 2)
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() })
+      expect(receivingFlow().overhangingCars).toBe(2)
     })
 
     it('locks the station for 27.08s per dock, and buffers lift the limit', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 5 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } }).roundTripSecs = 270.8
+      receiving.beltMark = 5
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 270.8
 
-      const unbuffered = analyseRail(megafac, gameData).stations[0]
-      expect(unbuffered.lockShare).toBeCloseTo(0.1)
-      expect(unbuffered.platforms[0].clearPerMin).toBeCloseTo(702)
-
-      station.buffered = true
-      expect(analyseRail(megafac, gameData).stations[0].platforms[0].clearPerMin).toBe(780)
+      expect(receivingFlow().lockShare).toBeCloseTo(0.1)
+      expect(receivingFlow().platforms[0].clearPerMin).toBeCloseTo(702)
+      receiving.buffered = true
+      expect(receivingFlow().platforms[0].clearPerMin).toBe(780)
     })
 
     it('flags a platform whose belts cannot clear what arrives', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 1, beltMark: 1 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } }).roundTripSecs = 300
-      expect(analyseRail(megafac, gameData).stations[0].platforms[0].overloaded).toBe(true)
+      receiving.beltMark = 1
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 300
+      expect(receivingFlow().platforms[0].overloaded).toBe(true)
     })
 
     it('says how many more trains a station takes before another slows it down', () => {
-      // Four platforms, two Mk.6 outputs each, limestone on five- and six-minute trips: peaks near three.
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 6, beltsPerPlatform: 2 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } }).roundTripSecs = 300
-      addTrain(station, { name: 'B', cargo: { factoryId: 2, part: 'Stone' } }).roundTripSecs = 360
-      expect(analyseRail(megafac, gameData).stations[0].roomForTrains).toBe(1)
+      // Four platforms, two Mk.6 outputs each, limestone on five- and six-minute trips.
+      receiving.beltsPerPlatform = 2
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 300
+      const quarryStation = addTrainStation(quarry, { name: 'Quarry loading', platforms: 4 })
+      addTrain(quarryStation, { name: 'B', part: 'Stone', destination: toMegafac() }).roundTripSecs = 360
+      expect(receivingFlow().roomForTrains).toBe(1)
     })
 
     it('counts a second train while it still adds throughput, even on one Mk.5 belt a platform', () => {
       // One train brings 2,133/min; two bring more than the belts clear, but the belts' 2,651 still beats one train.
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 5 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } }).roundTripSecs = 360
-      expect(analyseRail(megafac, gameData).stations[0].roomForTrains).toBe(1)
+      receiving.beltMark = 5
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 360
+      expect(receivingFlow().roomForTrains).toBe(1)
     })
 
     it('cannot tell the room for trains before any train is timed', () => {
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } })
-      expect(analyseRail(megafac, gameData).stations[0].roomForTrains).toBeNull()
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() })
+      expect(receivingFlow().roomForTrains).toBeNull()
     })
   })
 
@@ -182,6 +214,8 @@ describe('train-logistics', () => {
       initializeCalculatorFactorySettings(factory, 'Stone', '3')
       return factory.exportCalculator.Stone.factorySettings['3']
     }
+
+    const transport = () => exportTransport(mine, 'Stone', megafac, network())
 
     it('guesses only when exactly one time was changed from its default', () => {
       const settings = settingsFor(mine)
@@ -193,44 +227,45 @@ describe('train-logistics', () => {
     })
 
     it('is unset, then guessed, then set', () => {
-      expect(exportTransport(mine, 'Stone', megafac, gameData).state).toBe('unset')
+      expect(transport().state).toBe('unset')
       settingsFor(mine).trainTime = 537
-      expect(exportTransport(mine, 'Stone', megafac, gameData)).toMatchObject({ method: 'train', state: 'guessed' })
+      expect(transport()).toMatchObject({ method: 'train', state: 'guessed' })
       setExportTransportMethod(mine, 'Stone', 3, 'belt')
-      expect(exportTransport(mine, 'Stone', megafac, gameData)).toMatchObject({ method: 'belt', state: 'ok' })
+      expect(transport()).toMatchObject({ method: 'belt', state: 'ok' })
     })
 
     it('waits for a train before judging a train export', () => {
       setExportTransportMethod(mine, 'Stone', 3, 'train')
-      expect(exportTransport(mine, 'Stone', megafac, gameData).state).toBe('pending')
+      expect(transport().state).toBe('pending')
     })
 
     it('is short when its trains cannot carry the full amount', () => {
       setExportTransportMethod(mine, 'Stone', 3, 'train')
-      const station = addTrainStation(megafac, { name: 'North', platforms: 2, beltMark: 6 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } }).roundTripSecs = 600
+      setStationPlatformCount(mineStation, 2)
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 600
       // Two cars every ten minutes carry 640/min of the 1,800 asked.
-      const transport = exportTransport(mine, 'Stone', megafac, gameData)
-      expect(transport.state).toBe('short')
-      expect(transport.shortBy).toBeCloseTo(1160)
+      expect(transport().state).toBe('short')
+      expect(transport().shortBy).toBeCloseTo(1160)
     })
 
     it('is fine when its trains carry it all', () => {
       setExportTransportMethod(mine, 'Stone', 3, 'train')
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 6 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } }).roundTripSecs = 300
-      expect(exportTransport(mine, 'Stone', megafac, gameData).state).toBe('ok')
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 300
+      expect(transport().state).toBe('ok')
     })
 
-    it('is short when a platform its cars stop at cannot be cleared', () => {
+    it('is short when a platform at either end cannot keep up', () => {
       setExportTransportMethod(mine, 'Stone', 3, 'train')
-      const station = addTrainStation(megafac, { name: 'North', platforms: 4, beltMark: 1 })
-      addTrain(station, { name: 'A', cargo: { factoryId: 1, part: 'Stone' } }).roundTripSecs = 300
-      expect(exportTransport(mine, 'Stone', megafac, gameData).state).toBe('short')
+      addTrain(mineStation, { name: 'A', part: 'Stone', destination: toMegafac() }).roundTripSecs = 300
+      mineStation.beltMark = 1
+      expect(transport().state).toBe('short')
+      mineStation.beltMark = 6
+      receiving.beltMark = 1
+      expect(transport().state).toBe('short')
     })
 
     it('leaves an export with no destination unset', () => {
-      expect(exportTransport(quarry, 'Stone', undefined, gameData).state).toBe('unset')
+      expect(exportTransport(quarry, 'Stone', undefined, network()).state).toBe('unset')
     })
   })
 

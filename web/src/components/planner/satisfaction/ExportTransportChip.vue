@@ -19,6 +19,7 @@
   import { computed } from 'vue'
   import { ExportTransportMethod, Factory } from '@/interfaces/planner/FactoryInterface'
   import { exportTransport } from '@/utils/factory-management/train-logistics'
+  import { useRailNetwork } from '@/composables/useRailNetwork'
   import { useGameDataStore } from '@/stores/game-data-store'
   import { formatNumber } from '@/utils/numberFormatter'
 
@@ -38,7 +39,9 @@
     tractor: 'fas fa-tractor',
   }
 
-  const transport = computed(() => exportTransport(props.producer, props.part, props.consumer, gameData))
+  const { network } = useRailNetwork()
+
+  const transport = computed(() => exportTransport(props.producer, props.part, props.consumer, network.value))
 
   const isFluid = computed(() => gameData.items.parts[props.part]?.isFluid ?? false)
 
@@ -63,7 +66,7 @@
     switch (transport.value.state) {
       case 'unset': return 'Choose how this export travels in the export manager'
       case 'guessed': return 'Guessed from a time entered in the old calculator. Choose a method to confirm it.'
-      case 'pending': return 'Add a station and a train for this export in the export manager'
+      case 'pending': return 'Add a loading station, a receiving station and a train in the export manager'
       case 'short': return 'Its trains cannot deliver the full amount. Open the export manager to see where.'
       default: return 'How this export travels'
     }

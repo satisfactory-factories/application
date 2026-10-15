@@ -180,14 +180,15 @@ export interface ExportCalculatorSettings {
 
 export type TrainPlatformType = 'freight' | 'fluid' | 'empty'
 
-// What one car carries: an import of the factory the train unloads at. Null is an empty car.
-export interface TrainCarCargo {
-  factoryId: number;
-  part: string;
+// What one car carries from the factory the train loads at. Null is an empty car.
+export interface TrainCar {
+  part: string | null;
 }
 
-export interface TrainCar {
-  cargo: TrainCarCargo | null;
+// The receiving station a train unloads at, on the importing factory.
+export interface TrainDestination {
+  factoryId: number;
+  stationId: string;
 }
 
 export interface Train {
@@ -197,9 +198,11 @@ export interface Train {
   // Locomotives at the front. The first sits at the station; each extra one takes a platform.
   locomotives: number;
   cars: TrainCar[];
+  destination: TrainDestination | null;
 }
 
-// An unload station, kept on the factory it is built at. Trains live on the station they unload at.
+// A station on the factory it is built at. Trains are kept on the station they load at, and
+// name the receiving station they unload at.
 export interface TrainStation {
   id: string;
   name: string;

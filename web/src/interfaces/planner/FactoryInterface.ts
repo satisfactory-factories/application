@@ -32,7 +32,7 @@ export type {
   PartMetrics,
   Train,
   TrainCar,
-  TrainCarCargo,
+  TrainDestination,
   TrainPlatformType,
   TrainStation,
   WorldRawResource,
