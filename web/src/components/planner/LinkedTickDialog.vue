@@ -54,7 +54,13 @@
       />
     </template>
     <template #actions>
-      <v-btn id="linked-tick-cancel" variant="text" @click="dismiss">Cancel</v-btn>
+      <v-btn
+        id="linked-tick-cancel"
+        color="error"
+        variant="text"
+        @click="dismiss"
+      >Cancel
+      </v-btn>
       <v-btn
         id="linked-tick-apply"
         color="primary"
