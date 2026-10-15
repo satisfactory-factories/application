@@ -88,7 +88,11 @@
 <style lang="scss" scoped>
 // The group colour on the chip's own left edge. The extra class beats `.sf-chip.factory`, which sets
 // the whole border with !important.
+// Always the 4px corner, clickable or not: a factory chip is the same shape wherever it appears, so
+// one that only names a factory (a dialog, a summary row) still reads as that factory and not as a
+// status pill.
 .sf-chip.factory.factory-chip {
+  border-radius: 4px !important;
   border-left-color: var(--group-color) !important;
   border-left-width: 5px !important;
   max-width: 100%;

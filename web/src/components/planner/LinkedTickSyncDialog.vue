@@ -61,7 +61,7 @@
         >
         <div class="d-flex align-center flex-wrap ga-2 min-width-0">
           <!-- The factory and what it sends, as one chip, then where it goes. -->
-          <factory-chip class="no-margin linked-tick-sync-chip" :clickable="false" :factory="row.source" :jumpable="false">
+          <factory-chip class="no-margin" :clickable="false" :factory="row.source" :jumpable="false">
             <span>{{ row.source.name }}</span>
             <game-asset
               class="ml-3"
@@ -73,7 +73,7 @@
             <b class="ml-1 text-primary">{{ getPartDisplayName(row.part) }}</b>
           </factory-chip>
           <i class="fas fa-arrow-right" />
-          <factory-chip class="no-margin linked-tick-sync-chip" :clickable="false" :factory="row.destination" :jumpable="false" />
+          <factory-chip class="no-margin" :clickable="false" :factory="row.destination" :jumpable="false" />
         </div>
       </label>
     </section>
@@ -225,11 +225,5 @@
 
 .min-width-0 {
   min-width: 0;
-}
-
-// The same 4px corner factory chips have everywhere else in the planner. These are not clickable,
-// which on its own would draw them as pills.
-.sf-chip.factory.linked-tick-sync-chip {
-  border-radius: 4px !important;
 }
 </style>
