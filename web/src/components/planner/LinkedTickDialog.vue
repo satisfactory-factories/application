@@ -12,7 +12,13 @@
     :title="title"
   >
     <template v-if="current && target">
+      <!-- Drawn in the direction the item flows: the exporting factory, then the item, for an
+           export; the item, then the importing factory, for an import. -->
       <div class="linked-tick d-flex align-center flex-wrap ga-2">
+        <template v-if="!isImport">
+          <factory-chip class="no-margin" :clickable="false" :factory="target" :jumpable="false" />
+          <i class="fas fa-arrow-right" />
+        </template>
         <v-chip class="sf-chip small product no-margin">
           <game-asset
             height="24"
@@ -24,8 +30,10 @@
             <b>{{ getPartDisplayName(current.part) }}</b><template v-if="linkAmount !== null">: {{ formatNumber(linkAmount) }}/min</template>
           </span>
         </v-chip>
-        <span>{{ isImport ? 'into' : 'from' }}</span>
-        <factory-chip class="no-margin" :clickable="false" :factory="target" :jumpable="false" />
+        <template v-if="isImport">
+          <i class="fas fa-arrow-right" />
+          <factory-chip class="no-margin" :clickable="false" :factory="target" :jumpable="false" />
+        </template>
       </div>
       <v-switch
         v-if="current.offer.offerEnableChecklist"
