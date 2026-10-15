@@ -25,9 +25,18 @@ export interface PlanBlob {
 
 export const serializePlan = (blob: PlanBlob): string => JSON.stringify(blob)
 
+// Local time, to the second, so two saves of the same plan on the same day get different names
+// instead of the browser's "(1)" suffix, and an evening save is stamped with the day the player
+// sees rather than tomorrow's UTC date. No colons: they aren't allowed in Windows file names.
+const timestampFor = (now: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  return `${date}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+}
+
 const fileNameFor = (name: string | undefined, now: Date): string => {
   const slug = (name ?? 'plan').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  return `satisfactory-${slug || 'plan'}-${now.toISOString().slice(0, 10)}.json`
+  return `satisfactory-${slug || 'plan'}-${timestampFor(now)}.json`
 }
 
 export const downloadPlan = (blob: PlanBlob, now = new Date()) => {
