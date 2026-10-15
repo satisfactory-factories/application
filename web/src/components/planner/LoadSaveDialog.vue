@@ -8,7 +8,7 @@
     icon="fas fa-save"
     max-width="640"
     :persistent="busy"
-    title="Load your save"
+    title="Load game save"
   >
     <p class="mb-3">
       Load a Satisfactory save to see which alternate recipes you have unlocked. Locked ones get a

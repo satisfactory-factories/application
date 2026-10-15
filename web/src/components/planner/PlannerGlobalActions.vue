@@ -42,7 +42,7 @@
           variant="tonal"
           @click="loadSaveOpen = true"
         >
-          Load save
+          Load game save
         </v-btn>
       </tooltip>
       <tooltip :text="isEmpty ? 'Nothing to clear yet — the plan is already empty.' : 'Delete every factory in this plan. There is no undo, so copy the plan first if you might want it back.'">

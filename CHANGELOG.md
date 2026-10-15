@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## Unreleased
 
-- **Load your save to check alternate recipes.** **Import world [WIP]** is now **Load save**. Pick a Satisfactory save and the planner reads, in your browser, which alternate recipes you have unlocked. The list is kept with the plan and syncs with it, and **Forget save** in the same dialog clears it.
+- **Load your game save to check alternate recipes.** **Import world [WIP]** is now **Load game save**. Pick a Satisfactory save and the planner reads, in your browser, which alternate recipes you have unlocked. The list is kept with the plan and syncs with it, and **Forget save** in the same dialog clears it.
 - **Locked alternates get a padlock.** Once a save is loaded, the Recipe picker shows a padlock on each alternate and greys out the ones the save has not unlocked. Clicking a padlock marks that recipe unlocked or locked by hand, and the mark survives loading a newer save. The tick beside the selected recipe is gone.
 - **New "Alt recipe not unlocked" chip.** A factory using a locked alternate gets an amber chip that jumps to the product's row. Without a save every recipe counts as unlocked, as before.
 - **The old somersloop finder is gone.** It sat behind Import world [WIP] and could not read a 1.2 save. Its `sav2json` dependency is removed with it.
