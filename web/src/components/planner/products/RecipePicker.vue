@@ -2,6 +2,7 @@
   <v-autocomplete
     v-bind="$attrs"
     class="recipe-picker"
+    :custom-filter="filterRecipe"
     data-testid="recipe-picker"
     hide-details
     :items="items"
@@ -37,7 +38,8 @@
 <script setup lang="ts">
   import { computed } from 'vue'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { getRecipeRating, RECIPE_RATINGS_SOURCE, RecipeTier, TIER_ORDER } from '@/utils/recipe-ratings'
+  import { getRecipeRating, matchesRecipeQuery, RECIPE_RATINGS_SOURCE, RecipeTier, TIER_ORDER } from '@/utils/recipe-ratings'
+  import type { FilterFunction } from 'vuetify'
 
   defineOptions({ inheritAttrs: false })
 
@@ -64,6 +66,9 @@
 
   const rank = (item: { alternate: boolean, tier?: RecipeTier }) =>
     !item.alternate ? -1 : item.tier ? TIER_ORDER.indexOf(item.tier) : TIER_ORDER.length
+
+  const filterRecipe: FilterFunction = (_value, query, item) =>
+    matchesRecipeQuery(item?.raw.title ?? '', item?.raw.tier, query)
 
   const hasRatings = computed(() => items.value.some(item => item.tier))
 </script>

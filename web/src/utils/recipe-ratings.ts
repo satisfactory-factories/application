@@ -144,3 +144,20 @@ const ratingByRecipe = new Map<string, RecipeTier>(
 )
 
 export const getRecipeRating = (recipeId: string): RecipeTier | undefined => ratingByRecipe.get(recipeId)
+
+const tierQuery = /\b(?:([sabcdf])[\s-]*tier|tier[\s-]*([sabcdf]))\b/i
+
+/**
+ * Picker search: "s tier", "tier b" or "f-tier" keeps only that tier, and any other words
+ * still have to appear in the recipe's name.
+ */
+export const matchesRecipeQuery = (name: string, tier: RecipeTier | undefined, query: string): boolean => {
+  const match = tierQuery.exec(query)
+  const wantedTier = match ? (match[1] ?? match[2]).toUpperCase() : undefined
+  if (wantedTier && wantedTier !== tier) {
+    return false
+  }
+
+  const rest = (match ? query.replace(match[0], '') : query).trim().toLowerCase()
+  return name.toLowerCase().includes(rest)
+}
