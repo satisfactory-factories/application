@@ -5,6 +5,7 @@ import { gameData } from '@/utils/gameData'
 import { create46Scenario } from '@/utils/factory-setups/46-redistribution-hub'
 import {
   getImportableParts,
+  getImportNeed,
   getImportSources,
   getUpstreamFactoryIds,
   wouldCreateLoop,
@@ -144,6 +145,35 @@ describe('redistribution hubs (#46)', () => {
       expect(hub.parts.IronPlate.amountRequiredSink).toBeGreaterThan(0)
       expect(getImportableParts(hub, factories, false)).toEqual([])
       expect(getImportableParts(hub, factories, true)).toContain('IronPlateReinforced')
+    })
+  })
+
+  describe('import dialog ranking', () => {
+    it('reads a needed part with no import as missing', () => {
+      // Reinforced plates need Screws, and nothing brings them in.
+      expect(getImportNeed(reinforced, 'IronScrew')).toBe('missing')
+    })
+
+    it('reads an import that does not cover the need as short', () => {
+      reinforced.inputs[0].amount = 30
+      calculateFactories(factories, gameData)
+
+      expect(getImportNeed(reinforced, 'IronPlate')).toBe('short')
+    })
+
+    it('reads an import that covers the need as imported', () => {
+      expect(getImportNeed(reinforced, 'IronPlate')).toBe('imported')
+    })
+
+    it('reads a need met without an import as satisfied', () => {
+      addProductToFactory(reinforced, { id: 'IronScrew', amount: 120, recipe: 'Screw' })
+      calculateFactories(factories, gameData)
+
+      expect(getImportNeed(reinforced, 'IronScrew')).toBe('satisfied')
+    })
+
+    it('has nothing to say about a part the factory does not need', () => {
+      expect(getImportNeed(hub, 'IronPlateReinforced')).toBeNull()
     })
   })
 

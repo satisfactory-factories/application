@@ -1,7 +1,7 @@
 <template>
   <v-card class="recipe-card border-md h-100" variant="flat">
     <v-card-title class="d-flex align-center flex-wrap py-2">
-      <span class="text-h6">{{ recipe.displayName }}</span>
+      <span class="text-h6" data-testid="recipe-card-name">{{ name }}</span>
       <v-chip
         v-if="recipe.isAlternate"
         class="ml-2"
@@ -11,6 +11,20 @@
       >
         Alternate
       </v-chip>
+      <tooltip
+        v-if="tier"
+        :text="`${RECIPE_TIERS[tier].label} in ${RECIPE_RATINGS_SOURCE.title}.`"
+      >
+        <v-chip
+          class="ml-2 recipe-tier"
+          :data-testid="`recipe-card-tier-${tier}`"
+          size="small"
+          :style="{ backgroundColor: RECIPE_TIERS[tier].color }"
+          variant="flat"
+        >
+          {{ tier }} tier<i class="fas fa-info-circle ml-1" />
+        </v-chip>
+      </tooltip>
       <v-chip
         v-if="recipe.isFicsmas"
         class="ml-2"
@@ -92,16 +106,21 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { computed, ref } from 'vue'
   import AddToPlannerDialog from '@/components/parts/AddToPlannerDialog.vue'
   import { Recipe } from '@/interfaces/Recipes'
   import { getPartDisplayName } from '@/utils/helpers'
   import { getBuildingDisplayName } from '@/utils/factory-management/common'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
+  import { getRecipeRating, RECIPE_RATINGS_SOURCE, RECIPE_TIERS } from '@/utils/recipe-ratings'
 
-  defineProps<{
+  const props = defineProps<{
     recipe: Recipe;
   }>()
+
+  // The Alternate chip already says it, so the game's "Alternate: " prefix is dropped here.
+  const name = computed(() => props.recipe.displayName.replace(/^Alternate:\s*/, ''))
+  const tier = computed(() => props.recipe.isAlternate ? getRecipeRating(props.recipe.id) : undefined)
 
   const showAddDialog = ref(false)
 </script>
@@ -109,5 +128,10 @@
 <style lang="scss" scoped>
 .recipe-card {
   background-color: rgb(33, 33, 33);
+}
+
+.recipe-tier {
+  color: #fff;
+  font-weight: 600;
 }
 </style>
