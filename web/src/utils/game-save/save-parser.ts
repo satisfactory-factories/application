@@ -97,9 +97,18 @@ export const parseSaveBody = (body: SaveBytes): ParsedSave => {
   const headers = readHeaders(reader)
   if (!headers.length) throw new SaveFormatError('No object headers could be read.', 'unsupported')
 
-  reader.skip(4) // marker, always 1
-  reader.readString() // level name
-  reader.skip(4) // unknown
+  // Objects destroyed since the map was made (drop pods opened, collectables picked up), grouped
+  // by level: a level name, then a level and path per object. Empty in a fresh world, so a parser
+  // that skipped a fixed width read every fresh save and refused every played one.
+  const levels = reader.readInt32()
+  for (let level = 0; level < levels; level++) {
+    reader.readString()
+    const destroyed = reader.readInt32()
+    for (let i = 0; i < destroyed; i++) {
+      reader.readString()
+      reader.readString()
+    }
+  }
   reader.skip(8) // total byte length of the data section
   const count = reader.readInt32()
 
@@ -137,5 +146,16 @@ export const readSessionName = (bytes: SaveBytes): string => {
     return reader.readString()
   } catch {
     return ''
+  }
+}
+
+/** The save and game build versions from the header, for telling a player why a save failed. */
+export const readSaveVersions = (bytes: SaveBytes): string => {
+  try {
+    const reader = new BinaryReader(bytes)
+    reader.skip(4) // header version
+    return `save version ${reader.readInt32()}, game build ${reader.readInt32()}`
+  } catch {
+    return 'no readable version'
   }
 }

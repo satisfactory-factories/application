@@ -9,8 +9,8 @@
 
 import { extractWorld } from '@/utils/game-save/extract-world'
 import type { ExtractOptions } from '@/utils/game-save/extract-world'
-import { parseSave, readSessionName } from '@/utils/game-save/save-parser'
-import { saveProblemOf } from '@/utils/game-save/errors'
+import { parseSave, readSaveVersions, readSessionName } from '@/utils/game-save/save-parser'
+import { SaveFormatError, saveProblemOf } from '@/utils/game-save/errors'
 import type { SaveProblem } from '@/utils/game-save/errors'
 import type { SaveBytes } from '@/utils/game-save/chunks'
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
@@ -34,10 +34,19 @@ export type ReadWorldResponse =
 export const readWorldFromSave = async (
   bytes: SaveBytes,
   options: ExtractOptions = {},
-): Promise<WorldSnapshot> => extractWorld(await parseSave(bytes), {
-  ...options,
-  saveName: options.saveName ?? readSessionName(bytes),
-})
+): Promise<WorldSnapshot> => {
+  try {
+    return extractWorld(await parseSave(bytes), {
+      ...options,
+      saveName: options.saveName ?? readSessionName(bytes),
+    })
+  } catch (error) {
+    // The versions go with the reason, so a report of a save that fails says which game wrote it.
+    const message = error instanceof Error ? error.message : String(error)
+    const problem = saveProblemOf(error)
+    throw new SaveFormatError(problem === 'notASave' ? message : `${message} (${readSaveVersions(bytes)})`, problem)
+  }
+}
 
 /**
  * The worker's message handler, exported so it can be tested without spawning one.

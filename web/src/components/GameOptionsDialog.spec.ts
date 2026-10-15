@@ -77,6 +77,7 @@ describe('Component: GameOptionsDialog', () => {
 
     await vi.waitFor(() => expect(find('load-save-error')).not.toBeNull())
     expect(find('load-save-error')!.textContent).toBe('That save is not compatible. It is not a Satisfactory save file.')
+    expect(find('load-save-detail')!.textContent).toContain('No zlib chunk header found')
     expect(tab().recipeUnlocks).toBeUndefined()
   })
 

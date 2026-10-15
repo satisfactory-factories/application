@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   volatility: normal
-  lastVerified: 2026-08-21
+  lastVerified: 2026-10-15
   originSessionId: 2f384d56-c518-4b8f-935e-a27d6882b8cb
   modified: 2026-08-21T00:06:30.525Z
 ---
@@ -66,10 +66,15 @@ geyser is counted as a solid node and the census reads 490 instead of 459.
   unlocks are `ResourceSink_*`. A pattern anchored on `Schematic_` drops two thirds of them and
   takes the entire MAM tree with it.
 - A build recipe's name maps to the game data's building id as `lowercase`, minus `_automated`,
-  with two aliases (`GeneratorGeoThermal` → `geothermalgenerator`, `AlienPowerBuilding` →
-  `alienpoweraugmenter`). Those come from `parsing/src/buildings.ts`, which produced the ids.
-  Naive matching reports three buildings as unbuildable that the player can actually build —
-  a false negative in the dangerous direction.
+  with aliases (`GeneratorGeoThermal`, `AlienPowerBuilding`, and the game's own smelter pair:
+  the **Foundry is built by `Recipe_SmelterMk1`**, the Smelter by `Recipe_SmelterBasicMk1`).
+  Checked against `parsing/game-docs.json`. Naive matching showed every played save with a
+  Smelter and no Foundry.
+- **Between the headers and the objects sits a destroyed-objects list** (drop pods opened,
+  collectables picked up): int32 level count, then per level a name, an int32 count and a
+  level/path string pair per object. Empty in every committed fixture, which are fresh worlds,
+  so a fixed-width skip read them all and refused every played save as misaligned.
+  `save-parser.spec.ts` builds one by hand.
 
 The game spells impure `RP_Inpure` in its own asset names. Not a typo to fix.
 

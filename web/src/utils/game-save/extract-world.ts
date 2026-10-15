@@ -41,13 +41,17 @@ const GEYSER = 'BP_ResourceNodeGeyser'
 const CENSUS_CLASSES = [SOLID_NODE, WELL_SATELLITE, 'BP_FrackingCore', GEYSER]
 
 /**
- * Build_X_C becomes x, matching the ids the parser writes into the game data. The two aliases and
- * the `_automated` strip are lifted from parsing/src/buildings.ts, which is what produced those
- * ids: keep them in step or a renamed building silently reads as unbuildable.
+ * A build recipe's name becomes the building id the parser writes into the game data. The first
+ * two aliases and the `_automated` strip are lifted from parsing/src/buildings.ts. The smelter
+ * pair is the game's own naming, checked against Docs.json: the Foundry is built by
+ * `Recipe_SmelterMk1` and the Smelter by `Recipe_SmelterBasicMk1`, so reading the name at face
+ * value showed every played save as having a Smelter and no Foundry.
  */
 const BUILDING_ALIASES: Record<string, string> = {
   generatorgeothermal: 'geothermalgenerator',
   alienpowerbuilding: 'alienpoweraugmenter',
+  smelterbasicmk1: 'smeltermk1',
+  smeltermk1: 'foundrymk1',
 }
 
 export const toBuildingId = (recipeName: string): string => {

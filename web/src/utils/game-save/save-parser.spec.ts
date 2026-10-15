@@ -102,3 +102,52 @@ describe('what a player is told about a file that is not a save', () => {
     expect(Object.values(SAVE_PROBLEM_REASONS).every(reason => reason.endsWith('.'))).toBe(true)
   })
 })
+
+// A played world lists the objects it has destroyed (drop pods opened, collectables picked up)
+// between the headers and the objects. Every fixture is a fresh world with none, so this one is
+// built by hand: skipping a fixed width there refused every played save.
+describe('parseSaveBody, for a played world', () => {
+  const encoder = new TextEncoder()
+  const parts: number[] = []
+  const int32 = (value: number) => {
+    const view = new DataView(new ArrayBuffer(4))
+    view.setInt32(0, value, true)
+    parts.push(...new Uint8Array(view.buffer))
+  }
+  const string = (text: string) => {
+    const encoded = encoder.encode(`${text}\0`)
+    int32(encoded.length)
+    parts.push(...encoded)
+  }
+
+  // One actor header: the anchor every save starts its header run with.
+  int32(1)
+  string('/Script/FactoryGame.FGWorldSettings')
+  string('Persistent_Level')
+  string('Persistent_Level:PersistentLevel.FGWorldSettings')
+  parts.push(...new Uint8Array(52))
+  // One level, with two destroyed objects.
+  int32(1)
+  string('Persistent_Level')
+  int32(2)
+  for (const pod of ['BP_DropPod1_2', 'BP_DropPod4_4']) {
+    string('Persistent_Level')
+    string(`Persistent_Level:PersistentLevel.${pod}`)
+  }
+  parts.push(...new Uint8Array(8)) // data section length
+  int32(1)
+  // One object block: version, 0, length, 0, then the data.
+  int32(60)
+  int32(0)
+  int32(4)
+  int32(0)
+  parts.push(1, 2, 3, 4)
+
+  it('reads past the destroyed objects to the data blocks', () => {
+    const { objects } = parseSaveBody(Uint8Array.from(parts) as SaveBytes)
+
+    expect(objects).toHaveLength(1)
+    expect(objects[0].className).toBe('/Script/FactoryGame.FGWorldSettings')
+    expect([...objects[0].data]).toEqual([1, 2, 3, 4])
+  })
+})

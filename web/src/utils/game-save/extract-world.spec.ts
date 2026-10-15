@@ -162,6 +162,12 @@ describe('extractWorld', () => {
       expect(toBuildingId('MinerMk3')).toBe('minermk3')
       expect(toBuildingId('FrackingSmasher')).toBe('frackingsmasher')
     })
+
+    // The game's own names, from Docs.json: the Foundry is built by Recipe_SmelterMk1.
+    it('reads the smelter build recipes as the buildings they really make', () => {
+      expect(toBuildingId('SmelterBasicMk1')).toBe('smeltermk1')
+      expect(toBuildingId('SmelterMk1')).toBe('foundrymk1')
+    })
   })
 
   describe('geysers', () => {

@@ -1,8 +1,9 @@
 <template>
-  <!-- 40px tall like the Options button beside it, for the reason given there. -->
+  <!-- 40px tall like the Options button beside it, for the reason given there, and coloured like
+       the sidebar toggle. -->
   <v-btn
     id="game-options-button"
-    color="grey-darken-1 rounded"
+    class="game-options-button"
     data-testid="game-options"
     height="40"
     prepend-icon="fas fa-gamepad"
@@ -55,7 +56,12 @@
       <v-progress-linear color="primary" indeterminate rounded />
     </div>
 
-    <p v-if="error" class="mb-3 text-red" data-testid="load-save-error">{{ error }}</p>
+    <div v-if="error" class="mb-3" data-testid="load-save-failed">
+      <p class="mb-1 text-red" data-testid="load-save-error">{{ error }}</p>
+      <p v-if="errorDetail" class="mb-0 text-caption text-medium-emphasis" data-testid="load-save-detail">
+        Details: {{ errorDetail }}
+      </p>
+    </div>
 
     <div class="d-flex align-center flex-wrap ga-2 mb-3">
       <v-btn
@@ -166,6 +172,7 @@
   const fileInput = ref<HTMLInputElement | null>(null)
   const busy = ref(false)
   const error = ref('')
+  const errorDetail = ref('')
   const fileName = ref('')
   const search = ref<string | null>('')
   const filter = ref<'all' | 'unlocked' | 'locked'>('all')
@@ -212,6 +219,7 @@
 
     busy.value = true
     error.value = ''
+    errorDetail.value = ''
     fileName.value = file.name
     try {
       const world = await readSaveFile(file, buildingIds.value)
@@ -227,6 +235,8 @@
       error.value = cause instanceof IncompatibleSaveError
         ? `That save is not compatible. ${cause.reason}`
         : 'That save could not be read. Try loading it again.'
+      // The reader's own words, for a bug report: the reason above is what a player can act on.
+      errorDetail.value = cause instanceof Error ? cause.message : String(cause)
     } finally {
       busy.value = false
     }
@@ -239,6 +249,11 @@
 </script>
 
 <style lang="scss" scoped>
+.game-options-button {
+  background-color: var(--sf-power-consumption) !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
 .tier-chip {
   display: inline-flex;
   align-items: center;
