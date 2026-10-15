@@ -87,14 +87,12 @@
       </div>
       <div class="input-row d-flex align-center">
         <i class="fas fa-hat-chef mr-2" style="width: 32px; height: 32px" />
-        <v-autocomplete
+        <recipe-picker
+          :id="`${factory.id}-${product.id}-recipe`"
           v-model="product.recipe"
           :disabled="!product.id"
-          hide-details
-          :items="getRecipesForPartSelector(product.id)"
-          label="Recipe"
           :max-width="recipeSelectionWidth"
-          variant="outlined"
+          :part="product.id"
           :width="recipeSelectionWidth"
           @update:model-value="updateRecipe(product, factory)"
         />
@@ -378,7 +376,6 @@
 
   const { smAndDown, mdAndDown } = useDisplay()
   const {
-    getRecipesForPart,
     getDefaultRecipeForPart,
     getGameData,
   } = useGameDataStore()
@@ -439,17 +436,6 @@
     })
 
     return [...counts].map(([building, amount]) => ({ building, amount }))
-  }
-
-  const getRecipesForPartSelector = (part: string) => {
-    // Return each recipe in the format of { title: 'Recipe Name', value: 'Recipe ID' }
-    // If there's "Alternate" in the name, shorten it to "Alt" for display.
-    return getRecipesForPart(part).map(recipe => {
-      return {
-        title: recipe.displayName.replace('Alternate', 'Alt'),
-        value: recipe.id,
-      }
-    })
   }
 
   const updateProductSelection = (product: FactoryItem, factory: Factory) => {
