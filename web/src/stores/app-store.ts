@@ -28,7 +28,7 @@ import { config } from '@/config/config'
 import { recordEvent } from '@/utils/record-event'
 import { writeLocalStorage } from '@/utils/safe-storage'
 import { canAddFactory } from '@/utils/plan-size'
-import { setActiveRecipeUnlocks } from '@/utils/recipe-unlocks'
+import { isLockableRecipe, setActiveRecipeUnlocks } from '@/utils/recipe-unlocks'
 
 export const useAppStore = defineStore('app', () => {
   const gameDataStore = useGameDataStore()
@@ -214,7 +214,7 @@ export const useAppStore = defineStore('app', () => {
     () => [factoryTabs.value[currentFactoryTabIndex.value]?.recipeUnlocks, gameDataStore.gameData] as const,
     ([unlocks, data]) => setActiveRecipeUnlocks(
       unlocks,
-      new Set((data?.recipes ?? []).map(recipe => recipe.id)),
+      new Set((data?.recipes ?? []).map(recipe => recipe.id).filter(isLockableRecipe)),
       new Set(Object.keys(data?.buildings ?? {}))
     ),
     { immediate: true }

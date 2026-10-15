@@ -87,6 +87,11 @@ describe('isRecipeUnlocked', () => {
     expect(isRecipeUnlocked(unlocks(['Alternate_Screw'], { Alternate_Screw: false }), 'Alternate_Screw')).toBe(false)
   })
 
+  // Mining and pumping are the planner's own recipes, which no save lists: the building decides.
+  it('never locks an extraction recipe', () => {
+    expect(isRecipeUnlocked(unlocks([]), 'Extract_LiquidOil')).toBe(true)
+  })
+
   // A save stored by an earlier build of this feature kept alternates only. Read as no save, not
   // as one that has unlocked nothing.
   it('reads a save of an older shape as no save', () => {

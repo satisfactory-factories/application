@@ -154,7 +154,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { IncompatibleSaveError, readSaveFile } from '@/utils/game-save/read-save-file'
   import { getRecipeRating } from '@/utils/recipe-ratings'
-  import { saveFromWorld } from '@/utils/recipe-unlocks'
+  import { isLockableRecipe, saveFromWorld } from '@/utils/recipe-unlocks'
   import eventBus from '@/utils/eventBus'
 
   const TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -170,7 +170,7 @@
   const search = ref<string | null>('')
   const filter = ref<'all' | 'unlocked' | 'locked'>('all')
 
-  const recipeIds = computed(() => (gameDataStore.gameData?.recipes ?? []).map(recipe => recipe.id))
+  const recipeIds = computed(() => (gameDataStore.gameData?.recipes ?? []).map(recipe => recipe.id).filter(isLockableRecipe))
   const buildingIds = computed(() => Object.keys(gameDataStore.gameData?.buildings ?? {}))
 
   const alternates = computed(() => (gameDataStore.gameData?.recipes ?? [])

@@ -33,6 +33,10 @@ export const saveFromWorld = (world: WorldSnapshot, recipeIds: Iterable<string>)
   tiers: [...world.progression.tiers],
 })
 
+// The planner's own mining and pumping recipes (`Extract_OreIron`). No save lists them, so their
+// building decides instead.
+export const isLockableRecipe = (recipeId: string): boolean => !recipeId.startsWith('Extract_')
+
 // A save stored before buildings and every recipe were kept reads as no save, rather than as one
 // that has unlocked nothing.
 const usableSave = (unlocks: RecipeUnlocks | undefined): RecipeUnlocksSave | null =>
@@ -43,7 +47,7 @@ export const hasUsableSave = (unlocks: RecipeUnlocks | undefined): boolean => !!
 // No save means nothing is locked: the planner behaves as it did before saves could be read.
 export const isRecipeUnlocked = (unlocks: RecipeUnlocks | undefined, recipeId: string): boolean => {
   const save = usableSave(unlocks)
-  if (!save) return true
+  if (!save || !isLockableRecipe(recipeId)) return true
   return unlocks!.overrides[recipeId] ?? save.recipes.includes(recipeId)
 }
 

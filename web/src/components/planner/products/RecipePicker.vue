@@ -29,7 +29,7 @@
           <span class="recipe-picker-name">{{ item.name }}</span>
           <recipe-picker-tags :alternate="item.alternate" :tier="item.tier" />
           <!-- Only once a save is loaded: until then nothing is locked, so there is nothing to say. -->
-          <tooltip v-if="save" :text="lockTooltip(item)">
+          <tooltip v-if="save && item.lockable" :text="lockTooltip(item)">
             <button
               class="recipe-picker-lock"
               :class="{ locked: item.locked, overridden: item.overridden }"
@@ -65,6 +65,7 @@
   import { useGameDataStore } from '@/stores/game-data-store'
   import { getRecipeRating, matchesRecipeQuery, RECIPE_RATINGS_SOURCE, RecipeTier, TIER_ORDER } from '@/utils/recipe-ratings'
   import { useRecipeUnlocks } from '@/composables/useRecipeUnlocks'
+  import { isLockableRecipe } from '@/utils/recipe-unlocks'
   import type { FilterFunction } from 'vuetify'
 
   defineOptions({ inheritAttrs: false })
@@ -88,6 +89,7 @@
       name: recipe.displayName.replace(/^Alternate:\s*/, ''),
       alternate: recipe.displayName.startsWith('Alternate'),
       tier: getRecipeRating(recipe.id),
+      lockable: isLockableRecipe(recipe.id),
       locked: !isUnlocked(recipe.id),
       overridden: isOverridden(recipe.id),
     }))
