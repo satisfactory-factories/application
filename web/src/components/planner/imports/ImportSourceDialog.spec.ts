@@ -111,3 +111,45 @@ describe('ImportSourceDialog loop sources', () => {
     expect(wrapper.emitted('select')).toBeUndefined()
   })
 })
+
+describe('ImportSourceDialog item ranking', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+    localStorage.removeItem(STORAGE_KEY)
+  })
+
+  const listedItems = async (factory: Factory) => {
+    mount(ImportSourceDialog, {
+      props: { factory, inputIndex: null, modelValue: true },
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    document.body.querySelector('[data-testid="import-item-picker"] .v-field')!
+      .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await flushPromises()
+
+    return Array.from(document.body.querySelectorAll('.v-overlay .v-list-item')).map(row => ({
+      title: row.querySelector('.v-list-item-title')?.textContent?.trim(),
+      caption: row.querySelector('[data-testid="import-item-need"]')?.textContent?.trim(),
+    }))
+  }
+
+  it('lists what still needs importing above what is already imported, with a caption for each', async () => {
+    setActivePinia(createPinia())
+    localStorage.setItem(STORAGE_KEY, 'true')
+    const factories = create46Scenario().getFactories()
+    const [ironFactory, , reinforced] = factories
+    // Screws to spare elsewhere, so Reinforced Plates can import them too.
+    addProductToFactory(ironFactory, { id: 'IronScrew', amount: 200, recipe: 'Screw' })
+    calculateFactories(factories, useGameDataStore().getGameData())
+    useAppStore().getFactories = () => factories
+
+    const items = await listedItems(reinforced)
+
+    expect(items).toEqual([
+      { title: 'Screws', caption: 'Not imported yet' },
+      { title: 'Iron Plate', caption: 'Imported and satisfied' },
+    ])
+  })
+})
