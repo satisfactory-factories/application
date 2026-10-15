@@ -103,6 +103,8 @@ declare module 'vue' {
     RawResources: typeof import('./components/planner/imports/RawResources.vue')['default']
     RawResourcesWizard: typeof import('./components/planner/RawResourcesWizard.vue')['default']
     RecipeCard: typeof import('./components/parts/RecipeCard.vue')['default']
+    RecipePicker: typeof import('./components/planner/products/RecipePicker.vue')['default']
+    RecipePickerTags: typeof import('./components/planner/products/RecipePickerTags.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SaveLoader: typeof import('./components/SaveLoader.vue')['default']
