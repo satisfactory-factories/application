@@ -72,7 +72,7 @@ const inflate = async (chunk: SaveBytes): Promise<SaveBytes> => {
  */
 export const inflateSaveBody = async (bytes: SaveBytes): Promise<SaveBytes> => {
   const start = findFirstChunk(bytes)
-  if (start < 0) throw new SaveFormatError('No zlib chunk header found: this is not a Satisfactory save.')
+  if (start < 0) throw new SaveFormatError('No zlib chunk header found: this is not a Satisfactory save.', 'notASave')
 
   const parts: SaveBytes[] = []
   let total = 0

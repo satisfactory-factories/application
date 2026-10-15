@@ -11,6 +11,7 @@ import {
   setActiveRecipeUnlocks,
   toggleAlternate,
   unlockedAlternatesFromWorld,
+  unlocksForArrivingPlan,
   withSave,
 } from '@/utils/recipe-unlocks'
 import { fetchGameData } from '@/utils/gameDataService'
@@ -142,5 +143,19 @@ describe('isActiveRecipeLocked', () => {
     setActiveRecipeUnlocks(unlocks([]), alternates)
 
     expect(isActiveRecipeLocked('Screw')).toBe(false)
+  })
+})
+
+describe('unlocksForArrivingPlan', () => {
+  it('takes the arriving plan\'s list when it has one', () => {
+    expect(unlocksForArrivingPlan(unlocks(['Alternate_Screw']), unlocks([]))).toEqual(unlocks(['Alternate_Screw']))
+  })
+
+  it('states the save as forgotten when a plan without one replaces a plan with one', () => {
+    expect(unlocksForArrivingPlan(undefined, unlocks(['Alternate_Screw']))).toEqual({ save: null, overrides: {} })
+  })
+
+  it('adds nothing when neither plan had a save', () => {
+    expect(unlocksForArrivingPlan(undefined, undefined)).toBeUndefined()
   })
 })

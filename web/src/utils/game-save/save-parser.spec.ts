@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { inflateSaveBody, SaveFormatError } from '@/utils/game-save/chunks'
+import type { SaveBytes } from '@/utils/game-save/chunks'
+import { SAVE_PROBLEM_REASONS, saveProblemOf } from '@/utils/game-save/errors'
 import { loadSaveFixture, SaveFixture } from '@/utils/game-save/fixtures'
 import { parseSave, parseSaveBody, readSessionName } from '@/utils/game-save/save-parser'
 
@@ -81,5 +83,22 @@ describe('readSessionName', () => {
 
   it('gives up quietly on bytes that are not a save', () => {
     expect(readSessionName(new Uint8Array(8))).toBe('')
+  })
+})
+
+describe('what a player is told about a file that is not a save', () => {
+  it('says plainly when the file is not a save at all', async () => {
+    await expect(parseSave(new TextEncoder().encode('not a save') as SaveBytes))
+      .rejects.toMatchObject({ problem: 'notASave' })
+  })
+
+  it('calls a save it cannot find its way into unsupported', () => {
+    expect(() => parseSaveBody(new Uint8Array(64) as SaveBytes)).toThrow(expect.objectContaining({ problem: 'unsupported' }))
+  })
+
+  it('maps every problem to a reason a player can read', () => {
+    expect(saveProblemOf(new SaveFormatError('x', 'noRecipes'))).toBe('noRecipes')
+    expect(saveProblemOf(new TypeError('corrupt deflate stream'))).toBe('damaged')
+    expect(Object.values(SAVE_PROBLEM_REASONS).every(reason => reason.endsWith('.'))).toBe(true)
   })
 })

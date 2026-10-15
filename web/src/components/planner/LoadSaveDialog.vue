@@ -82,7 +82,7 @@
   import { computed, ref } from 'vue'
   import { useRecipeUnlocks } from '@/composables/useRecipeUnlocks'
   import { useGameDataStore } from '@/stores/game-data-store'
-  import { readSaveFile } from '@/utils/game-save/read-save-file'
+  import { IncompatibleSaveError, readSaveFile } from '@/utils/game-save/read-save-file'
   import { saveFromWorld } from '@/utils/recipe-unlocks'
   import eventBus from '@/utils/eventBus'
 
@@ -125,7 +125,9 @@
       open.value = false
     } catch (cause) {
       console.error('LoadSaveDialog: could not read the save', cause)
-      error.value = `That save could not be read. ${cause instanceof Error ? cause.message : ''}`.trim()
+      error.value = cause instanceof IncompatibleSaveError
+        ? `That save is not compatible. ${cause.reason}`
+        : 'That save could not be read. Try loading it again.'
     } finally {
       busy.value = false
     }

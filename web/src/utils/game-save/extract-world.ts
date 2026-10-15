@@ -7,6 +7,7 @@
  */
 
 import type { ParsedSave, SaveObject } from '@/utils/game-save/save-parser'
+import { SaveFormatError } from '@/utils/game-save/errors'
 import {
   asText,
   matchAfter,
@@ -62,6 +63,9 @@ export interface ExtractOptions {
    * building and an unrecognised one is dropped rather than invented.
    */
   buildingIds?: readonly string[]
+  // Only the recipes. Skips the node, extractor and census walks, so a save that trips one of
+  // those can still report its unlocks.
+  recipesOnly?: boolean
 }
 
 const classOf = (object: SaveObject): string => object.className.match(CLASS_NAME)?.[1] ?? object.className
@@ -224,8 +228,18 @@ const readCensus = (objects: SaveObject[]): Record<string, number> => {
 
 export const extractWorld = (parsed: ParsedSave, options: ExtractOptions = {}): WorldSnapshot => {
   const { objects } = parsed
-  const { nodes, resourceOverrides, purityOverrides } = readNodes(objects)
   const recipes = readRecipes(objects)
+  // Every save, even a fresh one, has recipes available, so none at all means the read went wrong.
+  // Reported rather than returned, or it reads as a world with every alternate locked.
+  if (!recipes.alternates.length && !recipes.standard.length) {
+    throw new SaveFormatError('No available recipes found in FGRecipeManager.', 'noRecipes')
+  }
+
+  if (options.recipesOnly) {
+    return { ...newWorldSnapshot(), saveName: options.saveName ?? '', recipes }
+  }
+
+  const { nodes, resourceOverrides, purityOverrides } = readNodes(objects)
 
   const known = new Set(options.buildingIds ?? [])
   const buildings = [...new Set(recipes.standard.map(toBuildingId))].filter(id => known.has(id))

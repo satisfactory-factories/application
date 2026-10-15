@@ -115,6 +115,7 @@
   import ImportPlanDialog from '@/components/planner/ImportPlanDialog.vue'
   import LoadSaveDialog from '@/components/planner/LoadSaveDialog.vue'
   import { useRecipeUnlocks } from '@/composables/useRecipeUnlocks'
+  import { unlocksForArrivingPlan } from '@/utils/recipe-unlocks'
   import { recordEvent } from '@/utils/record-event'
   import { useAppStore } from '@/stores/app-store'
   import { usePowerTarget } from '@/composables/usePowerTarget'
@@ -231,7 +232,6 @@
     if (parsedPlan.plannerVersion !== undefined) markTabEdited('plannerVersion')
     if (parsedPlan.depotUploadTier !== undefined) markTabEdited('depotUploadTier')
     if (parsedPlan.depotExpansionTier !== undefined) markTabEdited('depotExpansionTier')
-    if (parsedPlan.recipeUnlocks !== undefined) markTabEdited('recipeUnlocks')
   }
 
   /**
@@ -314,7 +314,8 @@
     // somebody else's save.
     tab.depotUploadTier = parsedPlan.depotUploadTier
     tab.depotExpansionTier = parsedPlan.depotExpansionTier
-    tab.recipeUnlocks = parsedPlan.recipeUnlocks
+    tab.recipeUnlocks = unlocksForArrivingPlan(parsedPlan.recipeUnlocks, tab.recipeUnlocks)
+    if (tab.recipeUnlocks !== undefined) markTabEdited('recipeUnlocks')
     // Declared for whatever the blob actually stated. An absent value is not
     // declarable — the diff cannot carry "cleared" — so a blob that states none
     // leaves the room's own settings alone rather than silently clearing them.
@@ -330,7 +331,8 @@
     // Same for the Depot tiers: a bare-array blob predates them entirely.
     delete tab.depotUploadTier
     delete tab.depotExpansionTier
-    delete tab.recipeUnlocks
+    tab.recipeUnlocks = unlocksForArrivingPlan(undefined, tab.recipeUnlocks)
+    if (tab.recipeUnlocks !== undefined) markTabEdited('recipeUnlocks')
   }
 
   const refusal = (error: unknown) => error instanceof Error

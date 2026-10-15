@@ -10,11 +10,15 @@
 import { extractWorld } from '@/utils/game-save/extract-world'
 import type { ExtractOptions } from '@/utils/game-save/extract-world'
 import { parseSave, readSessionName } from '@/utils/game-save/save-parser'
+import { saveProblemOf } from '@/utils/game-save/errors'
+import type { SaveProblem } from '@/utils/game-save/errors'
 import type { SaveBytes } from '@/utils/game-save/chunks'
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
 
 export type { ExtractOptions } from '@/utils/game-save/extract-world'
 export { SaveFormatError } from '@/utils/game-save/chunks'
+export { SAVE_PROBLEM_REASONS, saveProblemOf } from '@/utils/game-save/errors'
+export type { SaveProblem } from '@/utils/game-save/errors'
 export type { SaveBytes } from '@/utils/game-save/chunks'
 export * from '@/utils/game-save/world-snapshot'
 
@@ -25,7 +29,7 @@ export interface ReadWorldRequest {
 
 export type ReadWorldResponse =
   | { ok: true, snapshot: WorldSnapshot } |
-  { ok: false, error: string }
+  { ok: false, error: string, problem: SaveProblem }
 
 export const readWorldFromSave = async (
   bytes: SaveBytes,
@@ -43,6 +47,6 @@ export const handleReadWorld = async (request: ReadWorldRequest): Promise<ReadWo
   try {
     return { ok: true, snapshot: await readWorldFromSave(request.bytes, request.options) }
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    return { ok: false, error: error instanceof Error ? error.message : String(error), problem: saveProblemOf(error) }
   }
 }

@@ -1,15 +1,35 @@
-import { readWorldFromSave } from '@/utils/game-save/index'
-import type { ExtractOptions, ReadWorldRequest, ReadWorldResponse, SaveBytes } from '@/utils/game-save/index'
+import { readWorldFromSave, SAVE_PROBLEM_REASONS, saveProblemOf } from '@/utils/game-save/index'
+import type { ExtractOptions, ReadWorldRequest, ReadWorldResponse, SaveBytes, SaveProblem } from '@/utils/game-save/index'
 import type { WorldSnapshot } from '@/utils/game-save/world-snapshot'
+
+/** A save the planner could not read, carrying the reason to show the player. */
+export class IncompatibleSaveError extends Error {
+  constructor (readonly problem: SaveProblem, detail: string) {
+    super(detail)
+    this.name = 'IncompatibleSaveError'
+  }
+
+  get reason (): string {
+    return SAVE_PROBLEM_REASONS[this.problem]
+  }
+}
+
+const OPTIONS: ExtractOptions = { recipesOnly: true }
 
 /**
  * Reads a .sav the player picked, on a worker so the page stays responsive while a large save
  * inflates. Falls back to this thread where workers are unavailable.
  */
-export const readSaveFile = async (file: File, options: ExtractOptions = {}): Promise<WorldSnapshot> => {
+export const readSaveFile = async (file: File): Promise<WorldSnapshot> => {
   const bytes: SaveBytes = new Uint8Array(await file.arrayBuffer())
 
-  if (typeof Worker === 'undefined') return readWorldFromSave(bytes, options)
+  if (typeof Worker === 'undefined') {
+    try {
+      return await readWorldFromSave(bytes, OPTIONS)
+    } catch (error) {
+      throw new IncompatibleSaveError(saveProblemOf(error), error instanceof Error ? error.message : String(error))
+    }
+  }
 
   const worker = new Worker(new URL('./game-save.worker.ts', import.meta.url), { type: 'module' })
   try {
@@ -17,9 +37,9 @@ export const readSaveFile = async (file: File, options: ExtractOptions = {}): Pr
       worker.onmessage = (event: MessageEvent<ReadWorldResponse>) => resolve(event.data)
       worker.onerror = event => reject(new Error(event.message || 'The save reader stopped unexpectedly.'))
       // Transferred rather than copied: the planner has no further use for the bytes.
-      worker.postMessage({ bytes, options } satisfies ReadWorldRequest, [bytes.buffer])
+      worker.postMessage({ bytes, options: OPTIONS } satisfies ReadWorldRequest, [bytes.buffer])
     })
-    if (!response.ok) throw new Error(response.error)
+    if (!response.ok) throw new IncompatibleSaveError(response.problem, response.error)
     return response.snapshot
   } finally {
     worker.terminate()

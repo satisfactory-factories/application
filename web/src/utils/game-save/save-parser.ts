@@ -91,11 +91,11 @@ const readHeaders = (reader: BinaryReader): Omit<SaveObject, 'data'>[] => {
 /** Parse an already-inflated save body. Split out so specs can drive it without decompressing. */
 export const parseSaveBody = (body: SaveBytes): ParsedSave => {
   const anchor = findAnchor(body)
-  if (anchor < 0) throw new SaveFormatError(`Could not find ${ANCHOR_CLASS}: unsupported save version.`)
+  if (anchor < 0) throw new SaveFormatError(`Could not find ${ANCHOR_CLASS}: unsupported save version.`, 'unsupported')
 
   const reader = new BinaryReader(body, anchor - ANCHOR_BACKTRACK)
   const headers = readHeaders(reader)
-  if (!headers.length) throw new SaveFormatError('No object headers could be read.')
+  if (!headers.length) throw new SaveFormatError('No object headers could be read.', 'unsupported')
 
   reader.skip(4) // marker, always 1
   reader.readString() // level name
@@ -104,7 +104,7 @@ export const parseSaveBody = (body: SaveBytes): ParsedSave => {
   const count = reader.readInt32()
 
   if (count !== headers.length) {
-    throw new SaveFormatError(`Save is misaligned: ${headers.length} object headers but ${count} data blocks.`)
+    throw new SaveFormatError(`Save is misaligned: ${headers.length} object headers but ${count} data blocks.`, 'unsupported')
   }
 
   const objects: SaveObject[] = []

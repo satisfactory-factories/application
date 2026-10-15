@@ -215,3 +215,21 @@ describe('extractWorld', () => {
     })
   })
 })
+
+describe('extractWorld, for a save that cannot be read', () => {
+  // An empty list would otherwise read as a world with every alternate locked.
+  it('refuses a save with no recipes in it, saying so', () => {
+    expect(() => extractWorld({ objects: [] })).toThrow(expect.objectContaining({ problem: 'noRecipes' }))
+  })
+})
+
+describe('extractWorld with recipesOnly', () => {
+  it('reads the recipes and skips the rest of the world', async () => {
+    const world = extractWorld(await parseSave(loadSaveFixture('fossil-fuel-rich')), { saveName: 'x', recipesOnly: true })
+    const full = worlds['fossil-fuel-rich']
+
+    expect(world.recipes).toEqual(full.recipes)
+    expect(world.nodes).toEqual({})
+    expect(world.extractors).toEqual([])
+  })
+})

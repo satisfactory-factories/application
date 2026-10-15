@@ -68,6 +68,7 @@ describe('Component: LoadSaveDialog', () => {
     input.dispatchEvent(new Event('change'))
 
     await vi.waitFor(() => expect(find('load-save-error')).not.toBeNull())
+    expect(find('load-save-error')!.textContent).toBe('That save is not compatible. It is not a Satisfactory save file.')
     expect(useAppStore().getCurrentTab()?.recipeUnlocks).toBeUndefined()
   })
 

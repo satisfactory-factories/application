@@ -74,3 +74,12 @@ export const isActiveRecipeLocked = (recipeId: string): boolean => {
   const state = active.value
   return !!state && state.alternates.has(recipeId) && !isAlternateUnlocked(state.unlocks, recipeId)
 }
+
+/**
+ * What a plan arriving without a save leaves on a tab that had one. Absent means "unchanged" on
+ * the sync wire, so the forgetting has to be stated or collaborators keep the old save.
+ */
+export const unlocksForArrivingPlan = (
+  arriving: RecipeUnlocks | undefined,
+  current: RecipeUnlocks | undefined
+): RecipeUnlocks | undefined => arriving ?? (current ? { save: null, overrides: {} } : undefined)
