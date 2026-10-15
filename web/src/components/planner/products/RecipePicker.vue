@@ -33,6 +33,11 @@
       <div class="recipe-picker-source text-caption text-medium-emphasis">
         Alternate ratings from
         <a :href="RECIPE_RATINGS_SOURCE.url" rel="noopener" target="_blank">{{ RECIPE_RATINGS_SOURCE.title }}</a>
+        <div class="recipe-picker-legend" data-testid="recipe-tier-legend">
+          <span>Best</span>
+          <recipe-picker-tags v-for="tier in TIER_ORDER" :key="tier" :alternate="false" :tier="tier" />
+          <span>Worst</span>
+        </div>
       </div>
     </template>
   </v-autocomplete>
@@ -135,5 +140,14 @@
 .recipe-picker-source {
   padding: 8px 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.recipe-picker-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
 }
 </style>
