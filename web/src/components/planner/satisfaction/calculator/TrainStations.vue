@@ -43,24 +43,14 @@
         label="Name"
         variant="outlined"
       />
-      <div class="d-flex align-center ga-2">
-        <span class="mr-2">Platforms</span>
-        <v-btn
-          density="comfortable"
-          icon="fas fa-minus"
-          size="small"
-          variant="text"
-          @click="newStationPlatforms = Math.max(1, newStationPlatforms - 1)"
-        />
-        <span class="text-h6 platform-count">{{ newStationPlatforms }}</span>
-        <v-btn
-          density="comfortable"
-          icon="fas fa-plus"
-          size="small"
-          variant="text"
-          @click="newStationPlatforms += 1"
-        />
-      </div>
+      <v-select
+        v-model="newStationPlatforms"
+        density="compact"
+        hide-details
+        :items="platformCounts"
+        label="Platforms"
+        variant="outlined"
+      />
       <p class="text-caption text-medium-emphasis mt-2">
         Suggested from this export's {{ formatNumber(request.amount) }}/min: {{ suggestion.platforms }} platforms on Mk.{{ suggestion.beltMark }} belts.
       </p>
@@ -99,10 +89,11 @@
   const addStationOpen = ref(false)
   const newStationName = ref('')
   const newStationPlatforms = ref(4)
+  const platformCounts = Array.from({ length: 10 }, (_, index) => index + 1)
 
   const openAddStation = () => {
     newStationName.value = `Station ${String.fromCharCode(65 + stations.value.length)}`
-    newStationPlatforms.value = suggestion.value.platforms
+    newStationPlatforms.value = Math.min(10, suggestion.value.platforms)
     addStationOpen.value = true
   }
 
@@ -130,8 +121,4 @@
   }
 }
 
-.platform-count {
-  min-width: 2ch;
-  text-align: center;
-}
 </style>

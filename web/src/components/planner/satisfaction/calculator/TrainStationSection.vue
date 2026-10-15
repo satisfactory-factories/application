@@ -30,77 +30,60 @@
         class="station-name"
         density="compact"
         hide-details
-        variant="plain"
+        label="Station name"
+        variant="outlined"
         @update:model-value="edited"
       />
-      <template v-if="collapsed">
-        <span class="text-body-2 text-medium-emphasis">{{ summary }}</span>
-      </template>
+      <span v-if="collapsed" class="text-body-2 text-medium-emphasis">{{ summary }}</span>
       <template v-else>
-        <div class="d-flex align-center">
-          <span class="text-caption text-medium-emphasis mr-1">Platforms</span>
-          <v-btn
-            density="compact"
-            icon="fas fa-minus"
-            size="x-small"
-            variant="text"
-            @click="changePlatforms(-1)"
-          />
-          <span class="platform-count">{{ station.platforms.length }}</span>
-          <v-btn
-            density="compact"
-            icon="fas fa-plus"
-            size="x-small"
-            variant="text"
-            @click="changePlatforms(1)"
-          />
-        </div>
-        <div class="d-flex align-center ga-1">
-          <span class="text-caption text-medium-emphasis">Belts</span>
-          <v-select
-            v-model="station.beltsPerPlatform"
-            class="compact-select"
-            density="compact"
-            hide-details
-            :items="[1, 2]"
-            variant="outlined"
-            @update:model-value="edited"
-          />
-          <span class="text-caption">&times;</span>
-          <v-select
-            v-model="station.beltMark"
-            class="compact-select"
-            density="compact"
-            hide-details
-            :items="beltMarks"
-            variant="outlined"
-            @update:model-value="edited"
-          />
-        </div>
-        <v-switch
-          v-model="station.buffered"
-          color="primary"
+        <v-select
+          class="compact-select"
           density="compact"
           hide-details
-          label="Buffered"
-          title="Containers on the platform belts, so a docking train no longer stalls them"
+          :items="platformCounts"
+          label="Platforms"
+          :model-value="station.platforms.length"
+          variant="outlined"
+          @update:model-value="setPlatforms"
+        />
+        <v-select
+          v-model="station.beltsPerPlatform"
+          class="compact-select"
+          density="compact"
+          hide-details
+          :items="[1, 2]"
+          label="Belts each"
+          variant="outlined"
           @update:model-value="edited"
         />
-        <v-chip v-for="problem in problems" :key="problem" class="sf-chip x-small status-warning-outlined" size="small">
-          {{ problem }}
-        </v-chip>
+        <v-select
+          v-model="station.beltMark"
+          class="compact-select"
+          density="compact"
+          hide-details
+          :items="beltMarks"
+          label="Belt mark"
+          variant="outlined"
+          @update:model-value="edited"
+        />
+        <div class="d-flex align-center">
+          <v-switch
+            v-model="station.buffered"
+            color="primary"
+            density="compact"
+            hide-details
+            label="Buffered"
+            @update:model-value="edited"
+          />
+          <tooltip-info
+            class="ml-1"
+            text="Has a container buffer: the platform belts run through storage containers.<br>A docking train stops a platform for 27 seconds. Without a buffer its belts stop too; with one they keep moving."
+          />
+        </div>
       </template>
-      <v-spacer />
       <v-menu>
         <template #activator="{ props: menuProps }">
-          <v-btn
-            v-bind="menuProps"
-            density="comfortable"
-            icon="fas fa-trash"
-            size="small"
-            title="Delete this station"
-            variant="text"
-          />
+          <v-btn v-bind="menuProps" prepend-icon="fas fa-trash" size="small" variant="text">Delete station</v-btn>
         </template>
         <v-list density="compact">
           <v-list-item @click="deleteStation">
@@ -110,10 +93,15 @@
       </v-menu>
     </div>
 
+    <div v-if="!collapsed && problems.length" class="d-flex flex-wrap ga-2 px-3 pb-2">
+      <v-chip v-for="problem in problems" :key="problem" class="sf-chip x-small status-warning-outlined no-margin" size="small">
+        {{ problem }}
+      </v-chip>
+    </div>
+
     <div v-if="!collapsed" class="station-body px-3 pb-3">
-      <div class="station-grid" :style="gridStyle">
-        <!-- Header row: the station as built. -->
-        <div />
+      <!-- Every row below shares these columns, so cars line up under their platform. -->
+      <div class="slot-row" :style="gridStyle">
         <div class="slot-label station-slot">Station</div>
         <v-menu v-for="(type, index) in station.platforms" :key="`platform-${index}`">
           <template #activator="{ props: menuProps }">
@@ -127,26 +115,34 @@
             </v-list-item>
           </v-list>
         </v-menu>
-        <div class="slot-label text-left pl-2">Round trip</div>
+      </div>
 
-        <!-- One row per train. -->
-        <template v-for="(trainFlow, trainIndex) in flow.trains" :key="trainFlow.train.id">
-          <div class="train-name">
-            <v-text-field
-              v-model="station.trains[trainIndex].name"
-              density="compact"
-              hide-details
-              variant="plain"
-              @update:model-value="edited"
-            />
-            <div class="text-caption" :class="carriesThisExport(trainFlow.train) ? 'text-primary' : 'text-medium-emphasis'">
-              {{ trainSources(trainFlow.train) }}
-            </div>
+      <div v-for="(trainFlow, trainIndex) in flow.trains" :key="trainFlow.train.id" class="train mt-3">
+        <!-- The name sits above its cars, so a long name never pushes the platforms around. -->
+        <div class="d-flex align-center flex-wrap ga-3 mb-1">
+          <v-text-field
+            v-model="station.trains[trainIndex].name"
+            class="train-name"
+            density="compact"
+            hide-details
+            label="Train name"
+            variant="outlined"
+            @update:model-value="edited"
+          />
+          <div class="d-flex align-center ga-1">
+            <span class="text-caption text-medium-emphasis">Round trip</span>
+            <train-round-trip :train="station.trains[trainIndex]" @edited="edited" />
           </div>
+          <v-btn prepend-icon="fas fa-trash" size="small" variant="text" @click="deleteTrain(trainFlow.train.id)">
+            Delete train
+          </v-btn>
+        </div>
+        <div class="text-caption text-medium-emphasis mb-2">Carries {{ trainCargo(trainFlow.train) }}</div>
 
+        <div class="slot-row" :style="gridStyle">
           <v-menu :close-on-content-click="false">
             <template #activator="{ props: menuProps }">
-              <button v-bind="menuProps" class="cell loco-cell" type="button">
+              <button v-bind="menuProps" class="cell loco-cell" title="Change the number of locomotives" type="button">
                 {{ trainFlow.train.locomotives > 1 ? `${trainFlow.train.locomotives} locos` : 'Loco' }}
               </button>
             </template>
@@ -223,38 +219,24 @@
             </button>
             <div v-else />
           </template>
-
-          <div class="d-flex align-center ga-1">
-            <train-round-trip :train="station.trains[trainIndex]" @edited="edited" />
-            <v-btn
-              density="comfortable"
-              icon="fas fa-times"
-              size="x-small"
-              title="Remove this train"
-              variant="text"
-              @click="deleteTrain(trainFlow.train.id)"
-            />
-          </div>
-        </template>
-
-        <!-- Totals: what each platform receives against what its belts can clear. -->
-        <template v-if="flow.trains.length > 0">
-          <div class="font-weight-bold totals-label">Delivered per platform</div>
-          <div />
-          <div
-            v-for="platform in flow.platforms"
-            :key="`total-${platform.index}`"
-            class="platform-total"
-            :class="{ overloaded: platform.overloaded }"
-            :title="`Its belts can clear ${formatNumber(platform.clearPerMin, 0)}/min`"
-          >
-            {{ formatNumber(platform.deliveredPerMin, 0) }}/min
-          </div>
-          <div />
-        </template>
+        </div>
       </div>
 
-      <div class="d-flex align-center ga-3 mt-2">
+      <!-- What each platform receives against what its belts can clear. -->
+      <div v-if="flow.trains.length > 0" class="slot-row totals-row mt-3" :style="gridStyle">
+        <div class="totals-label">Delivered</div>
+        <div
+          v-for="platform in flow.platforms"
+          :key="`total-${platform.index}`"
+          class="platform-total"
+          :class="{ overloaded: platform.overloaded }"
+          :title="`Its belts can clear ${formatNumber(platform.clearPerMin, 0)}/min`"
+        >
+          {{ formatNumber(platform.deliveredPerMin, 0) }}/min
+        </div>
+      </div>
+
+      <div class="d-flex align-center ga-3 mt-3">
         <v-btn
           color="primary"
           prepend-icon="fas fa-plus"
@@ -293,6 +275,7 @@
     TrainFlow,
   } from '@/utils/factory-management/train-logistics'
   import TrainRoundTrip from '@/components/planner/satisfaction/calculator/TrainRoundTrip.vue'
+  import TooltipInfo from '@/components/tooltip-info.vue'
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatNumber } from '@/utils/numberFormatter'
   import { markFactoryEdited } from '@/utils/sync-intent'
@@ -333,12 +316,11 @@
 
   const cargoLabel = (cargo: TrainCarCargo) => `${sourceName(cargo.factoryId)}: ${getPartDisplayName(cargo.part)}`
 
-  const carriesThisExport = (train: Train) => train.cars.some(car => car.cargo && cargoKey(car.cargo) === ownKey.value)
-
-  const trainSources = (train: Train) => {
-    if (carriesThisExport(train)) return 'this export'
+  // Named by source rather than "this export": the tab already says which export it is, and a
+  // station's trains carry other exports too.
+  const trainCargo = (train: Train) => {
     const sources = new Set(train.cars.filter(car => car.cargo).map(car => cargoLabel(car.cargo!)))
-    return sources.size ? [...sources].join(', ') : 'no cargo yet'
+    return sources.size ? [...sources].join(', ') : 'nothing yet'
   }
 
   const carAt = (trainFlow: TrainFlow, platformIndex: number): CarFlow | undefined =>
@@ -350,8 +332,14 @@
   })
 
   const gridStyle = computed(() => ({
-    gridTemplateColumns: `minmax(170px, 1fr) repeat(${props.station.platforms.length + 1}, 84px) 210px`,
+    gridTemplateColumns: `repeat(${props.station.platforms.length + 1}, 84px)`,
   }))
+
+  // Ten covers any station worth planning; a station saved with more keeps its own count.
+  const platformCounts = computed(() => {
+    const counts = Array.from({ length: 10 }, (_, index) => index + 1)
+    return counts.includes(props.station.platforms.length) ? counts : [...counts, props.station.platforms.length]
+  })
 
   const problems = computed(() => {
     const list: string[] = []
@@ -389,8 +377,8 @@
     return room >= 0 ? 'room-ok' : 'room-over'
   })
 
-  const changePlatforms = (delta: number) => {
-    setStationPlatformCount(props.station, props.station.platforms.length + delta)
+  const setPlatforms = (count: number) => {
+    setStationPlatformCount(props.station, count)
     edited()
   }
 
@@ -446,29 +434,37 @@
 }
 
 .station-name {
-  flex: 0 1 200px;
+  flex: 0 0 220px;
   font-weight: 600;
 }
 
-.compact-select {
-  flex: 0 0 auto;
-  min-width: 84px;
+.train-name {
+  flex: 0 0 240px;
 }
 
-.platform-count {
-  min-width: 2ch;
-  text-align: center;
+.compact-select {
+  flex: 0 0 120px;
 }
 
 .station-body {
   overflow-x: auto;
 }
 
-.station-grid {
+.slot-row {
   align-items: center;
   display: grid;
   gap: 6px;
-  min-width: max-content;
+  justify-content: start;
+}
+
+.train {
+  border-top: thin solid #3a3a3a;
+  padding-top: 12px;
+}
+
+.totals-label {
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .slot-label {
