@@ -135,4 +135,15 @@ describe('Component: RecipePicker', () => {
       expect(subject.find('[data-testid="recipe-selection-locked"]').exists()).toBe(true)
     })
   })
+
+  it('lists each recipe\'s ingredients with their per-minute rate for one building', () => {
+    const items = mountPicker('Wire', 'Wire').findComponent(VAutocomplete).props('items') as any[]
+
+    expect(items.find(item => item.value === 'Wire')?.ingredients).toEqual([
+      { part: 'CopperIngot', label: 'Copper Ingot: 15/min' },
+    ])
+    expect(items.find(item => item.value === 'Alternate_FusedWire')?.ingredients.map((i: any) => i.part))
+      .toEqual(['CopperIngot', 'GoldIngot'])
+  })
 })
+
