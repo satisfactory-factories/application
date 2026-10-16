@@ -146,4 +146,3 @@ describe('Component: RecipePicker', () => {
       .toEqual(['CopperIngot', 'GoldIngot'])
   })
 })
-
