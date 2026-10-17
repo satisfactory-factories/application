@@ -25,11 +25,11 @@
       </span>
     </template>
     <template #item="{ props: itemProps, item }">
-      <v-list-item v-bind="itemProps" :data-recipe="item.value" title="">
+      <v-list-item v-bind="itemProps" class="recipe-picker-item" :data-recipe="item.value" title="">
         <span class="recipe-picker-row" :class="{ locked: item.locked }">
           <span class="recipe-picker-name">{{ item.name }}</span>
           <span class="recipe-picker-meta">
-            <span class="recipe-picker-tags-line">
+            <span v-if="item.alternate || item.tier || (save && item.lockable)" class="recipe-picker-tags-line">
               <recipe-picker-tags :alternate="item.alternate" :tier="item.tier" />
               <!-- Only once a save is loaded: until then nothing is locked, so there is nothing to say. -->
               <tooltip v-if="save && item.lockable" :text="lockTooltip(item)">
@@ -160,12 +160,17 @@
   padding: 4px 0;
 }
 
-// Held open on a standard recipe, so its ingredients sit on the same line as every other row's.
 .recipe-picker-tags-line {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 20px;
+}
+
+// Every row the same height and ruled off, so close-set ingredient pictures read as one recipe's.
+// On a row with no tags, the ingredients centre in that height.
+.recipe-picker-item {
+  min-height: 64px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .recipe-picker-ingredients {
