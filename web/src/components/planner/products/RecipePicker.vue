@@ -7,6 +7,7 @@
     hide-details
     :items="items"
     label="Recipe"
+    :menu-props="{ maxHeight: 440 }"
     :model-value="modelValue"
     variant="outlined"
     @update:focused="focused = $event"
@@ -24,25 +25,40 @@
       </span>
     </template>
     <template #item="{ props: itemProps, item }">
-      <v-list-item v-bind="itemProps" :data-recipe="item.value" title="">
+      <v-list-item v-bind="itemProps" class="recipe-picker-item" :data-recipe="item.value" title="">
         <span class="recipe-picker-row" :class="{ locked: item.locked }">
           <span class="recipe-picker-name">{{ item.name }}</span>
-          <recipe-picker-tags :alternate="item.alternate" :tier="item.tier" />
-          <!-- Only once a save is loaded: until then nothing is locked, so there is nothing to say. -->
-          <tooltip v-if="save && item.lockable" :text="lockTooltip(item)">
-            <button
-              class="recipe-picker-lock"
-              :class="{ locked: item.locked, overridden: item.overridden }"
-              :data-testid="`recipe-lock-${item.value}`"
-              type="button"
-              @click.stop="toggle(item.value)"
-              @mousedown.stop
-            >
-              <!-- Wrapped: Font Awesome swaps the <i> for an <svg> Vue no longer owns. -->
-              <span v-if="item.locked" key="locked"><i class="fas fa-lock" /></span>
-              <span v-else key="unlocked"><i class="fas fa-lock-open" /></span>
-            </button>
-          </tooltip>
+          <span class="recipe-picker-meta">
+            <span v-if="item.alternate || item.tier || (save && item.lockable)" class="recipe-picker-tags-line">
+              <recipe-picker-tags :alternate="item.alternate" :tier="item.tier" />
+              <!-- Only once a save is loaded: until then nothing is locked, so there is nothing to say. -->
+              <tooltip v-if="save && item.lockable" :text="lockTooltip(item)">
+                <button
+                  class="recipe-picker-lock"
+                  :class="{ locked: item.locked, overridden: item.overridden }"
+                  :data-testid="`recipe-lock-${item.value}`"
+                  type="button"
+                  @click.stop="toggle(item.value)"
+                  @mousedown.stop
+                >
+                  <!-- Wrapped: Font Awesome swaps the <i> for an <svg> Vue no longer owns. -->
+                  <span v-if="item.locked" key="locked"><i class="fas fa-lock" /></span>
+                  <span v-else key="unlocked"><i class="fas fa-lock-open" /></span>
+                </button>
+              </tooltip>
+            </span>
+            <span v-if="item.ingredients.length" class="recipe-picker-ingredients" data-testid="recipe-ingredients">
+              <game-asset
+                v-for="ingredient in item.ingredients"
+                :key="ingredient.part"
+                height="24px"
+                :subject="ingredient.part"
+                :tooltip="ingredient.label"
+                type="item"
+                width="24px"
+              />
+            </span>
+          </span>
         </span>
       </v-list-item>
     </template>
@@ -66,6 +82,8 @@
   import { getRecipeRating, matchesRecipeQuery, RECIPE_RATINGS_SOURCE, RecipeTier, TIER_ORDER } from '@/utils/recipe-ratings'
   import { useRecipeUnlocks } from '@/composables/useRecipeUnlocks'
   import { isLockableRecipe } from '@/utils/recipe-unlocks'
+  import { getPartDisplayName } from '@/utils/helpers'
+  import { formatNumber } from '@/utils/numberFormatter'
   import type { FilterFunction } from 'vuetify'
 
   defineOptions({ inheritAttrs: false })
@@ -92,6 +110,11 @@
       lockable: isLockableRecipe(recipe.id),
       locked: !isUnlocked(recipe.id),
       overridden: isOverridden(recipe.id),
+      // Per minute for one building at 100%, as the game's own recipe screen counts it.
+      ingredients: recipe.ingredients.map(ingredient => ({
+        part: ingredient.part,
+        label: `${getPartDisplayName(ingredient.part)}: ${formatNumber(ingredient.perMin)}/min`,
+      })),
     }))
     .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name)))
 
@@ -126,6 +149,33 @@
   gap: 6px;
   min-width: 0;
   width: 100%;
+}
+
+.recipe-picker-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.recipe-picker-tags-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// Every row the same height and ruled off, so close-set ingredient pictures read as one recipe's.
+// On a row with no tags, the ingredients centre in that height.
+.recipe-picker-item {
+  min-height: 64px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.recipe-picker-ingredients {
+  display: flex;
+  gap: 4px;
 }
 
 .recipe-picker :deep(.v-field__input) {
