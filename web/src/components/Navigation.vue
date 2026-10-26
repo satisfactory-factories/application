@@ -7,7 +7,7 @@
     </v-btn>
     <template v-else>
       <img alt="Site logo" class="ml-3 site-logo" src="/assets/img/SF.png" style="max-width: 48px;">
-      <h1 class="ml-3 font-weight-bold text-h6">Satisfactory Factories</h1>
+      <h1 class="ml-3 font-weight-bold text-h6 site-title">Satisfactory Factories</h1>
       <span class="ml-2">
         <v-chip class="sf-chip small beta-chip" data-testid="release-badge">
           {{ releaseBadge }}
@@ -191,6 +191,13 @@
   color: #fff !important;
   border-color: rgba(255, 251, 0, 0.55) !important;
   background-color: rgba(118, 121, 24, 0.28);
+}
+
+// Squeezed between the logo and the tabs, the title wraps onto two lines at
+// lg widths (a portrait monitor, or a narrow window). text-h6's 2rem line
+// height left a big gap between the lines there, so pull them together.
+.site-title {
+  line-height: 1.15 !important;
 }
 
 .site-logo {
