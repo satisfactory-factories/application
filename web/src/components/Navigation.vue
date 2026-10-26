@@ -7,7 +7,7 @@
     </v-btn>
     <template v-else>
       <img alt="Site logo" class="ml-3 site-logo" src="/assets/img/SF.png" style="max-width: 48px;">
-      <h1 class="ml-3 font-weight-bold text-h6 site-title" :class="{ compact: lg }">Satisfactory Factories</h1>
+      <h1 class="ml-3 font-weight-bold text-h6 site-title">Satisfactory Factories</h1>
       <span class="ml-2">
         <v-chip class="sf-chip small beta-chip" data-testid="release-badge">
           {{ releaseBadge }}
@@ -68,7 +68,7 @@
   import eventBus from '@/utils/eventBus'
   import { sfColors } from '@/utils/colors'
   import { config } from '@/config/config'
-  const { mdAndDown, lg } = useDisplay()
+  const { mdAndDown } = useDisplay()
 
   // Read off the build rather than typed in, because a hardcoded badge is only ever right until
   // the next release. The whole version, patch included: it used to be trimmed to major.minor,
@@ -193,17 +193,11 @@
   background-color: rgba(118, 121, 24, 0.28);
 }
 
-// Squeezed between the logo and the tabs, the title wrapped onto two lines at
-// lg widths (a portrait monitor, or a narrow window), doubling the header's
-// height. Keep it to one line, and a touch smaller there so the tabs keep room.
+// Squeezed between the logo and the tabs, the title wraps onto two lines at
+// lg widths (a portrait monitor, or a narrow window). text-h6's 2rem line
+// height left a big gap between the lines there, so pull them together.
 .site-title {
-  flex-shrink: 0;
-  white-space: nowrap;
-
-  &.compact {
-    font-size: 1rem !important;
-    line-height: 1.2 !important;
-  }
+  line-height: 1.15 !important;
 }
 
 .site-logo {
