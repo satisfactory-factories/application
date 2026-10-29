@@ -54,6 +54,11 @@ describe('PlannerFactoryChecklist intermediates', () => {
 
     expect(rows(wrapper)).toEqual(['0:Iron Plate'])
     expect(wrapper.text()).toContain('1 intermediate line hidden.')
+
+    await wrapper.find('[data-testid="checklist-show-intermediates"]').trigger('click')
+
+    expect(rows(wrapper)).toEqual(['0:Iron Plate', '1:Iron Ingot'])
+    expect(useChecklistIntermediates().showIntermediates.value).toBe(true)
   })
 
   it('offers no switch when the factory has no intermediates', () => {

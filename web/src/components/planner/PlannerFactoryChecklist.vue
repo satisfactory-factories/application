@@ -140,10 +140,21 @@
                 </tr>
               </tbody>
             </v-table>
-            <p v-if="hiddenIntermediateCount > 0" class="text-body-2 text-medium-emphasis mt-1 mb-0">
-              {{ hiddenIntermediateCount }} intermediate
-              {{ hiddenIntermediateCount === 1 ? 'line' : 'lines' }} hidden.
-            </p>
+            <div v-if="hiddenIntermediateCount > 0" class="d-flex align-center ga-2 mt-1">
+              <span class="text-body-2 text-medium-emphasis">
+                {{ hiddenIntermediateCount }} intermediate
+                {{ hiddenIntermediateCount === 1 ? 'line' : 'lines' }} hidden.
+              </span>
+              <v-btn
+                color="primary"
+                data-testid="checklist-show-intermediates"
+                prepend-icon="fas fa-eye"
+                size="x-small"
+                variant="flat"
+                @click="showIntermediates = true"
+              >Show
+              </v-btn>
+            </div>
           </div>
           <div v-if="factory.powerProducers.length > 0" class="checklist-group">
             <p class="checklist-group-title">Power</p>
