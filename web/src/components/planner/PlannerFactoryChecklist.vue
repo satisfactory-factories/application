@@ -176,13 +176,8 @@
           <div v-if="factory.powerProducers.length > 0" class="checklist-group">
             <p class="checklist-group-title">Power</p>
             <v-table class="checklist-table" density="compact">
-              <thead>
-                <tr>
-                  <th class="tick-col" />
-                  <th />
-                  <th v-if="showPlanned" class="planned-col">Planned</th>
-                </tr>
-              </thead>
+              <!-- No heading row: the group title already says these are power buildings, and
+                   the planned chip reads "10 buildings" on its own. -->
               <tbody>
                 <tr v-for="(producer, producerIndex) in factory.powerProducers" :key="producerIndex" class="checklist-row">
                   <td class="tick-col">
