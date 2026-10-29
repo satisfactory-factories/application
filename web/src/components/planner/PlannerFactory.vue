@@ -493,6 +493,8 @@
 
 .factory-name {
   width: 85%;
+  // Lets the input, not the group chip beside it, give up the room on a narrow title line.
+  min-width: 0;
   padding: 6px;
 
   // A name the text rules refuse. Blur rejects it with a toast; this says so while typing.

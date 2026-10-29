@@ -81,6 +81,9 @@
 .group-chip {
   cursor: pointer;
   margin: 0 0 0 12px !important;
+  /* Never give up width to the name input beside it: squeezed, the chip clips the group's name
+     mid-word against its own right edge. */
+  flex-shrink: 0;
 }
 
 /* .sf-chip's border is `!important`, so the group colour needs to be too or the chip stays grey. */
