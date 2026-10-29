@@ -13,6 +13,8 @@ import {
   checklistDesyncReason,
   checklistExportDesync,
   checklistExportKey,
+  checklistPlannedRate,
+  checklistProductTree,
   checklistSummaryState,
   checklistTickTitle,
   countChecklistCompleted,
@@ -881,6 +883,62 @@ describe('checklist', () => {
       expect(isProductChecklistDesynced(factory.products[0])).toBe(false)
       expect(isProductChecklistDesynced(factory.products[1])).toBe(true)
       expect(factory.inSync).toBe(false)
+    })
+  })
+
+  describe('checklistProductTree', () => {
+    const line = (id: string, requirements: string[] = [], displayOrder = 0): FactoryItem => ({
+      id,
+      amount: 10,
+      displayOrder,
+      requirements: Object.fromEntries(requirements.map(part => [part, { amount: 1 }])),
+    } as unknown as FactoryItem)
+
+    const shape = (factory: ReturnType<typeof newFactory>) =>
+      checklistProductTree(factory).map(node => `${node.depth}:${node.product.id}`)
+
+    it('indents a line under the first line that consumes its output', () => {
+      const factory = newFactory('Rods', 0, 1)
+      factory.products = [
+        line('UraniumFuelRod', ['UraniumCell', 'ElectromagneticControlRod']),
+        line('UraniumCell', ['SulfuricAcid']),
+        line('SulfuricAcid'),
+        line('ElectromagneticControlRod'),
+        line('Wire'),
+      ]
+
+      expect(shape(factory)).toEqual([
+        '0:UraniumFuelRod',
+        '1:UraniumCell',
+        '2:SulfuricAcid',
+        '1:ElectromagneticControlRod',
+        '0:Wire',
+      ])
+    })
+
+    it('shows a shared intermediate once, under its first consumer', () => {
+      const factory = newFactory('Plates', 0, 1)
+      factory.products = [
+        line('ReinforcedIronPlate', ['IronPlate']),
+        line('ModularFrame', ['IronPlate']),
+        line('IronPlate'),
+      ]
+
+      expect(shape(factory)).toEqual(['0:ReinforcedIronPlate', '1:IronPlate', '0:ModularFrame'])
+    })
+
+    it('keeps every line of a loop with no root to start from', () => {
+      const factory = newFactory('Loop', 0, 1)
+      factory.products = [line('Rubber', ['Plastic']), line('Plastic', ['Rubber'])]
+
+      expect(shape(factory)).toEqual(['0:Rubber', '1:Plastic'])
+    })
+  })
+
+  describe('checklistPlannedRate', () => {
+    it('reads as a per-minute rate', () => {
+      expect(checklistPlannedRate(0.4)).toBe('0.4/min')
+      expect(checklistPlannedRate(120)).toBe('120/min')
     })
   })
 })
