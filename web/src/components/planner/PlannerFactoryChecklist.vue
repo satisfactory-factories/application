@@ -115,7 +115,7 @@
                       <template v-for="(through, level) in node.throughLines" :key="level">
                         <span v-if="through" class="tree-line" :style="treeLineLeft(level + 1)" />
                       </template>
-                      <span class="tree-elbow" :style="treeLineLeft(node.depth)" />
+                      <span class="tree-elbow" :class="{ tee: !node.isLast }" :style="treeLineLeft(node.depth)" />
                       <span v-if="!node.isLast" class="tree-line" :style="treeLineLeft(node.depth)" />
                     </template>
                     <div class="item-inner" :style="{ paddingLeft: `${node.depth * TREE_INDENT}px` }">
@@ -605,6 +605,16 @@
   border-bottom-left-radius: 3px;
   bottom: 50%;
   width: 16px;
+}
+
+// A row with siblings still to come already has the straight line running through it, so its
+// elbow is only the branch off that line. Drawing the elbow's own upright on top of it doubled the
+// translucent stroke into a visibly thicker line.
+.tree-elbow.tee {
+  border-bottom-left-radius: 0;
+  border-left: none;
+  margin-left: 2px;
+  width: 14px;
 }
 
 .checklist-jump {
