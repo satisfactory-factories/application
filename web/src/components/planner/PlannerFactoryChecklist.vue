@@ -109,9 +109,16 @@
                   :data-depth="node.depth"
                   data-testid="checklist-product-row"
                 >
-                  <td class="item-cell">
-                    <div class="item-inner" :style="{ '--indent': `${node.depth * 28}px` }">
-                      <span v-if="node.depth > 0" class="intermediate-branch" />
+                  <td class="item-cell tree-cell">
+                    <span v-if="node.hasChildren && showIntermediates" class="tree-stub" :style="treeLineLeft(node.depth + 1)" />
+                    <template v-if="node.depth > 0">
+                      <template v-for="(through, level) in node.throughLines" :key="level">
+                        <span v-if="through" class="tree-line" :style="treeLineLeft(level + 1)" />
+                      </template>
+                      <span class="tree-elbow" :style="treeLineLeft(node.depth)" />
+                      <span v-if="!node.isLast" class="tree-line" :style="treeLineLeft(node.depth)" />
+                    </template>
+                    <div class="item-inner" :style="{ paddingLeft: `${node.depth * TREE_INDENT}px` }">
                       <input
                         :key="`${node.product.id}-${!!node.product.completed}`"
                         :checked="!!node.product.completed"
@@ -119,7 +126,7 @@
                         :class="{ desynced: isProductChecklistDesynced(node.product) }"
                         title="Mark as built"
                         type="checkbox"
-                        @click.prevent="toggleChecklistProduct(factory, node.product)"
+                        @click.prevent="toggleChecklistProductTree(factory, node.product)"
                       >
                       <game-asset
                         v-if="node.product.id"
@@ -387,6 +394,7 @@
     toggleChecklistInput,
     toggleChecklistPowerProducer,
     toggleChecklistProduct,
+    toggleChecklistProductTree,
   } from '@/utils/factory-management/checklist'
 
   const props = defineProps<{
@@ -413,6 +421,11 @@
   }
 
   const productTree = computed(() => checklistProductTree(props.factory))
+
+  // Each level of the tree steps in by this much. A level's lines run down the middle of the
+  // tick one level up (an 18px box, so 9px in), which is what makes them meet the parent's tick.
+  const TREE_INDENT = 28
+  const treeLineLeft = (level: number) => ({ left: `${(level - 1) * TREE_INDENT + 8}px` })
   const { showIntermediates, showPlanned } = useChecklistDisplay()
   const hasIntermediates = computed(() => productTree.value.some(node => node.depth > 0))
   // Hidden rather than dropped from the counts: the ticks still exist and still count, the
@@ -550,8 +563,6 @@
   align-items: center;
   display: flex;
   gap: 8px;
-  padding-left: var(--indent, 0px);
-  position: relative;
 }
 
 // The planned number sits in its own narrow column, right against the item, so a column of
@@ -562,16 +573,34 @@
   width: 1%;
 }
 
-// The elbow joining an intermediate to the line above it: a drawn corner rather than a glyph, so
-// it lines up with the parent's tick at any depth.
-.intermediate-branch {
-  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+// The tree lines joining an intermediate to the line that consumes it. Drawn on the cell rather
+// than inside the row's content so they run its full height, padding and border included, and so
+// meet the lines in the rows above and below. A straight line carries a level down past a row; an
+// elbow turns into the row's own tick, and stops there when the row is the last of its siblings.
+.tree-cell {
+  position: relative;
+}
+
+.tree-line,
+.tree-elbow,
+.tree-stub {
   border-left: 2px solid rgba(255, 255, 255, 0.3);
-  border-bottom-left-radius: 3px;
-  height: 26px;
-  left: calc(var(--indent) - 20px);
+  bottom: -1px;
   position: absolute;
-  top: -14px;
+  top: 0;
+  width: 0;
+}
+
+// From the bottom of the row's own tick down to the row's bottom edge, where its first child's elbow
+// picks the line up.
+.tree-stub {
+  top: calc(50% + 9px);
+}
+
+.tree-elbow {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  border-bottom-left-radius: 3px;
+  bottom: 50%;
   width: 16px;
 }
 

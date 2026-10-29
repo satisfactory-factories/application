@@ -56,7 +56,7 @@
           :class="{ desynced: isProductChecklistDesynced(product) }"
           :title="checklistTickTitle(productChecklistDesync(product), 'Mark this product as built')"
           type="checkbox"
-          @click.prevent="toggleChecklistProduct(factory, product)"
+          @click.prevent="toggleChecklistProductTree(factory, product)"
         >
       </div>
       <div class="input-row d-flex align-center">
@@ -342,7 +342,7 @@
     checklistTickTitle,
     isProductChecklistDesynced,
     productChecklistDesync,
-    toggleChecklistProduct,
+    toggleChecklistProductTree,
   } from '@/utils/factory-management/checklist'
   import { getPartDisplayName } from '@/utils/helpers'
   import { fixTargetSuffix, formatMw, formatNumber, formatNumberFully } from '@/utils/numberFormatter'
