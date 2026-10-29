@@ -179,7 +179,7 @@
               <thead>
                 <tr>
                   <th class="tick-col" />
-                  <th>Building</th>
+                  <th />
                   <th v-if="showPlanned" class="planned-col">Planned</th>
                 </tr>
               </thead>
