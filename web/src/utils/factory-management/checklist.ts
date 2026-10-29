@@ -29,6 +29,7 @@ import { getRequestsForFactory } from '@/utils/factory-management/exports'
 import { setSyncState } from '@/utils/factory-management/syncState'
 import { formatNumber } from '@/utils/numberFormatter'
 import { markFactoryEdited } from '@/utils/sync-intent'
+import { useChecklistDisplay } from '@/composables/useChecklistDisplay'
 
 export const checklistExportKey = (requestingFactoryId: number | string, part: string): string =>
   `${requestingFactoryId}:${part}`
@@ -440,6 +441,17 @@ export const checklistDesyncReason = (desync: ChecklistDesync): string =>
 export const checklistTickTitle = (desync: ChecklistDesync | null, fallback: string): string =>
   desync ? checklistDesyncReason(desync) : fallback
 
+// The product lines the checklist currently asks the player to tick. With intermediates hidden,
+// only the lines the factory exists to make: a hidden row can be neither seen nor ticked, so
+// counting it would leave a factory that can never read as complete, or one that reads as
+// complete only because of rows the player cannot see. The hidden rows keep their ticks, and they
+// count again the moment intermediates are shown. Read through the display preference so every
+// summary (header, sidebar, status chips) follows the switch without being told.
+export const checklistCountedProducts = (factory: Factory): FactoryItem[] => {
+  if (useChecklistDisplay().showIntermediates.value) return factory.products
+  return checklistProductTree(factory).filter(node => node.depth === 0).map(node => node.product)
+}
+
 // One desynced row, named well enough for a summary to list it without re-deriving which of the
 // four lists it came from. Part / building / factory ids stay raw: turning them into display
 // names needs the game data, which is a component's job rather than this module's.
@@ -460,7 +472,7 @@ export interface ChecklistDesyncEntry {
 export const listChecklistDesyncs = (factory: Factory): ChecklistDesyncEntry[] => {
   const entries: ChecklistDesyncEntry[] = []
 
-  factory.products.forEach(product => {
+  checklistCountedProducts(factory).forEach(product => {
     const desync = productChecklistDesync(product)
     if (desync) entries.push({ kind: 'product', desync, part: product.id })
   })
@@ -491,7 +503,7 @@ export const countChecklistDesynced = (factory: Factory): number => listChecklis
 // never quietly baseline something the player has not ticked. Deliberately lighter than
 // setSyncState, which also claims the whole factory matches the game.
 export const acknowledgeChecklistDesyncs = (factory: Factory): void => {
-  factory.products.forEach(product => {
+  checklistCountedProducts(factory).forEach(product => {
     if (productChecklistDesync(product)) product.checklistSyncedAmount = product.amount
   })
   factory.powerProducers.forEach(producer => {
@@ -517,21 +529,21 @@ export const acknowledgeChecklistDesyncs = (factory: Factory): void => {
 // render inside an expanded factory card, so without this a collapsed factory and the sidebar
 // would show a confident green N/N over rows that have all drifted.
 export const hasChecklistDesync = (factory: Factory): boolean =>
-  factory.products.some(isProductChecklistDesynced) ||
+  checklistCountedProducts(factory).some(isProductChecklistDesynced) ||
   factory.powerProducers.some(isPowerProducerChecklistDesynced) ||
   factory.inputs.some(isInputChecklistDesynced) ||
   getRequestsForFactory(factory).some(request =>
     isChecklistExportDesynced(factory, request.requestingFactoryId, request.part, request.amount))
 
-// Total checklist items this factory currently has: one per product, per power producer, per
-// import, and per (destination, part) export pair. Recomputed rather than stored, so it always
-// matches the plan.
+// Total checklist items this factory currently has: one per product shown (see
+// checklistCountedProducts), per power producer, per import, and per (destination, part) export
+// pair. Recomputed rather than stored, so it always matches the plan.
 export const countChecklistTotal = (factory: Factory): number =>
-  factory.products.length + factory.powerProducers.length + factory.inputs.length +
+  checklistCountedProducts(factory).length + factory.powerProducers.length + factory.inputs.length +
   getRequestsForFactory(factory).length
 
 export const countChecklistCompleted = (factory: Factory): number => {
-  const products = factory.products.filter(product => product.completed).length
+  const products = checklistCountedProducts(factory).filter(product => product.completed).length
   const powerProducers = factory.powerProducers.filter(producer => producer.completed).length
   const inputs = factory.inputs.filter(input => input.completed).length
   const exports = getRequestsForFactory(factory)
@@ -597,3 +609,94 @@ export const checklistTextClass = (factory: Factory): string => {
     default: return ''
   }
 }
+
+// The Products group as a build list rather than a flat one. A product line whose output another
+// line here consumes is an intermediate: it is part of building that other line, so it sits
+// indented under the first line (in display order) that eats it, keeping its own tick and its own
+// planned number. Everything nobody here consumes is a root: what the factory exists to make.
+//
+// A line can only appear once, so an intermediate two lines share hangs off the first of them.
+// Loops (rubber and plastic feeding each other's recycled recipes) leave no root to start from, so
+// anything the walk has not reached by the end is emitted as a root of its own rather than
+// silently dropped from the checklist.
+export interface ChecklistProductNode {
+  product: FactoryItem
+  depth: number
+  // What the row draws to join it to the tree, so the lines meet from one row to the next. Only
+  // meaningful below the roots.
+  // - isLast: the last child of its parent, so its elbow stops at the row's middle instead of
+  //   carrying on down to the next sibling.
+  // - throughLines: one entry per level above its own (levels 1 to depth - 1): whether the
+  //   vertical line at that level passes straight through this row, because the ancestor at that
+  //   level still has a sibling to come.
+  isLast: boolean
+  throughLines: boolean[]
+  // Has intermediates of its own: the row starts the line down to them from under its tick.
+  hasChildren: boolean
+}
+
+export const checklistProductTree = (factory: Factory): ChecklistProductNode[] => {
+  const products = factory.products
+  const parentOf = new Map<FactoryItem, FactoryItem>()
+
+  products.forEach(intermediate => {
+    const consumer = products.find(product =>
+      product !== intermediate && product.requirements?.[intermediate.id] !== undefined)
+    if (consumer) parentOf.set(intermediate, consumer)
+  })
+
+  const nodes: ChecklistProductNode[] = []
+  const visited = new Set<FactoryItem>()
+
+  const walk = (product: FactoryItem, depth: number, isLast: boolean, throughLines: boolean[]) => {
+    visited.add(product)
+    const children = products.filter(child => parentOf.get(child) === product && !visited.has(child))
+    nodes.push({ product, depth, isLast, throughLines, hasChildren: children.length > 0 })
+    // A root draws no line of its own, so its children inherit nothing from it.
+    const childLines = depth === 0 ? [] : [...throughLines, !isLast]
+    children.forEach((child, index) => {
+      if (!visited.has(child)) walk(child, depth + 1, index === children.length - 1, childLines)
+    })
+  }
+
+  products.filter(product => !parentOf.has(product)).forEach(product => walk(product, 0, true, []))
+  products.filter(product => !visited.has(product)).forEach(product => {
+    if (!visited.has(product)) walk(product, 0, true, [])
+  })
+
+  return nodes
+}
+
+// Every line under `product` in the tree: its intermediates, theirs, and so on down.
+export const checklistProductDescendants = (factory: Factory, product: FactoryItem): FactoryItem[] => {
+  const nodes = checklistProductTree(factory)
+  const start = nodes.findIndex(node => node.product === product)
+  if (start === -1) return []
+  const descendants: FactoryItem[] = []
+  for (let i = start + 1; i < nodes.length && nodes[i].depth > nodes[start].depth; i++) {
+    descendants.push(nodes[i].product)
+  }
+  return descendants
+}
+
+// Ticking a line in the checklist ticks everything under it as well: building a line means
+// building what feeds it, so a player who marks the fuel rods done has built the cells too.
+// Only ticking cascades. Unticking leaves the intermediates alone, since taking down one line
+// does not take down what feeds it. Re-confirming a desynced tick is not a fresh tick, so it
+// does not cascade either. Rows already ticked keep their own baseline.
+export const toggleChecklistProductTree = (factory: Factory, product: FactoryItem): void => {
+  const wasTicked = !!product.completed
+  toggleChecklistProduct(factory, product)
+  if (wasTicked || !product.completed) return
+
+  checklistProductDescendants(factory, product).forEach(descendant => {
+    if (descendant.completed) return
+    descendant.completed = true
+    descendant.checklistSyncedAmount = descendant.amount
+  })
+  markFactoryEdited(factory)
+}
+
+// The planned rate a checklist row is about, as the row shows it beside the item. Only the plan's
+// own number: the tick still means "built", and Satisfaction is where supply meets demand.
+export const checklistPlannedRate = (amount: number): string => `${formatNumber(amount)}/min`

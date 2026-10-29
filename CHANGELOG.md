@@ -4,6 +4,7 @@ All notable changes to this project are documented in this file. It mirrors the 
 
 ## Unreleased
 
+- **The sidebar's expand buttons work from a factory page again.** The expand arrows on each factory group, and the one beside the plan's factory count, open the fullscreen Factories Summary wherever you are. Since factories got a page of their own, they only worked from the overview and did nothing on a factory.
 - **The Recipe picker shows each recipe's ingredients.** Rows in the picker are taller, with a picture of every ingredient under the Alt and tier badges. Hovering one names it and says how many a minute one building uses at 100%.
 - **Check your plan against your game save.** A new **Game options** button beside **Options** opens a dialog where you load a Satisfactory save. The planner reads it in your browser and keeps what it has unlocked: every recipe, every building, and the tiers reached. That list stays with the plan and syncs with it, and **Forget save** clears it. A file it cannot read is refused as not compatible, with the reason. The **Import world [WIP]** button is gone.
 - **Locked recipes get a padlock.** Once a save is loaded, the Recipe picker shows a padlock on each recipe and greys out the ones the save has not unlocked, standard recipes included. Clicking a padlock marks the recipe unlocked or locked by hand, and the mark survives loading a newer save. The tick beside the selected recipe is gone.

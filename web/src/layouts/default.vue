@@ -28,7 +28,7 @@
       <div class="bottom-notices">
         <backend-health-banner />
         <offline-prompt />
-        <survey-banner />
+        <!-- SurveyBanner is off between surveys; put it back here to run the next one. -->
       </div>
       <version-prompt />
       <update-required-dialog />
@@ -48,7 +48,6 @@
   import OfflineConflictDialog from '@/components/sync/OfflineConflictDialog.vue'
   import OfflinePrompt from '@/components/sync/OfflinePrompt.vue'
   import VersionPrompt from '@/components/sync/VersionPrompt.vue'
-  import SurveyBanner from '@/components/SurveyBanner.vue'
   import { useBackendHealthStore } from '@/stores/backend-health-store'
   import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'

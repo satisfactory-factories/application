@@ -5,14 +5,19 @@ import { updateDependency } from '@/utils/factory-management/dependencies'
 import { setSyncState } from '@/utils/factory-management/syncState'
 import { mockPowerProducer } from '@/utils/factory-management/status-fixtures'
 import eventBus from '@/utils/eventBus'
+import { useChecklistDisplay } from '@/composables/useChecklistDisplay'
 import {
   acknowledgeChecklistDesyncs,
   applyLinkedExportTick,
   applyLinkedImportTick,
+  checklistCountedProducts,
   checklistDesyncChange,
   checklistDesyncReason,
   checklistExportDesync,
   checklistExportKey,
+  checklistPlannedRate,
+  checklistProductDescendants,
+  checklistProductTree,
   checklistSummaryState,
   checklistTickTitle,
   countChecklistCompleted,
@@ -41,6 +46,7 @@ import {
   toggleChecklistInput,
   toggleChecklistPowerProducer,
   toggleChecklistProduct,
+  toggleChecklistProductTree,
 } from '@/utils/factory-management/checklist'
 
 describe('checklist', () => {
@@ -881,6 +887,188 @@ describe('checklist', () => {
       expect(isProductChecklistDesynced(factory.products[0])).toBe(false)
       expect(isProductChecklistDesynced(factory.products[1])).toBe(true)
       expect(factory.inSync).toBe(false)
+    })
+  })
+
+  describe('checklistProductTree', () => {
+    const line = (id: string, requirements: string[] = [], displayOrder = 0): FactoryItem => ({
+      id,
+      amount: 10,
+      displayOrder,
+      requirements: Object.fromEntries(requirements.map(part => [part, { amount: 1 }])),
+    } as unknown as FactoryItem)
+
+    const shape = (factory: ReturnType<typeof newFactory>) =>
+      checklistProductTree(factory).map(node => `${node.depth}:${node.product.id}`)
+
+    it('indents a line under the first line that consumes its output', () => {
+      const factory = newFactory('Rods', 0, 1)
+      factory.products = [
+        line('UraniumFuelRod', ['UraniumCell', 'ElectromagneticControlRod']),
+        line('UraniumCell', ['SulfuricAcid']),
+        line('SulfuricAcid'),
+        line('ElectromagneticControlRod'),
+        line('Wire'),
+      ]
+
+      expect(shape(factory)).toEqual([
+        '0:UraniumFuelRod',
+        '1:UraniumCell',
+        '2:SulfuricAcid',
+        '1:ElectromagneticControlRod',
+        '0:Wire',
+      ])
+    })
+
+    it('shows a shared intermediate once, under its first consumer', () => {
+      const factory = newFactory('Plates', 0, 1)
+      factory.products = [
+        line('ReinforcedIronPlate', ['IronPlate']),
+        line('ModularFrame', ['IronPlate']),
+        line('IronPlate'),
+      ]
+
+      expect(shape(factory)).toEqual(['0:ReinforcedIronPlate', '1:IronPlate', '0:ModularFrame'])
+    })
+
+    it('says which rows end a branch and which levels carry a line past them', () => {
+      const factory = newFactory('Rods', 0, 1)
+      factory.products = [
+        line('UraniumFuelRod', ['UraniumCell', 'ElectromagneticControlRod']),
+        line('UraniumCell', ['SulfuricAcid', 'Concrete']),
+        line('SulfuricAcid'),
+        line('Concrete'),
+        line('ElectromagneticControlRod'),
+      ]
+
+      expect(checklistProductTree(factory).map(node => [node.product.id, node.isLast, node.throughLines]))
+        .toEqual([
+          ['UraniumFuelRod', true, []],
+          ['UraniumCell', false, []],
+          ['SulfuricAcid', false, [true]],
+          ['Concrete', true, [true]],
+          ['ElectromagneticControlRod', true, []],
+        ])
+    })
+
+    it('keeps every line of a loop with no root to start from', () => {
+      const factory = newFactory('Loop', 0, 1)
+      factory.products = [line('Rubber', ['Plastic']), line('Plastic', ['Rubber'])]
+
+      expect(shape(factory)).toEqual(['0:Rubber', '1:Plastic'])
+    })
+  })
+
+  describe('checklistPlannedRate', () => {
+    it('reads as a per-minute rate', () => {
+      expect(checklistPlannedRate(0.4)).toBe('0.4/min')
+      expect(checklistPlannedRate(120)).toBe('120/min')
+    })
+  })
+
+  describe('toggleChecklistProductTree', () => {
+    const line = (id: string, requirements: string[] = []): FactoryItem => ({
+      id,
+      amount: 10,
+      displayOrder: 0,
+      requirements: Object.fromEntries(requirements.map(part => [part, { amount: 1 }])),
+    } as unknown as FactoryItem)
+
+    const rods = () => {
+      const factory = newFactory('Rods', 0, 1)
+      factory.products = [
+        line('UraniumFuelRod', ['UraniumCell']),
+        line('UraniumCell', ['SulfuricAcid']),
+        line('SulfuricAcid'),
+        line('Wire'),
+      ]
+      return factory
+    }
+
+    it('lists every line under a product, however deep', () => {
+      const factory = rods()
+      expect(checklistProductDescendants(factory, factory.products[0]).map(product => product.id))
+        .toEqual(['UraniumCell', 'SulfuricAcid'])
+      expect(checklistProductDescendants(factory, factory.products[3])).toEqual([])
+    })
+
+    it('ticks every intermediate under a line when the line is ticked', () => {
+      const factory = rods()
+      toggleChecklistProductTree(factory, factory.products[0])
+
+      expect(factory.products.map(product => !!product.completed)).toEqual([true, true, true, false])
+      expect(factory.products[2].checklistSyncedAmount).toBe(10)
+    })
+
+    it('leaves the intermediates ticked when the line is unticked', () => {
+      const factory = rods()
+      toggleChecklistProductTree(factory, factory.products[0])
+      toggleChecklistProductTree(factory, factory.products[0])
+
+      expect(factory.products.map(product => !!product.completed)).toEqual([false, true, true, false])
+    })
+
+    it('keeps the baseline of an intermediate that was already ticked', () => {
+      const factory = rods()
+      factory.products[1].completed = true
+      factory.products[1].checklistSyncedAmount = 5
+      factory.products[1].amount = 5
+      toggleChecklistProductTree(factory, factory.products[0])
+
+      expect(factory.products[1].checklistSyncedAmount).toBe(5)
+      expect(factory.products[2].completed).toBe(true)
+    })
+  })
+
+  describe('counts with intermediates hidden', () => {
+    const line = (id: string, requirements: string[] = []): FactoryItem => ({
+      id,
+      amount: 10,
+      displayOrder: 0,
+      requirements: Object.fromEntries(requirements.map(part => [part, { amount: 1 }])),
+    } as unknown as FactoryItem)
+
+    afterEach(() => {
+      useChecklistDisplay().showIntermediates.value = true
+    })
+
+    const rods = () => {
+      const factory = newFactory('Rods', 0, 1)
+      factory.products = [line('UraniumFuelRod', ['UraniumCell']), line('UraniumCell'), line('Wire')]
+      return factory
+    }
+
+    it('counts only the lines the factory exists to make, keeping the hidden ticks', () => {
+      const factory = rods()
+      factory.products[1].completed = true
+      useChecklistDisplay().showIntermediates.value = false
+
+      expect(checklistCountedProducts(factory).map(product => product.id)).toEqual(['UraniumFuelRod', 'Wire'])
+      expect(countChecklistTotal(factory)).toBe(2)
+      expect(countChecklistCompleted(factory)).toBe(0)
+
+      useChecklistDisplay().showIntermediates.value = true
+      expect(countChecklistTotal(factory)).toBe(3)
+      expect(countChecklistCompleted(factory)).toBe(1)
+    })
+
+    it('reads as complete once every shown line is ticked', () => {
+      const factory = rods()
+      factory.products[0].completed = true
+      factory.products[2].completed = true
+      useChecklistDisplay().showIntermediates.value = false
+
+      expect(isChecklistComplete(factory)).toBe(true)
+    })
+
+    it('does not flag a hidden intermediate as desynced', () => {
+      const factory = rods()
+      factory.products[1].completed = true
+      factory.products[1].checklistSyncedAmount = 5
+      useChecklistDisplay().showIntermediates.value = false
+
+      expect(hasChecklistDesync(factory)).toBe(false)
+      expect(listChecklistDesyncs(factory)).toEqual([])
     })
   })
 })

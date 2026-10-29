@@ -1,7 +1,7 @@
 <template>
   <v-card class="factory-card sub-card">
     <v-row class="header">
-      <v-col class="text-h5 flex-grow-1 d-flex align-center flex-wrap ga-2" cols="8">
+      <v-col class="text-h5 flex-grow-1 d-flex align-center flex-wrap ga-2">
         <div>
           <i class="fas fa-check-square" /><span class="ml-3">Checklist</span>
         </div>
@@ -10,7 +10,29 @@
           {{ desyncs.length > 0 ? `ticked, ${desyncs.length} to reconfirm` : 'complete' }}
         </v-chip>
       </v-col>
-      <v-col class="text-right" cols="4">
+      <v-col class="d-flex align-center justify-end flex-wrap ga-4" cols="auto">
+        <v-switch
+          v-if="!factory.checklistPanelHidden"
+          v-model="showPlanned"
+          class="flex-grow-0"
+          color="primary"
+          data-testid="checklist-planned-toggle"
+          density="compact"
+          hide-details
+          label="Show planned"
+        />
+        <!-- Only offered when there is something to hide: a factory with no intermediates would
+             show a switch that changes nothing. -->
+        <v-switch
+          v-if="!factory.checklistPanelHidden && hasIntermediates"
+          v-model="showIntermediates"
+          class="flex-grow-0"
+          color="primary"
+          data-testid="checklist-intermediates-toggle"
+          density="compact"
+          hide-details
+          label="Include intermediates"
+        />
         <v-btn
           v-show="!factory.checklistPanelHidden"
           color="primary"
@@ -65,51 +87,91 @@
            build-along reference, and three short tables read far better than one column tall
            enough to scroll past. Columns that have nothing in them are dropped entirely and the
            remainder share the width, so a products-only factory doesn't render two empty boxes. -->
-      <div v-else class="checklist-columns">
+      <div v-else class="checklist-columns" :class="{ 'with-planned': showPlanned }">
         <div v-if="hasBuildColumn" class="checklist-column">
           <div v-if="factory.products.length > 0" class="checklist-group">
             <p class="checklist-group-title">Products</p>
+            <!-- One row per production line, with the lines that only feed another line here
+                 indented under it. The tick sits inside the indent, so an intermediate reads as a
+                 step of the line above it while staying a step of its own. -->
             <v-table class="checklist-table" density="compact">
               <thead>
                 <tr>
-                  <th class="tick-col" />
                   <th>Item</th>
+                  <th v-if="showPlanned" class="planned-col">Planned</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="product in factory.products" :key="product.id" class="checklist-row">
-                  <td class="tick-col">
-                    <input
-                      :key="`${product.id}-${!!product.completed}`"
-                      :checked="!!product.completed"
-                      class="checklist-tick"
-                      :class="{ desynced: isProductChecklistDesynced(product) }"
-                      title="Mark as built"
-                      type="checkbox"
-                      @click.prevent="toggleChecklistProduct(factory, product)"
-                    >
-                  </td>
-                  <td class="item-cell">
-                    <div class="item-inner">
+                <tr
+                  v-for="node in shownProductTree"
+                  :key="node.product.id + '-' + node.product.displayOrder"
+                  class="checklist-row"
+                  :data-depth="node.depth"
+                  data-testid="checklist-product-row"
+                >
+                  <td class="item-cell tree-cell">
+                    <span v-if="node.hasChildren && showIntermediates" class="tree-stub" :style="treeLineLeft(node.depth + 1)" />
+                    <template v-if="node.depth > 0">
+                      <template v-for="(through, level) in node.throughLines" :key="level">
+                        <span v-if="through" class="tree-line" :style="treeLineLeft(level + 1)" />
+                      </template>
+                      <span class="tree-elbow" :style="treeLineLeft(node.depth)" />
+                      <span v-if="!node.isLast" class="tree-line" :style="treeLineLeft(node.depth)" />
+                    </template>
+                    <div class="item-inner" :style="{ paddingLeft: `${node.depth * TREE_INDENT}px` }">
+                      <input
+                        :key="`${node.product.id}-${!!node.product.completed}`"
+                        :checked="!!node.product.completed"
+                        class="checklist-tick"
+                        :class="{ desynced: isProductChecklistDesynced(node.product) }"
+                        title="Mark as built"
+                        type="checkbox"
+                        @click.prevent="toggleChecklistProductTree(factory, node.product)"
+                      >
                       <game-asset
-                        v-if="product.id"
+                        v-if="node.product.id"
                         clickable
                         height="24"
-                        :subject="product.id"
+                        :subject="node.product.id"
                         type="item"
                         width="24"
                       />
-                      <span>{{ getPartDisplayName(product.id) }}</span>
+                      <a
+                        class="checklist-jump"
+                        href="#"
+                        title="Go to this production line"
+                        @click.prevent="jumpToProduct(node.product.id)"
+                      >{{ getPartDisplayName(node.product.id) }}</a>
                       <checklist-desync-chip
-                        v-if="productChecklistDesync(product)"
-                        :desync="productChecklistDesync(product)!"
-                        @acknowledge="toggleChecklistProduct(factory, product)"
+                        v-if="productChecklistDesync(node.product)"
+                        :desync="productChecklistDesync(node.product)!"
+                        @acknowledge="toggleChecklistProduct(factory, node.product)"
                       />
                     </div>
+                  </td>
+                  <td v-if="showPlanned" class="planned-col">
+                    <v-chip class="sf-chip small no-margin blue">
+                      {{ checklistPlannedRate(node.product.amount) }}
+                    </v-chip>
                   </td>
                 </tr>
               </tbody>
             </v-table>
+            <div v-if="hiddenIntermediateCount > 0" class="d-flex align-center ga-2 mt-1">
+              <span class="text-body-2 text-medium-emphasis">
+                {{ hiddenIntermediateCount }} intermediate
+                {{ hiddenIntermediateCount === 1 ? 'line' : 'lines' }} hidden.
+              </span>
+              <v-btn
+                color="primary"
+                data-testid="checklist-show-intermediates"
+                prepend-icon="fas fa-eye"
+                size="x-small"
+                variant="flat"
+                @click="showIntermediates = true"
+              >Show
+              </v-btn>
+            </div>
           </div>
           <div v-if="factory.powerProducers.length > 0" class="checklist-group">
             <p class="checklist-group-title">Power</p>
@@ -118,6 +180,7 @@
                 <tr>
                   <th class="tick-col" />
                   <th>Building</th>
+                  <th v-if="showPlanned" class="planned-col">Planned</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,13 +206,24 @@
                         type="building"
                         width="24"
                       />
-                      <span>{{ getPowerProducerDisplayName(producer) }}</span>
+                      <a
+                        class="checklist-jump"
+                        href="#"
+                        title="Go to this power line"
+                        @click.prevent="jumpToProduct(producer.building)"
+                      >{{ getPowerProducerDisplayName(producer) }}</a>
                       <checklist-desync-chip
                         v-if="powerProducerChecklistDesync(producer)"
                         :desync="powerProducerChecklistDesync(producer)!"
                         @acknowledge="toggleChecklistPowerProducer(factory, producer)"
                       />
                     </div>
+                  </td>
+                  <td v-if="showPlanned" class="planned-col">
+                    <v-chip class="sf-chip small no-margin blue">
+                      {{ formatNumber(producer.buildingAmount) }}
+                      {{ producer.buildingAmount === 1 ? 'building' : 'buildings' }}
+                    </v-chip>
                   </td>
                 </tr>
               </tbody>
@@ -166,6 +240,7 @@
               <thead>
                 <tr>
                   <th>Item</th>
+                  <th v-if="showPlanned" class="planned-col">Planned</th>
                   <th>From</th>
                 </tr>
               </thead>
@@ -183,6 +258,11 @@
                       />
                       <span>{{ getPartDisplayName(group.part) }}</span>
                     </div>
+                  </td>
+                  <td v-if="showPlanned" class="planned-col">
+                    <v-chip class="sf-chip small no-margin blue">
+                      {{ checklistPlannedRate(group.total) }}
+                    </v-chip>
                   </td>
                   <td class="source-col">
                     <div
@@ -212,6 +292,9 @@
                         >
                         <span class="text-body-2 text-medium-emphasis">No factory selected</span>
                       </template>
+                      <span v-if="showPlanned && group.entries.length > 1" class="source-rate">
+                        {{ checklistPlannedRate(entry.input.amount) }}
+                      </span>
                       <checklist-desync-chip
                         v-if="inputChecklistDesync(entry.input)"
                         :desync="inputChecklistDesync(entry.input)!"
@@ -283,6 +366,9 @@
   import { computed, inject } from 'vue'
   import { Factory, FactoryDependencyRequest, FactoryInput } from '@/interfaces/planner/FactoryInterface'
   import { getPartDisplayName } from '@/utils/helpers'
+  import { formatNumber } from '@/utils/numberFormatter'
+  import { productRowId } from '@/utils/factory-management/products'
+  import { useChecklistDisplay } from '@/composables/useChecklistDisplay'
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
   import { toggleChecklistExportWithOffer, toggleChecklistInputWithOffer } from '@/composables/useLinkedTick'
@@ -290,6 +376,8 @@
     acknowledgeChecklistDesyncs,
     checklistChipClass,
     checklistExportDesync,
+    checklistPlannedRate,
+    checklistProductTree,
     countChecklistCompleted,
     countChecklistTotal,
     inputChecklistDesync,
@@ -306,6 +394,7 @@
     toggleChecklistInput,
     toggleChecklistPowerProducer,
     toggleChecklistProduct,
+    toggleChecklistProductTree,
   } from '@/utils/factory-management/checklist'
 
   const props = defineProps<{
@@ -331,7 +420,29 @@
     input: FactoryInput
   }
 
-  const importGroups = computed<{ part: string, entries: ImportEntry[] }[]>(() => {
+  const productTree = computed(() => checklistProductTree(props.factory))
+
+  // Each level of the tree steps in by this much. A level's lines run down the middle of the
+  // tick one level up (an 18px box, so 9px in), which is what makes them meet the parent's tick.
+  const TREE_INDENT = 28
+  const treeLineLeft = (level: number) => ({ left: `${(level - 1) * TREE_INDENT + 8}px` })
+  const { showIntermediates, showPlanned } = useChecklistDisplay()
+  const hasIntermediates = computed(() => productTree.value.some(node => node.depth > 0))
+  // Hidden rather than dropped from the counts: the ticks still exist and still count, the
+  // switch only decides how much of the build list is on screen.
+  const shownProductTree = computed(() =>
+    showIntermediates.value ? productTree.value : productTree.value.filter(node => node.depth === 0))
+  const hiddenIntermediateCount = computed(() => productTree.value.length - shownProductTree.value.length)
+
+  // The item name is a jump to the line that makes it. Two lines of the same part share a row id,
+  // so the jump lands on the first of them, which is as precise as a single name can be.
+  const jumpToProduct = (subject: string) => {
+    navigateToFactory(props.factory.id, productRowId(props.factory.id, subject), `${props.factory.id}-products`)
+  }
+
+  // Each group carries its total: the number the row is about. With several sources or
+  // destinations, each one's share is shown beside its chip as well.
+  const importGroups = computed<{ part: string, total: number, entries: ImportEntry[] }[]>(() => {
     const groups = new Map<string, ImportEntry[]>()
     props.factory.inputs.forEach((input, index) => {
       const part = input.outputPart ?? ''
@@ -339,7 +450,11 @@
       entries.push({ index, input })
       groups.set(part, entries)
     })
-    return [...groups.entries()].map(([part, entries]) => ({ part, entries }))
+    return [...groups.entries()].map(([part, entries]) => ({
+      part,
+      total: entries.reduce((sum, entry) => sum + (entry.input.amount ?? 0), 0),
+      entries,
+    }))
   })
 
   const exportGroups = computed<{ part: string, requests: FactoryDependencyRequest[] }[]>(() => {
@@ -379,10 +494,15 @@
 // it is the stock `sf-chip small factory` the export chips under Satisfaction use, at its natural
 // one-line size, and a column too narrow for one beside an item name is a column that would put a
 // sideways scrollbar under its table. Better to drop to two columns and keep the chips right.
+// The Planned column, when shown, adds another chip's worth to that minimum.
 .checklist-columns {
   display: grid;
   gap: 16px 32px;
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+
+  &.with-planned {
+    grid-template-columns: repeat(auto-fit, minmax(470px, 1fr));
+  }
 }
 
 // No rule between the columns: the grid re-flows to two (or one) on a narrow card, and a border
@@ -443,6 +563,60 @@
   align-items: center;
   display: flex;
   gap: 8px;
+}
+
+// The planned number sits in its own narrow column, right against the item, so a column of
+// numbers can be read down without hunting along each row for it.
+.checklist-table .planned-col {
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+}
+
+// The tree lines joining an intermediate to the line that consumes it. Drawn on the cell rather
+// than inside the row's content so they run its full height, padding and border included, and so
+// meet the lines in the rows above and below. A straight line carries a level down past a row; an
+// elbow turns into the row's own tick, and stops there when the row is the last of its siblings.
+.tree-cell {
+  position: relative;
+}
+
+.tree-line,
+.tree-elbow,
+.tree-stub {
+  border-left: 2px solid rgba(255, 255, 255, 0.3);
+  bottom: -1px;
+  position: absolute;
+  top: 0;
+  width: 0;
+}
+
+// From the bottom of the row's own tick down to the row's bottom edge, where its first child's elbow
+// picks the line up.
+.tree-stub {
+  top: calc(50% + 9px);
+}
+
+.tree-elbow {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  border-bottom-left-radius: 3px;
+  bottom: 50%;
+  width: 16px;
+}
+
+.checklist-jump {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.source-rate {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+  white-space: nowrap;
 }
 
 // One source/destination factory: its tick, its chip, and the desync flag if it has one, on a
