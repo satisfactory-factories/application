@@ -10,7 +10,19 @@
           {{ desyncs.length > 0 ? `ticked, ${desyncs.length} to reconfirm` : 'complete' }}
         </v-chip>
       </v-col>
-      <v-col class="text-right" cols="4">
+      <v-col class="d-flex align-center justify-end ga-4" cols="4">
+        <!-- Only offered when there is something to hide: a factory with no intermediates would
+             show a switch that changes nothing. -->
+        <v-switch
+          v-if="!factory.checklistPanelHidden && hasIntermediates"
+          v-model="showIntermediates"
+          class="flex-grow-0"
+          color="primary"
+          data-testid="checklist-intermediates-toggle"
+          density="compact"
+          hide-details
+          label="Include intermediates"
+        />
         <v-btn
           v-show="!factory.checklistPanelHidden"
           color="primary"
@@ -81,7 +93,7 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="node in productTree"
+                  v-for="node in shownProductTree"
                   :key="node.product.id + '-' + node.product.displayOrder"
                   class="checklist-row"
                   :data-depth="node.depth"
@@ -128,6 +140,10 @@
                 </tr>
               </tbody>
             </v-table>
+            <p v-if="hiddenIntermediateCount > 0" class="text-body-2 text-medium-emphasis mt-1 mb-0">
+              {{ hiddenIntermediateCount }} intermediate
+              {{ hiddenIntermediateCount === 1 ? 'line' : 'lines' }} hidden.
+            </p>
           </div>
           <div v-if="factory.powerProducers.length > 0" class="checklist-group">
             <p class="checklist-group-title">Power</p>
@@ -333,6 +349,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatNumber } from '@/utils/numberFormatter'
   import { productRowId } from '@/utils/factory-management/products'
+  import { useChecklistIntermediates } from '@/composables/useChecklistIntermediates'
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
   import { toggleChecklistExportWithOffer, toggleChecklistInputWithOffer } from '@/composables/useLinkedTick'
@@ -384,6 +401,13 @@
   }
 
   const productTree = computed(() => checklistProductTree(props.factory))
+  const { showIntermediates } = useChecklistIntermediates()
+  const hasIntermediates = computed(() => productTree.value.some(node => node.depth > 0))
+  // Hidden rather than dropped from the counts: the ticks still exist and still count, the
+  // switch only decides how much of the build list is on screen.
+  const shownProductTree = computed(() =>
+    showIntermediates.value ? productTree.value : productTree.value.filter(node => node.depth === 0))
+  const hiddenIntermediateCount = computed(() => productTree.value.length - shownProductTree.value.length)
 
   // The item name is a jump to the line that makes it. Two lines of the same part share a row id,
   // so the jump lands on the first of them, which is as precise as a single name can be.
