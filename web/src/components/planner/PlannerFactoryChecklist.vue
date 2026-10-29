@@ -1,7 +1,7 @@
 <template>
   <v-card class="factory-card sub-card">
     <v-row class="header">
-      <v-col class="text-h5 flex-grow-1 d-flex align-center flex-wrap ga-2" cols="8">
+      <v-col class="text-h5 flex-grow-1 d-flex align-center flex-wrap ga-2">
         <div>
           <i class="fas fa-check-square" /><span class="ml-3">Checklist</span>
         </div>
@@ -10,7 +10,17 @@
           {{ desyncs.length > 0 ? `ticked, ${desyncs.length} to reconfirm` : 'complete' }}
         </v-chip>
       </v-col>
-      <v-col class="d-flex align-center justify-end ga-4" cols="4">
+      <v-col class="d-flex align-center justify-end flex-wrap ga-4" cols="auto">
+        <v-switch
+          v-if="!factory.checklistPanelHidden"
+          v-model="showPlanned"
+          class="flex-grow-0"
+          color="primary"
+          data-testid="checklist-planned-toggle"
+          density="compact"
+          hide-details
+          label="Show planned"
+        />
         <!-- Only offered when there is something to hide: a factory with no intermediates would
              show a switch that changes nothing. -->
         <v-switch
@@ -77,7 +87,7 @@
            build-along reference, and three short tables read far better than one column tall
            enough to scroll past. Columns that have nothing in them are dropped entirely and the
            remainder share the width, so a products-only factory doesn't render two empty boxes. -->
-      <div v-else class="checklist-columns">
+      <div v-else class="checklist-columns" :class="{ 'with-planned': showPlanned }">
         <div v-if="hasBuildColumn" class="checklist-column">
           <div v-if="factory.products.length > 0" class="checklist-group">
             <p class="checklist-group-title">Products</p>
@@ -88,7 +98,7 @@
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th class="planned-col">Planned</th>
+                  <th v-if="showPlanned" class="planned-col">Planned</th>
                 </tr>
               </thead>
               <tbody>
@@ -132,7 +142,7 @@
                       />
                     </div>
                   </td>
-                  <td class="planned-col">
+                  <td v-if="showPlanned" class="planned-col">
                     <v-chip class="sf-chip small no-margin blue">
                       {{ checklistPlannedRate(node.product.amount) }}
                     </v-chip>
@@ -163,7 +173,7 @@
                 <tr>
                   <th class="tick-col" />
                   <th>Building</th>
-                  <th class="planned-col">Planned</th>
+                  <th v-if="showPlanned" class="planned-col">Planned</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,7 +212,7 @@
                       />
                     </div>
                   </td>
-                  <td class="planned-col">
+                  <td v-if="showPlanned" class="planned-col">
                     <v-chip class="sf-chip small no-margin blue">
                       {{ formatNumber(producer.buildingAmount) }}
                       {{ producer.buildingAmount === 1 ? 'building' : 'buildings' }}
@@ -223,7 +233,7 @@
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th class="planned-col">Planned</th>
+                  <th v-if="showPlanned" class="planned-col">Planned</th>
                   <th>From</th>
                 </tr>
               </thead>
@@ -242,7 +252,7 @@
                       <span>{{ getPartDisplayName(group.part) }}</span>
                     </div>
                   </td>
-                  <td class="planned-col">
+                  <td v-if="showPlanned" class="planned-col">
                     <v-chip class="sf-chip small no-margin blue">
                       {{ checklistPlannedRate(group.total) }}
                     </v-chip>
@@ -275,7 +285,7 @@
                         >
                         <span class="text-body-2 text-medium-emphasis">No factory selected</span>
                       </template>
-                      <span v-if="group.entries.length > 1" class="source-rate">
+                      <span v-if="showPlanned && group.entries.length > 1" class="source-rate">
                         {{ checklistPlannedRate(entry.input.amount) }}
                       </span>
                       <checklist-desync-chip
@@ -297,7 +307,6 @@
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th class="planned-col">Planned</th>
                   <th>To</th>
                 </tr>
               </thead>
@@ -315,11 +324,6 @@
                       <span>{{ getPartDisplayName(group.part) }}</span>
                     </div>
                   </td>
-                  <td class="planned-col">
-                    <v-chip class="sf-chip small no-margin blue">
-                      {{ checklistPlannedRate(group.total) }}
-                    </v-chip>
-                  </td>
                   <td class="source-col">
                     <div
                       v-for="request in group.requests"
@@ -334,9 +338,6 @@
                         @open="navigateToFactory(request.requestingFactoryId)"
                         @toggle="toggleChecklistExportWithOffer(factory, request.requestingFactoryId, request.part, request.amount, findFactory(request.requestingFactoryId))"
                       />
-                      <span v-if="group.requests.length > 1" class="source-rate">
-                        {{ checklistPlannedRate(request.amount) }}
-                      </span>
                       <checklist-desync-chip
                         v-if="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)"
                         :desync="checklistExportDesync(factory, request.requestingFactoryId, request.part, request.amount)!"
@@ -360,7 +361,7 @@
   import { getPartDisplayName } from '@/utils/helpers'
   import { formatNumber } from '@/utils/numberFormatter'
   import { productRowId } from '@/utils/factory-management/products'
-  import { useChecklistIntermediates } from '@/composables/useChecklistIntermediates'
+  import { useChecklistDisplay } from '@/composables/useChecklistDisplay'
   import { getPowerProducerDisplayName } from '@/utils/factory-management/common'
   import { getRequestsForFactory } from '@/utils/factory-management/exports'
   import { toggleChecklistExportWithOffer, toggleChecklistInputWithOffer } from '@/composables/useLinkedTick'
@@ -412,7 +413,7 @@
   }
 
   const productTree = computed(() => checklistProductTree(props.factory))
-  const { showIntermediates } = useChecklistIntermediates()
+  const { showIntermediates, showPlanned } = useChecklistDisplay()
   const hasIntermediates = computed(() => productTree.value.some(node => node.depth > 0))
   // Hidden rather than dropped from the counts: the ticks still exist and still count, the
   // switch only decides how much of the build list is on screen.
@@ -443,18 +444,14 @@
     }))
   })
 
-  const exportGroups = computed<{ part: string, total: number, requests: FactoryDependencyRequest[] }[]>(() => {
+  const exportGroups = computed<{ part: string, requests: FactoryDependencyRequest[] }[]>(() => {
     const groups = new Map<string, FactoryDependencyRequest[]>()
     getRequestsForFactory(props.factory).forEach(request => {
       const requests = groups.get(request.part) ?? []
       requests.push(request)
       groups.set(request.part, requests)
     })
-    return [...groups.entries()].map(([part, requests]) => ({
-      part,
-      total: requests.reduce((sum, request) => sum + request.amount, 0),
-      requests,
-    }))
+    return [...groups.entries()].map(([part, requests]) => ({ part, requests }))
   })
 
   // Products and power producers share a column: they are both "things to build here", and
@@ -484,11 +481,15 @@
 // it is the stock `sf-chip small factory` the export chips under Satisfaction use, at its natural
 // one-line size, and a column too narrow for one beside an item name is a column that would put a
 // sideways scrollbar under its table. Better to drop to two columns and keep the chips right.
-// The Planned column added another chip's worth to that minimum.
+// The Planned column, when shown, adds another chip's worth to that minimum.
 .checklist-columns {
   display: grid;
   gap: 16px 32px;
-  grid-template-columns: repeat(auto-fit, minmax(470px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+
+  &.with-planned {
+    grid-template-columns: repeat(auto-fit, minmax(470px, 1fr));
+  }
 }
 
 // No rule between the columns: the grid re-flows to two (or one) on a narrow card, and a border

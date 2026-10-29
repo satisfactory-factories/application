@@ -6,7 +6,7 @@ import { nextTick, reactive } from 'vue'
 import PlannerFactoryChecklist from './PlannerFactoryChecklist.vue'
 import { calculateFactory, newFactory } from '@/utils/factory-management/factory'
 import { addProductToFactory } from '@/utils/factory-management/products'
-import { useChecklistIntermediates } from '@/composables/useChecklistIntermediates'
+import { useChecklistDisplay } from '@/composables/useChecklistDisplay'
 import { useGameDataStore } from '@/stores/game-data-store'
 import { Factory } from '@/interfaces/planner/FactoryInterface'
 
@@ -15,7 +15,8 @@ const gameData = useGameDataStore().getGameData()
 describe('PlannerFactoryChecklist intermediates', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    useChecklistIntermediates().showIntermediates.value = true
+    useChecklistDisplay().showIntermediates.value = true
+    useChecklistDisplay().showPlanned.value = true
   })
 
   const mountChecklist = (factory: Factory) => mount(PlannerFactoryChecklist, {
@@ -49,7 +50,7 @@ describe('PlannerFactoryChecklist intermediates', () => {
   it('hides intermediates when the switch is off, and says how many', async () => {
     const wrapper = mountChecklist(plateFactory())
 
-    useChecklistIntermediates().showIntermediates.value = false
+    useChecklistDisplay().showIntermediates.value = false
     await nextTick()
 
     expect(rows(wrapper)).toEqual(['0:Iron Plate'])
@@ -58,7 +59,7 @@ describe('PlannerFactoryChecklist intermediates', () => {
     await wrapper.find('[data-testid="checklist-show-intermediates"]').trigger('click')
 
     expect(rows(wrapper)).toEqual(['0:Iron Plate', '1:Iron Ingot'])
-    expect(useChecklistIntermediates().showIntermediates.value).toBe(true)
+    expect(useChecklistDisplay().showIntermediates.value).toBe(true)
   })
 
   it('offers no switch when the factory has no intermediates', () => {
@@ -67,5 +68,15 @@ describe('PlannerFactoryChecklist intermediates', () => {
     calculateFactory(factory, [factory], gameData)
 
     expect(mountChecklist(factory).find('[data-testid="checklist-intermediates-toggle"]').exists()).toBe(false)
+  })
+
+  it('hides the Planned column when the switch is off', async () => {
+    const wrapper = mountChecklist(plateFactory())
+
+    useChecklistDisplay().showPlanned.value = false
+    await nextTick()
+
+    expect(wrapper.findAll('.planned-col')).toHaveLength(0)
+    expect(rows(wrapper)).toEqual(['0:Iron Plate', '1:Iron Ingot'])
   })
 })
