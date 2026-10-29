@@ -115,7 +115,7 @@
                       <template v-for="(through, level) in node.throughLines" :key="level">
                         <span v-if="through" class="tree-line" :style="treeLineLeft(level + 1)" />
                       </template>
-                      <span class="tree-elbow" :style="treeLineLeft(node.depth)" />
+                      <span class="tree-elbow" :class="{ tee: !node.isLast }" :style="treeLineLeft(node.depth)" />
                       <span v-if="!node.isLast" class="tree-line" :style="treeLineLeft(node.depth)" />
                     </template>
                     <div class="item-inner" :style="{ paddingLeft: `${node.depth * TREE_INDENT}px` }">
@@ -176,13 +176,8 @@
           <div v-if="factory.powerProducers.length > 0" class="checklist-group">
             <p class="checklist-group-title">Power</p>
             <v-table class="checklist-table" density="compact">
-              <thead>
-                <tr>
-                  <th class="tick-col" />
-                  <th>Building</th>
-                  <th v-if="showPlanned" class="planned-col">Planned</th>
-                </tr>
-              </thead>
+              <!-- No heading row: the group title already says these are power buildings, and
+                   the planned chip reads "10 buildings" on its own. -->
               <tbody>
                 <tr v-for="(producer, producerIndex) in factory.powerProducers" :key="producerIndex" class="checklist-row">
                   <td class="tick-col">
@@ -559,10 +554,13 @@
   }
 }
 
+// The row is as tall as a chip whether or not one is in it, so switching the Planned column on
+// and off leaves every row where it was rather than jogging the panel up and down.
 .item-inner {
   align-items: center;
   display: flex;
   gap: 8px;
+  min-height: 32px;
 }
 
 // The planned number sits in its own narrow column, right against the item, so a column of
@@ -602,6 +600,16 @@
   border-bottom-left-radius: 3px;
   bottom: 50%;
   width: 16px;
+}
+
+// A row with siblings still to come already has the straight line running through it, so its
+// elbow is only the branch off that line. Drawing the elbow's own upright on top of it doubled the
+// translucent stroke into a visibly thicker line.
+.tree-elbow.tee {
+  border-bottom-left-radius: 0;
+  border-left: none;
+  margin-left: 2px;
+  width: 14px;
 }
 
 .checklist-jump {
