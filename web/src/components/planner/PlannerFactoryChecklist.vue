@@ -559,10 +559,13 @@
   }
 }
 
+// The row is as tall as a chip whether or not one is in it, so switching the Planned column on
+// and off leaves every row where it was rather than jogging the panel up and down.
 .item-inner {
   align-items: center;
   display: flex;
   gap: 8px;
+  min-height: 32px;
 }
 
 // The planned number sits in its own narrow column, right against the item, so a column of
