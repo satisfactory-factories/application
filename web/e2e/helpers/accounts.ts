@@ -95,8 +95,7 @@ interface ClientOptions {
  * re-writes the token on later navigations.
  *
  * The dismissal flags keep the welcome dialog and the release decks off the screen;
- * every one is a modal overlay that would swallow every click. The survey banner's
- * is there too: it sits along the bottom edge, over whatever a test clicks there. Each release adds its
+ * every one is a modal overlay that would swallow every click. Each release adds its
  * own key (`seenV<n>Splash`), so a new deck needs a new line here or the whole suite
  * times out clicking through a scrim.
  */
@@ -110,7 +109,6 @@ export const newClient = async (
     { name: 'seenV6Splash', value: 'true' },
     { name: 'seenV7Splash', value: 'true' },
     { name: 'newTabChooserSeen', value: 'true' },
-    { name: 'dismissed-survey-2026-10', value: 'true' },
   ]
   if (user) {
     storage.push({ name: 'token', value: user.token }, { name: 'loggedInUser', value: user.username })
