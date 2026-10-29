@@ -121,6 +121,14 @@
               @go="goToNeighbour"
             />
           </template>
+          <!-- The summary's section is overview-only, but its fullscreen view is opened from the
+               sidebar (the plan's and each group's expand button) on any page. Without this, a
+               factory page had nothing listening and the buttons did nothing. -->
+          <statistics-factory-summary
+            v-if="shownView !== OVERVIEW && getFactories().length !== 0"
+            dialog-only
+            :factories="getFactories()"
+          />
           <!-- Inside the page, so it fades with it rather than jumping up while the pane is empty. -->
           <div class="mt-4 text-center">
             <v-btn
