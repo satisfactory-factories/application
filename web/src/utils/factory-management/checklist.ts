@@ -597,3 +597,49 @@ export const checklistTextClass = (factory: Factory): string => {
     default: return ''
   }
 }
+
+// The Products group as a build list rather than a flat one. A product line whose output another
+// line here consumes is an intermediate: it is part of building that other line, so it sits
+// indented under the first line (in display order) that eats it, keeping its own tick and its own
+// planned number. Everything nobody here consumes is a root: what the factory exists to make.
+//
+// A line can only appear once, so an intermediate two lines share hangs off the first of them.
+// Loops (rubber and plastic feeding each other's recycled recipes) leave no root to start from, so
+// anything the walk has not reached by the end is emitted as a root of its own rather than
+// silently dropped from the checklist.
+export interface ChecklistProductNode {
+  product: FactoryItem
+  depth: number
+}
+
+export const checklistProductTree = (factory: Factory): ChecklistProductNode[] => {
+  const products = factory.products
+  const parentOf = new Map<FactoryItem, FactoryItem>()
+
+  products.forEach(intermediate => {
+    const consumer = products.find(product =>
+      product !== intermediate && product.requirements?.[intermediate.id] !== undefined)
+    if (consumer) parentOf.set(intermediate, consumer)
+  })
+
+  const nodes: ChecklistProductNode[] = []
+  const visited = new Set<FactoryItem>()
+
+  const walk = (product: FactoryItem, depth: number) => {
+    if (visited.has(product)) return
+    visited.add(product)
+    nodes.push({ product, depth })
+    products
+      .filter(child => parentOf.get(child) === product)
+      .forEach(child => walk(child, depth + 1))
+  }
+
+  products.filter(product => !parentOf.has(product)).forEach(product => walk(product, 0))
+  products.forEach(product => walk(product, 0))
+
+  return nodes
+}
+
+// The planned rate a checklist row is about, as the row shows it beside the item. Only the plan's
+// own number: the tick still means "built", and Satisfaction is where supply meets demand.
+export const checklistPlannedRate = (amount: number): string => `${formatNumber(amount)}/min`
