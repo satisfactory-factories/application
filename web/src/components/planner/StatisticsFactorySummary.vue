@@ -232,7 +232,7 @@
     </v-card>
   </v-dialog>
 
-  <v-row id="factory-summary">
+  <v-row v-if="!dialogOnly" id="factory-summary">
     <v-col>
       <v-card class="factory-card">
         <v-row class="header">
@@ -390,6 +390,9 @@
 
   const props = defineProps<{
     factories: Factory[];
+    // The section lives on the overview, but the sidebar's expand buttons work from any page. A
+    // factory page mounts this with the section left out, so there is still a dialog to open.
+    dialogOnly?: boolean;
   }>()
 
   /**
