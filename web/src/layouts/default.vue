@@ -28,6 +28,7 @@
       <div class="bottom-notices">
         <backend-health-banner />
         <offline-prompt />
+        <!-- SurveyBanner is off between surveys; put it back here to run the next one. -->
       </div>
       <version-prompt />
       <update-required-dialog />
