@@ -7,7 +7,7 @@ import {
   syncBuildingGroups,
 } from '@/utils/factory-management/building-groups/common'
 import { getRecipe } from '@/utils/factory-management/common'
-import { isExtractionRecipe, isPlainExtraction } from '@/utils/factory-management/building-groups/extraction'
+import { isWellRecipe } from '@/utils/factory-management/building-groups/extraction'
 import { fetchGameData } from '@/utils/gameDataService'
 
 const gameData = await fetchGameData()
@@ -28,15 +28,15 @@ export const addProductBuildingGroup = (
       factory,
     )
 
-    // Mines and wells start unsynced. Almost nobody actually builds Mk.1 miners, so the first
-    // thing done to a new mine is swapping the default for a Mk.3 — and with sync on that writes
-    // the group's new output back over the quantity the user just typed. A well is worse: its
-    // output comes from satellites, so nothing about the group count describes it. Both are
-    // routinely split into groups of differing purity, which sync would flatten.
+    // Wells start unsynced: their output comes from satellites, so nothing about the group count
+    // describes it, and sync would flatten a layout the user has to describe by hand.
     //
-    // Plain extraction is the exception. A Water Extractor has one mark and no purity, so its
-    // groups never need to differ and sync is as useful as it is on any other building.
-    if (isExtractionRecipe(product.recipe) && !isPlainExtraction(product.recipe)) {
+    // Mines used to start unsynced as well, so swapping the default Mk.1 for a Mk.3 did not write
+    // the group's new output over the quantity the user typed. That left every later change to the
+    // quantity behind — Satisfying a mine from the satisfaction panel moved the Qty and left the
+    // miners where they were (#821). Mines now keep sync, and a mark or purity change re-solves the
+    // miner count to hold the quantity instead (see resyncGroupSetting).
+    if (isWellRecipe(product.recipe)) {
       product.buildingGroupItemSync = false
     }
   }

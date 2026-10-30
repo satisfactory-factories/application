@@ -1135,3 +1135,56 @@ describe('products', () => {
     })
   })
 })
+
+// #821: build Modular Frames from the satisfaction panel, adding each shortage with +Product in
+// the order the panel lists them, then Satisfy the products that came out short. Every group has
+// to follow its product, the mine included — mines used to start unsynced, so the Iron Ore
+// quantity moved to 480/min and its seven miners stayed at 390.
+describe('issue 821: building groups follow products added from the satisfaction panel', () => {
+  let factory: Factory
+  const recalculate = () => calculateFactories([factory], gameData)
+  const product = (part: string) => factory.products.find(p => p.id === part) as FactoryItem
+
+  beforeEach(() => {
+    factory = newFactory('Modular Frames')
+    addProductToFactory(factory, { id: 'ModularFrame', amount: 20, recipe: 'ModularFrame' })
+    recalculate()
+
+    const recipes: Record<string, string> = {
+      IronPlateReinforced: 'IronPlateReinforced',
+      IronRod: 'IronRod',
+      IronPlate: 'IronPlate',
+      IronScrew: 'Screw',
+      IronIngot: 'IngotIron',
+      OreIron: 'Extract_OreIron',
+    }
+    for (const [part, recipe] of Object.entries(recipes)) {
+      addProductToFactory(factory, { id: part, amount: Math.abs(factory.parts[part].amountRemaining), recipe })
+      recalculate()
+    }
+
+    // Screws were added after Iron Rods, so the rods (and everything under them) come out short.
+    for (const part of ['IronRod', 'IronIngot', 'OreIron']) {
+      fixProduct(product(part), factory)
+      recalculate()
+    }
+  })
+
+  it('satisfies every part', () => {
+    expect(factory.parts.OreIron.amountRemaining).toBe(0)
+    expect(product('OreIron').amount).toBe(480)
+  })
+
+  it('keeps the mine\'s miners in step with its quantity', () => {
+    const ore = product('OreIron')
+
+    expect(ore.buildingGroupItemSync).toBe(true)
+    expect(ore.buildingGroups[0].buildingCount).toBe(8)
+    expect(ore.buildingGroups[0].overclockPercent).toBe(100)
+    expect(ore.buildingGroupsHaveProblem).toBe(false)
+  })
+
+  it('leaves no product with a building group problem', () => {
+    expect(factory.products.filter(p => p.buildingGroupsHaveProblem).map(p => p.id)).toEqual([])
+  })
+})

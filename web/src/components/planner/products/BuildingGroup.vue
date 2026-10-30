@@ -468,6 +468,7 @@
     getBuildingCount,
     getGroupPowerShards,
     getShardsPerBuilding,
+    resyncGroupSetting,
     solveGroupForRemainder,
     solveGroupTargetOutput,
     updateBuildingGroupViaPart,
@@ -629,14 +630,28 @@
     }))
   )
 
+  // With sync on, a new mark or purity re-solves the building count to hold the item's quantity;
+  // without it, the group's new output is what the mismatch chip then reports.
+  const updateGroupSetting = (group: BuildingGroup) => {
+    if (!props.item.buildingGroupItemSync) {
+      updateGroup(group)
+      return
+    }
+
+    runDebounced(`group-${group.id}-buildings`, () => {
+      resyncGroupSetting(props.item, props.type, props.factory)
+      updateFactory(props.factory)
+    })
+  }
+
   const updateGroupExtractor = (group: BuildingGroup, building: string) => {
     group.extractorBuilding = building
-    updateGroup(group)
+    updateGroupSetting(group)
   }
 
   const updateGroupPurity = (group: BuildingGroup, purity: NodePurity) => {
     group.purity = purity
-    updateGroup(group)
+    updateGroupSetting(group)
   }
 
   const groupHasVariablePower = computed(() => {
