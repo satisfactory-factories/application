@@ -702,6 +702,26 @@ export const syncBuildingGroups = (
   }
 }
 
+// A group setting that changes what each building makes — an extractor's mark, a node's purity —
+// is a different question from a building count. With sync on the item's quantity is what the user
+// asked for, so the groups are re-solved to keep making it: swapping eight Mk.1 miners for Mk.3s
+// leaves two Mk.3s, not eight Mk.3s writing 1,920/min over the 480 the user typed. Without sync the
+// groups are the user's own and are left alone for the mismatch chip to report.
+//
+// Returns whether the groups were re-solved, so the caller knows which recalculation to ask for.
+export const resyncGroupSetting = (
+  item: FactoryItem | FactoryPowerProducer,
+  groupType: ItemType,
+  factory: Factory,
+): boolean => {
+  if (!item.buildingGroupItemSync) {
+    return false
+  }
+
+  syncBuildingGroups(item, groupType, factory, { forceRebalance: true })
+  return true
+}
+
 export interface SpreadPlan {
   groupCount: number
   buildingCount: number
@@ -1055,17 +1075,24 @@ export const solveGroupForRemainder = (
   // same effective output.
   const physical = target / outputMultiplier
 
+  // The highest clock this group already has the shards for: 100% for a group that is not
+  // overclocked, 150% for one carrying a shard per building, and so on.
+  const shardedClockCeiling = Math.min(MAX_CLOCK_PERCENT, 100 + getShardsPerBuilding(group) * 50)
+
   // Keep the count the user chose and move the clock — the smaller surprise, and the reason
-  // this is not simply bestEffortUpdateBuildingCount, which prefers re-solving the count.
+  // this is not simply bestEffortUpdateBuildingCount, which prefers re-solving the count. But
+  // only while the clock stays within the shards the group already has: shards are scarce, so
+  // seven miners at 114.29% (seven shards) to reach 480/min was the wrong answer where an eighth
+  // miner at 100% does it for none (#821).
   if (group.buildingCount > 0) {
     const clock = formatNumberFully((physical / group.buildingCount) * 100, 4)
-    if (clock >= MIN_CLOCK_PERCENT && clock <= MAX_CLOCK_PERCENT) {
+    if (clock >= MIN_CLOCK_PERCENT && clock <= shardedClockCeiling) {
       return { buildingCount: group.buildingCount, overclockPercent: clock }
     }
   }
 
-  // Out of clock range, so spread it over whole buildings at a sub-100% clock instead.
-  const buildingCount = Math.ceil(physical)
+  // Out of that range, so spread it over whole buildings at a clock the group's shards cover.
+  const buildingCount = Math.ceil(formatNumberFully(physical / (shardedClockCeiling / 100), 10))
   const overclockPercent = formatNumberFully((physical / buildingCount) * 100, 4)
 
   return overclockPercent >= MIN_CLOCK_PERCENT ? { buildingCount, overclockPercent } : null

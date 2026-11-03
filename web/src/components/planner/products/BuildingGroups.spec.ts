@@ -18,6 +18,7 @@ import { fetchGameData } from '@/utils/gameDataService'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { formatMw } from '@/utils/numberFormatter'
 import eventBus from '@/utils/eventBus'
+import { VSelect } from 'vuetify/components'
 
 const gameData = await fetchGameData()
 
@@ -890,6 +891,32 @@ describe('Component: BuildingGroups', () => {
   // Effective buildings for a mine are counted in reference-extractor units (Miner Mk.1 on a
   // normal node), so "88 short" would mean 88 Mk.1-equivalents — meaningless to someone
   // building Mk.3s. Mines report the same figures as output instead.
+  // #821: mines keep sync, so a new miner mark has to hold the quantity rather than write the
+  // group's new output over it.
+  describe('changing a synced mine\'s miner mark', () => {
+    it('re-solves the miners and keeps the quantity', async () => {
+      addProductToFactory(factory, { id: 'OreIron', amount: 480, recipe: 'Extract_OreIron' })
+      const product = factory.products[0]
+      product.buildingGroupsTrayOpen = true
+      calculateFactories([factory], gameData)
+      subject = mountProduct(factory)
+      const group = product.buildingGroups[0]
+      expect(group.buildingCount).toBe(8)
+
+      const extractor = subject.findAllComponents(VSelect)
+        .find(select => select.attributes('id') === `${factory.id}-${group.id}-extractor` ||
+          select.find(`[id="${factory.id}-${group.id}-extractor"]`).exists())!
+      extractor.vm.$emit('update:modelValue', 'minermk3')
+      await vi.advanceTimersByTimeAsync(500) // Debounced recalc
+
+      expect(product.amount).toBe(480)
+      expect(group.extractorBuilding).toBe('minermk3')
+      expect(group.buildingCount).toBe(2)
+      expect(group.overclockPercent).toBe(100)
+      expect(product.buildingGroupsHaveProblem).toBe(false)
+    })
+  })
+
   describe('extraction reports output rather than effective buildings', () => {
     let product: FactoryItem
 
@@ -901,6 +928,8 @@ describe('Component: BuildingGroups', () => {
       })
       product = factory.products[0]
       product.buildingGroupsTrayOpen = true
+      // Unsynced, so the groups below stay short of the target rather than being solved to it.
+      product.buildingGroupItemSync = false
 
       // One Miner Mk.3 on a pure node: 240 x 2 = 480/min against a 5,760/min target.
       const group = product.buildingGroups[0]
@@ -946,6 +975,7 @@ describe('Component: BuildingGroups', () => {
       addProductToFactory(oilFactory, { id: 'LiquidOil', amount: 180, recipe: 'Extract_LiquidOil' })
       const oil = oilFactory.products[0]
       oil.buildingGroupsTrayOpen = true
+      oil.buildingGroupItemSync = false
       oil.buildingGroups[0].buildingCount = 1 // 120/min of 180, so 60/min short
       oil.buildingGroups[0].purity = 'normal'
       oil.buildingGroups[0].overclockPercent = 100
