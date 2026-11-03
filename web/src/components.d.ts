@@ -41,7 +41,6 @@ declare module 'vue' {
     FactoryArrangeDialog: typeof import('./components/planner/groups/FactoryArrangeDialog.vue')['default']
     FactoryArrangeSection: typeof import('./components/planner/groups/FactoryArrangeSection.vue')['default']
     FactoryChip: typeof import('./components/planner/FactoryChip.vue')['default']
-    FactoryDebug: typeof import('./components/FactoryDebug.vue')['default']
     FactoryGroupBulkDialog: typeof import('./components/planner/groups/FactoryGroupBulkDialog.vue')['default']
     FactoryGroupColorMenu: typeof import('./components/planner/groups/FactoryGroupColorMenu.vue')['default']
     FactoryGroupCreateDialog: typeof import('./components/planner/groups/FactoryGroupCreateDialog.vue')['default']

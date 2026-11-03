@@ -8,7 +8,6 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { newFactory } from '@/utils/factory-management/factory'
 
 const stubs = {
-  FactoryDebug: true,
   FactoryGroupTray: true,
   FactoryIconDialog: true,
   FactoryIconDisplay: true,

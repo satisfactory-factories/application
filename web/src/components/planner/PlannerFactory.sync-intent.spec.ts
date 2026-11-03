@@ -14,7 +14,6 @@ import eventBus from '@/utils/eventBus'
  * which events the header's own handlers emit, not what the sections render.
  */
 const stubs = {
-  FactoryDebug: true,
   FactoryGroupTray: true,
   FactoryIconDialog: true,
   FactoryIconDisplay: true,

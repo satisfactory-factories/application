@@ -169,7 +169,6 @@
             </div>
           </v-col>
           <v-col class="text-right pt-0 pt-md-3" cols="auto" md="4">
-            <factory-debug :is-compact="smAndDown" :subject="factory" subject-type="Factory" />
             <v-btn
               class="mr-2 rounded"
               :color="atGroupStart ? 'grey-darken-3' : 'primary'"
@@ -314,7 +313,6 @@
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
-  import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
   import { markFactoryEdited } from '@/utils/sync-intent'
   import {
@@ -380,8 +378,6 @@
   })
 
   const { getFactories } = useAppStore()
-
-  const { smAndDown } = useDisplay()
 
   const iconDialogOpen = ref(false)
 
