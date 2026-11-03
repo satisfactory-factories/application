@@ -41,15 +41,6 @@
               @click.stop="iconDialogOpen = true"
             />
             <span>{{ truncateFactoryName(factory.name) }}</span>
-            <!-- With the dashed border, what says a ghost from across the room: the plan's totals
-                 leave this factory out, and a player back after a break has to see that here. -->
-            <span
-              v-if="ghost"
-              class="ghost-glyph ml-2"
-              data-testid="sidebar-ghost-glyph"
-              @mouseenter="showHint($event, ghostHint)"
-              @mouseleave="hideHint"
-            ><i class="fas fa-ghost" /></span>
           </div>
           <factory-status-chips
             animated
@@ -100,6 +91,19 @@
           @mouseleave="hideHint"
         >
           <i class="d-inline fas fa-sticky-note" />
+        </v-col>
+        <!-- With the dashed border, what says a ghost from across the room: the plan's totals
+             leave this factory out, and a player back after a break has to see that here. In the
+             icon strip beside the notes glyph, so it lines up with the row's other hints. -->
+        <v-col
+          v-if="ghost"
+          class="context-icon ghost-glyph align-content-center text-center py-0 px-1"
+          cols="auto"
+          data-testid="sidebar-ghost-glyph"
+          @mouseenter="showHint($event, ghostHint)"
+          @mouseleave="hideHint"
+        >
+          <i class="d-inline fas fa-ghost" />
         </v-col>
         <v-col
           class="pa-0 ml-2 align-content-center text-center sync-state"
@@ -288,10 +292,6 @@
   }
 }
 
-.ghost-glyph {
-  color: var(--sf-ghost);
-}
-
 .sync-state {
   width: 30px;
   min-width: 30px;
@@ -322,5 +322,10 @@
       color: var(--sf-status-warning);
     }
   }
+}
+
+// After .context-icon, so the ghost keeps its own colour rather than the strip's grey.
+.context-icon.ghost-glyph {
+  color: var(--sf-ghost);
 }
 </style>

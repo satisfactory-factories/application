@@ -11,7 +11,7 @@
  *
  * Must stay a LEAF, like status.ts: power.ts imports it, and power.ts is reached from factory.ts.
  */
-import { Factory } from '@/interfaces/planner/FactoryInterface'
+import { Factory, PartMetrics } from '@/interfaces/planner/FactoryInterface'
 
 /** How long a ghost waits before the plan reminds you it is there on load. */
 export const GHOST_REMINDER_DAYS = 14
@@ -20,6 +20,10 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 export const isGhost = (factory: Pick<Factory, 'ghostSince'> | null | undefined): boolean =>
   !!factory?.ghostSince
+
+/** The ids of a plan's ghosts, for the engine passes that split ghost demand from live demand. */
+export const ghostIdSet = (factories: Pick<Factory, 'id' | 'ghostSince'>[]): ReadonlySet<number> =>
+  new Set(factories.filter(factory => isGhost(factory)).map(factory => factory.id))
 
 /** The factories plan-wide totals count. */
 export const countedFactories = <T extends Pick<Factory, 'ghostSince'>>(factories: T[]): T[] =>
@@ -67,3 +71,22 @@ export const staleGhosts = <T extends Pick<Factory, 'ghostSince'>>(factories: T[
 export const GHOST_HELP_TEXT = 'A ghost factory is one you have planned but not built yet. ' +
   'It still calculates in full, and its imports and exports stay linked, ' +
   'but it is left out of the plan\'s power, raw resources and other totals.'
+
+type GhostPartFields = Pick<PartMetrics, 'amountRemaining' | 'amountRemainingPreSink' | 'amountRequiredSink' | 'amountRequiredGhostExports'>
+
+/** What ghost factories ask of this part, on top of its live demand. */
+export const ghostDemand = (part: Pick<PartMetrics, 'amountRequiredGhostExports'> | undefined): number =>
+  part?.amountRequiredGhostExports ?? 0
+
+/**
+ * The part's surplus or shortage if every ghost asking for it were built: the "with ghosts" figure
+ * beside the satisfaction chip. A sink only ever takes what nothing else claims, so a sunk part
+ * gives its surplus up to the ghosts first and is short only once that runs out.
+ */
+export const ghostRemaining = (part: GhostPartFields): number => {
+  const ghost = ghostDemand(part)
+  const sunk = (part.amountRequiredSink ?? 0) > 0
+  const before = sunk ? (part.amountRemainingPreSink ?? part.amountRemaining) : part.amountRemaining
+  const after = before - ghost
+  return sunk && after > 0 ? 0 : after
+}

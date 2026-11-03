@@ -6,6 +6,7 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import { rawArray } from '@/utils/factory-management/common'
 import { recordEvent } from '@/utils/record-event'
 import { isPartImported } from '@/utils/factory-management/redistribution'
+import { ghostIdSet } from '@/utils/factory-management/ghost'
 
 // Adds dependencies between two factories.
 export const updateDependency = (
@@ -313,9 +314,10 @@ export const calculateFactoryDependencies = (
       console.error(`Provider factory with ID ${providerId} not found.`)
       return
     }
-    calculateDependencyMetrics(provider)
+    const ghostIds = ghostIdSet(factories)
+    calculateDependencyMetrics(provider, ghostIds)
     // Since their parts have likely changed, their parts too
-    calculateParts(provider, gameData)
+    calculateParts(provider, gameData, ghostIds)
     calculateDependencyMetricsSupply(provider)
   })
 }
@@ -338,7 +340,9 @@ export const removeDependency = (factory: Factory, dependantFactory: Factory, pa
 }
 
 // Calculate the dependency metrics for the factory.
-export const calculateDependencyMetrics = (factory: Factory) => {
+// A ghost factory's request (ghost.ts) is counted in `ghostRequest`, not `request`: the export
+// reads as satisfied or not on live demand alone, and the ghost's share says what building it adds.
+export const calculateDependencyMetrics = (factory: Factory, ghostIds: ReadonlySet<number> = new Set()) => {
   // console.log('dependencies: calculateDependencyMetrics: ' + factory.name)
   // Reset the metrics for the factory
   factory.dependencies.metrics = {}
@@ -359,7 +363,11 @@ export const calculateDependencyMetrics = (factory: Factory) => {
         }
       }
 
-      metrics[part].request += request.amount
+      if (ghostIds.has(Number(reqFac))) {
+        metrics[part].ghostRequest = (metrics[part].ghostRequest ?? 0) + request.amount
+      } else {
+        metrics[part].request += request.amount
+      }
     })
   })
 }

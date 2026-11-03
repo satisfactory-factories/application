@@ -224,6 +224,13 @@
     border-color: var(--sf-status-note-border) !important;
   }
 
+  // Ghost tier (`status-ghost`): what building the ghost factories would break. Dashed, in the
+  // ghost colour, like everything else to do with ghosts, so it never reads as a live problem.
+  &.status-ghost {
+    color: var(--sf-ghost) !important;
+    border: 1px dashed var(--sf-ghost-border) !important;
+  }
+
   &.green, &.success {
     color: var(--sf-success) !important;
     border-color: var(--sf-success-border) !important;

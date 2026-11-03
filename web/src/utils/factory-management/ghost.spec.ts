@@ -3,11 +3,15 @@ import { Factory, FactoryPowerChangeType } from '@/interfaces/planner/FactoryInt
 import { calculateFactories, newFactory } from '@/utils/factory-management/factory'
 import { addPowerProducerToFactory } from '@/utils/factory-management/power'
 import { addProductToFactory } from '@/utils/factory-management/products'
+import { addInputToFactory } from '@/utils/factory-management/inputs'
+import { getFactoryStatuses, hasNoDemand, isGhostShortage } from '@/utils/factory-management/status'
 import {
   countedFactories,
   ghostAgeLabel,
   ghostDays,
+  ghostDemand,
   ghostFactories,
+  ghostRemaining,
   isGhost,
   setGhost,
   staleGhosts,
@@ -203,6 +207,70 @@ describe('ghost factories', () => {
       setGhost(one, true, daysAgo(30))
       setGhost(two, true, daysAgo(15))
       expect(ghostReminderMessage([one, two], NOW)).toMatch(/^2 ghost factories/)
+    })
+  })
+
+  describe('ghost demand on a supplier', () => {
+    // Smelter makes 60 ingots; a live consumer takes 30, a ghost asks for `ghostAmount` more.
+    const plan = (ghostAmount: number) => {
+      const smelter = newFactory('Smelter', 0, 1)
+      addProductToFactory(smelter, { id: 'IronIngot', amount: 60, recipe: 'IngotIron' })
+      addProductToFactory(smelter, { id: 'OreIron', amount: 60, recipe: 'Extract_OreIron' })
+      const live = newFactory('Live', 1, 2)
+      addInputToFactory(live, { factoryId: 1, outputPart: 'IronIngot', amount: 30 })
+      const ghost = newFactory('Ghost', 2, 3)
+      addInputToFactory(ghost, { factoryId: 1, outputPart: 'IronIngot', amount: ghostAmount })
+      setGhost(ghost, true)
+      const factories = [smelter, live, ghost]
+      calculateFactories(factories, gameData)
+      return { smelter, live, ghost, factories }
+    }
+
+    it('keeps a ghost\'s ask out of the supplier\'s live demand and records it beside it', () => {
+      const { smelter } = plan(20)
+      const part = smelter.parts.IronIngot
+      expect(part.amountRequiredExports).toBe(30)
+      expect(ghostDemand(part)).toBe(20)
+      expect(part.amountRemaining).toBe(30)
+      expect(ghostRemaining(part)).toBe(10)
+      expect(smelter.dependencies.metrics.IronIngot.request).toBe(30)
+      expect(smelter.dependencies.metrics.IronIngot.ghostRequest).toBe(20)
+      expect(smelter.dependencies.metrics.IronIngot.isRequestSatisfied).toBe(true)
+      expect(isGhostShortage(smelter, 'IronIngot')).toBe(false)
+    })
+
+    it('flags a part the ghosts would tip into a shortage, without turning the supplier red', () => {
+      const { smelter } = plan(50)
+      expect(smelter.parts.IronIngot.satisfied).toBe(true)
+      expect(ghostRemaining(smelter.parts.IronIngot)).toBe(-20)
+      expect(isGhostShortage(smelter, 'IronIngot')).toBe(true)
+      expect(smelter.dependencies.metrics.IronIngot.isRequestSatisfied).toBe(true)
+
+      const statuses = getFactoryStatuses(smelter)
+      expect(statuses.map(status => status.type)).toContain('ghostShortage')
+      expect(statuses.find(status => status.type === 'ghostShortage')?.severity).toBe('ghost')
+      expect(statuses.some(status => status.type === 'exportShortage')).toBe(false)
+      expect(smelter.hasProblem).toBe(false)
+    })
+
+    it('counts the ask as live again once the ghost is brought back', () => {
+      const { smelter, ghost, factories } = plan(50)
+      setGhost(ghost, false)
+      calculateFactories(factories, gameData)
+      expect(smelter.parts.IronIngot.amountRequiredExports).toBe(80)
+      expect(ghostDemand(smelter.parts.IronIngot)).toBe(0)
+      expect(smelter.dependencies.metrics.IronIngot.isRequestSatisfied).toBe(false)
+    })
+
+    it('does not call a part only a ghost wants "no demand"', () => {
+      const smelter = newFactory('Smelter', 0, 1)
+      addProductToFactory(smelter, { id: 'IronIngot', amount: 60, recipe: 'IngotIron' })
+      const ghost = newFactory('Ghost', 1, 2)
+      addInputToFactory(ghost, { factoryId: 1, outputPart: 'IronIngot', amount: 60 })
+      setGhost(ghost, true)
+      calculateFactories([smelter, ghost], gameData)
+      expect(smelter.parts.IronIngot.amountRequired).toBe(0)
+      expect(hasNoDemand(smelter, 'IronIngot')).toBe(false)
     })
   })
 })

@@ -29,11 +29,14 @@ import { Factory } from '@/interfaces/planner/FactoryInterface'
 import { listChecklistDesyncs } from '@/utils/factory-management/checklist'
 import { isDuplicateImport, isImportRedundant } from '@/utils/factory-management/inputs-analysis'
 import { isBacklogIgnored, isNoDemandIgnored } from '@/utils/factory-management/disposal'
-import { isSurplusSignificant } from '@/utils/factory-management/parts'
+import { isAmountSatisfied, isSurplusSignificant } from '@/utils/factory-management/parts'
+import { ghostDemand, ghostRemaining } from '@/utils/factory-management/ghost'
 import { usePlannerOptions } from '@/composables/usePlannerOptions'
 import { isActiveBuildingLocked, isActiveRecipeLocked } from '@/utils/recipe-unlocks'
 
-export type FactoryStatusSeverity = 'problem' | 'warning' | 'note'
+// `ghost` is a note about ghost factories (ghost.ts): what would go wrong if they were built. Like a
+// note it never colours the factory, and it is drawn dashed like everything else about ghosts.
+export type FactoryStatusSeverity = 'problem' | 'warning' | 'note' | 'ghost'
 
 // Element-id suffix of the card section a status points at, for navigateToFactory().
 export type FactoryStatusSection = 'satisfaction' | 'imports' | 'products' | 'checklist'
@@ -51,7 +54,8 @@ export type FactoryStatusType =
   'duplicateImport' |
   'noDemand' |
   'potentialBlockage' |
-  'willBacklog'
+  'willBacklog' |
+  'ghostShortage'
 
 // `type` maps straight onto <game-asset>'s prop. A power producer's `id` is a random instance
 // number, NOT an item id, so building-group statuses carry its building instead.
@@ -156,6 +160,8 @@ export const isPotentialBlockage = (factory: Factory, partId: string): boolean =
 export const hasNoDemand = (factory: Factory, partId: string): boolean =>
   !!partId &&
   factory.parts[partId]?.amountRequired === 0 &&
+  // A ghost factory asking for it is a consumer on the way, so the part is not idle.
+  ghostDemand(factory.parts[partId]) === 0 &&
   factory.parts[partId]?.isEndProduct !== true &&
   factoryOutputs(factory).includes(partId)
 
@@ -494,7 +500,32 @@ export const factoryStatusDefinitions: FactoryStatusDefinition[] = [
     label: list => count(list, 'Potential blockage', 'potential blockages'),
     detailLabel: list => count(list, 'Potential blockage', 'byproducts that need sinking'),
   },
+  {
+    // Last, and in its own tier: nothing is wrong today. It says what building the plan's ghost
+    // factories would do to this one, so a player can scale it up before they build them.
+    type: 'ghostShortage',
+    severity: 'ghost',
+    icon: 'fas fa-ghost',
+    chip: true,
+    section: 'satisfaction',
+    detail: 'Enough today, but ghost factories importing these parts would leave this factory short once they are built.',
+    detect: factory => nonEmpty(subjects(
+      Object.keys(factory.parts).filter(id => isGhostShortage(factory, id))
+    )),
+    label: list => count(list, 'Short with ghosts', 'short with ghosts'),
+    detailLabel: list => count(list, 'Short once ghosts are built', 'parts short once ghosts are built'),
+  },
 ]
+
+/**
+ * A part that copes today but would run short if the ghost factories asking for it were built.
+ * Exported for the satisfaction row, which says the same thing beside the part.
+ */
+export const isGhostShortage = (factory: Factory, partId: string): boolean => {
+  const part = factory.parts[partId]
+  if (!part || ghostDemand(part) <= 0) return false
+  return !isAmountSatisfied(ghostRemaining(part), part.amountRequired + ghostDemand(part))
+}
 
 // Every status that applies, highest severity first.
 export const getFactoryStatuses = (factory: Factory): FactoryStatus[] =>

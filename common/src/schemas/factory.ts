@@ -38,6 +38,8 @@ export const partMetricsSchema = z.object({
   amountRequired: num,
   amountRequiredProduction: num,
   amountRequiredExports: num,
+  // Ghost factories' demand, kept out of amountRequired. Optional: older plans have none.
+  amountRequiredGhostExports: num.optional(),
   amountRequiredPower: num,
   amountSupplied: num,
   amountSuppliedViaInput: num,
@@ -174,6 +176,7 @@ export const factoryDependencyRequestSchema = z.object({
 export const factoryDependencyMetricsSchema = z.object({
   part: str,
   request: num,
+  ghostRequest: num.optional(),
   supply: num,
   isRequestSatisfied: z.boolean(),
   difference: num,
