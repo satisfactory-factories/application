@@ -27,6 +27,9 @@
         </v-row>
         <!-- Power gets prominence even when the statistics are collapsed: the target and
              its difference stay visible so the user always knows where they stand. -->
+        <!-- Ghost factories are left out of everything below, so the section says so first,
+             collapsed or not: a player back after a break must not read a total as the whole plan. -->
+        <statistics-ghost-banner :factories="factories" />
         <v-card-text v-if="hidden" class="text-body-1 d-flex align-center flex-wrap ga-2 py-2">
           <span class="font-weight-bold">Power Target:</span>
           <v-chip class="sf-chip input no-margin" variant="tonal">
@@ -78,15 +81,17 @@
           </tooltip>
         </v-card-text>
         <v-card-text v-if="!hidden" class="text-body-1">
+          <!-- Power takes the whole plan: it counts only the built factories itself, and shows the
+               ghosts in a section of their own with what the grid would look like if they were built. -->
           <statistics-power :factories="factories" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-resources :factories="factories" />
+          <statistics-resources :factories="counted" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-items-difference :factories="factories" />
+          <statistics-items-difference :factories="counted" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-shards-sloops :factories="factories" />
+          <statistics-shards-sloops :factories="counted" />
           <v-divider class="my-4 mx-n4" color="white" thickness="5px" />
-          <statistics-buildings :factories="factories" />
+          <statistics-buildings :factories="counted" />
         </v-card-text>
       </v-card>
     </v-col>
@@ -99,6 +104,8 @@
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
   import { calculateTotalPower } from '@/utils/statistics'
+  import { countedFactories } from '@/utils/factory-management/ghost'
+  import StatisticsGhostBanner from '@/components/planner/StatisticsGhostBanner.vue'
   import { formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { useEventBusListener } from '@/composables/useEventBusListener'
@@ -110,7 +117,9 @@
   // Power strip shown while the statistics are collapsed. Its balance chip mirrors
   // the expanded section: vs target when one is set, vs the plan otherwise.
   const { powerTarget, hasTarget } = usePowerTarget()
-  const totalPower = computed(() => calculateTotalPower(props.factories))
+  // Ghost factories are planned, not built: every total in this section leaves them out.
+  const counted = computed(() => countedFactories(props.factories))
+  const totalPower = computed(() => calculateTotalPower(counted.value))
   const balanceDifference = computed(() => hasTarget.value
     ? totalPower.value.totalPowerProduced - powerTarget.value
     : totalPower.value.totalPowerDifference)

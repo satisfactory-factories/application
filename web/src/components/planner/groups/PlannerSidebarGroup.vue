@@ -142,6 +142,15 @@
             <span class="ml-1">{{ formatGw(power.difference) }}</span>
           </v-chip>
         </tooltip>
+        <tooltip
+          v-if="ghostCount > 0"
+          :text="`${ghostCount === 1 ? '1 ghost factory' : `${ghostCount} ghost factories`} in this group, left out of these figures`"
+        >
+          <v-chip class="sf-chip x-small no-margin ghost-chip" variant="tonal">
+            <i class="fas fa-ghost" />
+            <span class="ml-1">{{ ghostCount }}</span>
+          </v-chip>
+        </tooltip>
       </div>
 
       <!-- Second line: what this group actually makes, and whether it is keeping up. Kept to one
@@ -261,6 +270,7 @@
   import { groupColorVars } from '@/utils/colors'
   import { formatCompact, formatGw, formatMw, formatNumber } from '@/utils/numberFormatter'
   import { calculateTotalPower } from '@/utils/statistics'
+  import { countedFactories, ghostFactories } from '@/utils/factory-management/ghost'
   import { getPartDisplayName } from '@/utils/helpers'
   import FactoryGroupColorMenu from '@/components/planner/groups/FactoryGroupColorMenu.vue'
   import PlannerSidebarFactoryRow from '@/components/planner/groups/PlannerSidebarFactoryRow.vue'
@@ -355,7 +365,8 @@
 
   // The same figures the group's band in the planner carries, so the two cannot disagree.
   const power = computed(() => {
-    const totals = calculateTotalPower(props.section.factories)
+    // Ghost factories are planned, not built: left out here as everywhere else the plan is summed.
+    const totals = calculateTotalPower(countedFactories(props.section.factories))
     return {
       produced: totals.totalPowerProduced,
       consumed: totals.totalPowerConsumed,
@@ -363,6 +374,8 @@
       boost: totals.totalPowerBoost,
     }
   })
+
+  const ghostCount = computed(() => ghostFactories(props.section.factories).length)
 
   // What the group makes, with its surplus or shortfall. Parts it produces and consumes entirely
   // within itself are left off unless asked for — the row says what the folder delivers, and an

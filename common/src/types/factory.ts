@@ -410,6 +410,11 @@ export interface Factory {
   // The group this factory belongs to. Absent means Ungrouped. Source of truth — see
   // FactoryGroup above for why the whole record lives here rather than an id.
   group?: FactoryGroup
+  // A ghost factory: planned, not built yet. Calculated in full on its own card and left out of
+  // every plan-wide total (power, grid boost, raw resources, buildings). Holds the ISO date it was
+  // made a ghost, so the planner can remind a returning player it is there. Absent means a normal
+  // factory, and it is only ever written while on. See utils/factory-management/ghost.ts.
+  ghostSince?: string
   dataVersion: string
 }
 

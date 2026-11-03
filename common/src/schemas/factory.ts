@@ -340,6 +340,8 @@ export const factorySchema = z.object({
   checklistExportSyncedAmounts: boundedRecord(num, CAPS.checklistKeys).default(() => ({})),
   icon: str.optional(),
   group: factoryGroupSchema.optional(),
+  // ISO date the factory was made a ghost. Optional, only ever written while on.
+  ghostSince: z.string().max(40).optional(),
   dataVersion: str,
 })
 

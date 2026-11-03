@@ -149,6 +149,10 @@ export const sfColors = {
   // chip means "this filter is on" and Vuetify fills a colourless chip with grey. Opaque for the
   // same reason as the two above.
   statusNote: { color: palette.yellow, border: palette.yellowBorder, background: '#4b3a0e' },
+  // A ghost factory: planned, not built, and left out of the plan's totals (ghost.ts). A pale
+  // blue-grey, drawn dashed wherever the factory appears. Kept clear of every status colour,
+  // because a ghost is a choice the player made, not something wrong with the factory.
+  ghost: { color: '#cfd8dc', border: '#90a4ae', background: '#2a3034' },
 } as const satisfies Record<string, SfColor>
 
 export type SfColorName = keyof typeof sfColors

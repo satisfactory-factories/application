@@ -576,6 +576,29 @@
       background-color: var(--sf-status-warning-bg);
     }
   }
+
+  // A ghost factory (ghost.ts): planned, not built, left out of the plan's totals. Dashed rather
+  // than recoloured, so a ghost with a shortage still shows red and a healthy one stays grey: the
+  // dash says "not counted", the colour still says how the factory itself is doing. Declared after
+  // the status borders so it wins on source order, style only.
+  &.ghost {
+    border-style: dashed !important;
+
+    .header {
+      background-image: repeating-linear-gradient(
+        -45deg,
+        transparent 0 10px,
+        rgba(207, 216, 220, 0.04) 10px 20px
+      );
+    }
+  }
+}
+
+// The chip that says a factory is a ghost, wherever it is drawn: the card header, the Statistics
+// sections and the sidebar's Statistics card.
+.sf-chip.ghost-chip {
+  color: var(--sf-ghost) !important;
+  border: 1px dashed var(--sf-ghost-border) !important;
 }
 
 // Inert since it was written: Vuetify's own `.v-card-title` rule loaded after

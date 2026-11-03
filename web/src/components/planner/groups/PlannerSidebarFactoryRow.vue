@@ -41,6 +41,15 @@
               @click.stop="iconDialogOpen = true"
             />
             <span>{{ truncateFactoryName(factory.name) }}</span>
+            <!-- With the dashed border, what says a ghost from across the room: the plan's totals
+                 leave this factory out, and a player back after a break has to see that here. -->
+            <span
+              v-if="ghost"
+              class="ghost-glyph ml-2"
+              data-testid="sidebar-ghost-glyph"
+              @mouseenter="showHint($event, ghostHint)"
+              @mouseleave="hideHint"
+            ><i class="fas fa-ghost" /></span>
           </div>
           <factory-status-chips
             animated
@@ -128,6 +137,7 @@
 <script setup lang="ts">
   import { computed, inject, nextTick, ref, type Ref } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { ghostAgeLabel, isGhost } from '@/utils/factory-management/ghost'
   import {
     FactoryStatus,
     factoryStatusClass,
@@ -204,8 +214,15 @@
       ? 'Out of sync with game'
       : 'Game sync unknown')
 
+  const ghost = computed(() => isGhost(props.factory))
+  const ghostHint = computed(() => {
+    const age = ghostAgeLabel(props.factory)
+    return `Ghost factory ${age === 'today' ? 'since today' : `for ${age}`}: left out of the plan's totals`
+  })
+
   const rowClass = computed(() => ({
     'factory-card': true,
+    ghost: ghost.value,
     'active-view': props.factory.id === activeFactoryId.value,
     ...factoryStatusClass(props.statuses),
   }))
@@ -269,6 +286,10 @@
   0% {
     opacity: 0.18;
   }
+}
+
+.ghost-glyph {
+  color: var(--sf-ghost);
 }
 
 .sync-state {

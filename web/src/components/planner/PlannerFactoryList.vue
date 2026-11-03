@@ -101,6 +101,12 @@
                 <span v-else class="ml-1"><i class="fas fa-check-square" /></span>
               </v-chip>
             </tooltip>
+            <tooltip v-if="ghostPower.ghosts.length" :text="ghostTooltip">
+              <v-chip id="sidebar-ghost-power" class="sf-chip x-small no-margin ghost-chip" variant="tonal">
+                <i class="fas fa-ghost" />
+                <span class="ml-1">{{ ghostPower.ghosts.length }} &middot; {{ formatGw(ghostPower.consumed) }}</span>
+              </v-chip>
+            </tooltip>
           </v-col>
         </v-row>
       </v-card>
@@ -260,7 +266,8 @@
 <script setup lang="ts">
   import { computed, inject, ref, type Ref } from 'vue'
   import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
-  import { calculateTotalPower } from '@/utils/statistics'
+  import { calculateGhostPower, calculateTotalPower } from '@/utils/statistics'
+  import { countedFactories } from '@/utils/factory-management/ghost'
   import { formatGw, formatMw } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import { useDepotResearch } from '@/composables/useDepotResearch'
@@ -299,7 +306,15 @@
   // At-a-glance power figures for the Statistics jump-link. The difference is the
   // headroom vs the user's power target when one is set (bullseye icon), otherwise
   // vs the plan's own consumption (tick icon); a deficit flags the entry red.
-  const totalPower = computed(() => calculateTotalPower(compProps.factories))
+  // Ghost factories are left out, and the ghost chip says by how much.
+  const totalPower = computed(() => calculateTotalPower(countedFactories(compProps.factories)))
+  const ghostPower = computed(() => calculateGhostPower(compProps.factories))
+  const ghostTooltip = computed(() => {
+    const count = ghostPower.value.ghosts.length
+    const who = count === 1 ? '1 ghost factory is' : `${count} ghost factories are`
+    return `${who} left out of these totals. Built, they would draw ${formatMw(ghostPower.value.consumed)}` +
+      ` and generate ${formatMw(ghostPower.value.produced)}.`
+  })
   const { powerTarget, hasTarget } = usePowerTarget()
   const powerDifference = computed(() => hasTarget.value
     ? totalPower.value.totalPowerProduced - powerTarget.value

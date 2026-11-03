@@ -216,6 +216,95 @@
     </v-col>
   </v-row>
 
+  <!-- Ghost factories: in the plan, left out of every figure above. Their own section so a player
+       can still capacity plan for them: what they would draw, and what the grid looks like if they
+       were all built. -->
+  <template v-if="ghostPower.ghosts.length">
+    <h2 id="stats-power-ghosts-heading" class="text-h5 font-weight-bold text-no-wrap mt-4 d-flex align-center">
+      <i class="fas fa-ghost mr-2 section-icon ghost" />Ghost factories
+      <tooltip-info class="ml-2" text="Planned, not built yet. Their power is not counted in the figures above. This is what they would add, and what the grid would look like if every one of them were built." />
+    </h2>
+    <v-row class="mt-1">
+      <v-col cols="12" md="8">
+        <v-table id="stats-power-ghosts" class="power-table ghost-table" density="compact">
+          <thead>
+            <tr>
+              <th>Factory</th>
+              <th class="text-right">Generated</th>
+              <th class="text-right">Consumed</th>
+              <th class="text-right">Difference</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="entry in ghostPower.ghosts"
+              :key="entry.factory.id"
+              class="hover"
+              @click="navigateToFactory(entry.factory.id)"
+            >
+              <td>
+                <div class="d-flex align-center ga-2">
+                  <factory-icon-display :icon="entry.factory.icon" size="20" />
+                  <span>{{ entry.factory.name }}</span>
+                  <i class="fas fa-ghost ghost-glyph" />
+                </div>
+              </td>
+              <td class="text-right">{{ entry.produced > 0 ? mw(entry.produced) : '—' }}</td>
+              <td class="text-right">{{ entry.consumed > 0 ? mw(entry.consumed) : '—' }}</td>
+              <td
+                class="text-right"
+                :class="{ 'text-green': entry.difference > 0, 'text-red': entry.difference < 0 }"
+              >
+                {{ mw(entry.difference) }}
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-table id="stats-power-if-built" class="power-table target-table ghost-table" density="compact">
+          <thead>
+            <tr>
+              <th colspan="2">If every ghost were built</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="generation-row">
+              <td><i class="fas fa-bolt mr-1" /><i class="fas fa-equals mr-2" />Total generation</td>
+              <td id="stats-power-if-built-generation" class="text-right">{{ mw(ghostPower.ifBuilt.produced) }}</td>
+            </tr>
+            <tr class="consumption-row">
+              <td><i class="fas fa-bolt mr-1" /><i class="fas fa-minus mr-2" />Consumption</td>
+              <td id="stats-power-if-built-consumption" class="text-right">{{ mw(ghostPower.ifBuilt.consumed) }}</td>
+            </tr>
+            <tr class="font-weight-bold">
+              <td><i class="fas fa-balance-scale mr-2" />Difference</td>
+              <td
+                id="stats-power-if-built-difference"
+                class="text-right"
+                :class="{
+                  'text-green': ghostPower.ifBuilt.difference > 0,
+                  'text-red': ghostPower.ifBuilt.difference < 0,
+                }"
+              >{{ mw(ghostPower.ifBuilt.difference) }}</td>
+            </tr>
+            <tr v-if="hasTarget" class="font-weight-bold">
+              <td><i class="fas fa-bullseye mr-2" />Difference vs target</td>
+              <td
+                id="stats-power-if-built-target-difference"
+                class="text-right"
+                :class="{
+                  'text-green': ifBuiltTargetDifference >= 0,
+                  'text-red': ifBuiltTargetDifference < 0,
+                }"
+              >{{ mw(ifBuiltTargetDifference) }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-col>
+    </v-row>
+  </template>
+
   <!-- Per factory. Collapsed by default: the plan-level figures above are what most people come
        for, and forty rows under them would bury those. Deliberately simpler than the tables above
        — no min/max columns, since the point here is which factory is costing what. -->
@@ -290,7 +379,8 @@
   import {
     Factory,
   } from '@/interfaces/planner/FactoryInterface'
-  import { calculateFactoryPower, calculateTotalPower } from '@/utils/statistics'
+  import { calculateFactoryPower, calculateGhostPower, calculateTotalPower } from '@/utils/statistics'
+  import { countedFactories } from '@/utils/factory-management/ghost'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
   import { usePowerTarget } from '@/composables/usePowerTarget'
   import FactoryIconDisplay from '@/components/planner/FactoryIconDisplay.vue'
@@ -299,11 +389,14 @@
     factories: Factory[];
   }>()
 
-  const totalPower = computed(() => calculateTotalPower(props.factories))
+  // Every figure in the plan tables counts only built factories. The ghosts get their own section.
+  const counted = computed(() => countedFactories(props.factories))
+  const totalPower = computed(() => calculateTotalPower(counted.value))
+  const ghostPower = computed(() => calculateGhostPower(props.factories))
 
   // Biggest net drain first: the factory to look at is the one costing the most, and a plan
   // ordered by display order buries it wherever the user happened to put it.
-  const factoryPower = computed(() => calculateFactoryPower(props.factories))
+  const factoryPower = computed(() => calculateFactoryPower(counted.value))
 
   // Its own key, not the section's: someone who wants the plan totals open still does not
   // necessarily want forty factory rows under them.
@@ -316,6 +409,7 @@
 
   const { powerTarget, hasTarget } = usePowerTarget()
   const targetDifference = computed(() => totalPower.value.totalPowerProduced - powerTarget.value)
+  const ifBuiltTargetDifference = computed(() => ghostPower.value.ifBuilt.produced - powerTarget.value)
 
   // The balance chip compares against the target when one is set, otherwise
   // against the plan's own consumption — the trailing icon says which.
@@ -362,6 +456,17 @@
     &.power { color: var(--sf-yellow); }
     &.plan { color: var(--sf-success); }
     &.target { color: var(--sf-light-blue); }
+    &.ghost { color: var(--sf-ghost); }
+  }
+
+  .ghost-glyph {
+    color: var(--sf-ghost);
+  }
+
+  // Dashed like every other place a ghost is drawn.
+  .ghost-table {
+    border: 1px dashed var(--sf-ghost-border);
+    border-radius: 4px;
   }
 
   // Pin the note to the shared opaque muted blue (mutedBlue in colors.ts) instead
