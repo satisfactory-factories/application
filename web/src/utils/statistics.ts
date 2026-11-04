@@ -1,4 +1,5 @@
 import { Factory, FactoryGroup } from '@/interfaces/planner/FactoryInterface'
+import { ghostFactories } from '@/utils/factory-management/ghost'
 import {
   getPartDisplayName,
   hasMetricsForPart,
@@ -462,5 +463,47 @@ export const calculateTotalPower = (factories: Factory[]) => {
     totalPowerProducedMin,
     totalPowerProducedMax,
     totalPowerDifference,
+  }
+}
+
+export interface GhostPower {
+  factory: Factory
+  produced: number
+  consumed: number
+  difference: number
+}
+
+/**
+ * What the plan's ghost factories (ghost.ts) would do to its power if they were built, so a player
+ * can capacity plan for them without counting them yet.
+ *
+ * `ifBuilt` is the whole plan, ghosts and all, with the grid boost worked out afresh over the lot:
+ * a ghost's generation would raise what every augmenter boosts, and a ghost's own augmenters would
+ * boost everything. Summing each factory's stored `boostMw` would miss both, because those are
+ * worked out against the grid without the ghosts on it.
+ */
+export const calculateGhostPower = (factories: Factory[]) => {
+  const ghosts: GhostPower[] = ghostFactories(factories).map(factory => {
+    const produced = factory.power?.produced ?? 0
+    const consumed = factory.power?.consumed ?? 0
+    return { factory, produced, consumed, difference: produced - consumed }
+  })
+
+  const all = calculateTotalPower(factories)
+  const boost = all.totalBoostPercent * all.totalBasePower
+  const produced = all.totalBasePower + boost
+  const consumed = all.totalPowerConsumed
+
+  return {
+    ghosts,
+    produced: ghosts.reduce((total, entry) => total + entry.produced, 0),
+    consumed: ghosts.reduce((total, entry) => total + entry.consumed, 0),
+    ifBuilt: {
+      basePower: all.totalBasePower,
+      boost,
+      produced,
+      consumed,
+      difference: produced - consumed,
+    },
   }
 }

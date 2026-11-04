@@ -29,6 +29,8 @@ const TOLERANCE_SLACK = 1 + 1e-9
 const toleranceFor = (required: number): number =>
   Math.max(MIN_SATISFACTION_TOLERANCE, Math.abs(required) * CLOCK_PRECISION_RELATIVE) * TOLERANCE_SLACK
 
+const NO_GHOSTS: ReadonlySet<number> = new Set()
+
 export const isAmountSatisfied = (remaining: number, required: number): boolean =>
   remaining >= -toleranceFor(required)
 
@@ -43,8 +45,10 @@ export const isAmountSatisfied = (remaining: number, required: number): boolean 
 export const isSurplusSignificant = (remaining: number, required: number): boolean =>
   remaining > toleranceFor(required)
 
-export const calculateParts = (factory: Factory, gameData: DataInterface) => {
-  calculatePartMetrics(factory, gameData)
+// `ghostIds` are the plan's ghost factories (ghost.ts). What they ask this factory for is kept out
+// of its demand, so the part reads as it stands today, and recorded beside it as ghost demand.
+export const calculateParts = (factory: Factory, gameData: DataInterface, ghostIds: ReadonlySet<number> = NO_GHOSTS) => {
+  calculatePartMetrics(factory, gameData, ghostIds)
 
   // If factory has no products there is nothing for us to do, so mark as satisfied. Custom
   // buildings count as something to do: a portal room makes nothing, but its upkeep is a real
@@ -77,11 +81,11 @@ export const calculateParts = (factory: Factory, gameData: DataInterface) => {
 
 // This is where the meat of the soup is!
 // This calculates all the parts in the factory and checks if they are satisfied.
-export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) => {
+export const calculatePartMetrics = (factory: Factory, gameData: DataInterface, ghostIds: ReadonlySet<number> = NO_GHOSTS) => {
   factory.parts = {}
   factory.rawResources = {}
 
-  calculatePartRequirements(factory, gameData)
+  calculatePartRequirements(factory, gameData, ghostIds)
   calculatePartSupply(factory)
   calculatePartRaw(factory, gameData)
   calculateExportable(factory)
@@ -129,7 +133,7 @@ export const calculatePartMetrics = (factory: Factory, gameData: DataInterface) 
   }
 }
 
-export const calculatePartRequirements = (factory: Factory, gameData: DataInterface) => {
+export const calculatePartRequirements = (factory: Factory, gameData: DataInterface, ghostIds: ReadonlySet<number> = NO_GHOSTS) => {
   // Get the amount required by production
   factory.products.forEach(product => {
     createNewPart(factory, product.id)
@@ -188,7 +192,13 @@ export const calculatePartRequirements = (factory: Factory, gameData: DataInterf
 
   requests.forEach(request => {
     createNewPart(factory, request.part)
-    factory.parts[request.part].amountRequiredExports += request.amount
+    const part = factory.parts[request.part]
+    // A ghost's ask is planned demand, not live demand: it waits beside the part rather than in it.
+    if (ghostIds.has(Number(request.requestingFactoryId))) {
+      part.amountRequiredGhostExports = (part.amountRequiredGhostExports ?? 0) + request.amount
+      return
+    }
+    part.amountRequiredExports += request.amount
   })
 
   // Sum up requirements
@@ -344,7 +354,7 @@ export const calculateExportable = (factory: Factory) => {
   for (const part in factory.parts) {
     const partData = factory.parts[part]
 
-    if (partData.amountRequiredExports > 0) {
+    if (partData.amountRequiredExports > 0 || (partData.amountRequiredGhostExports ?? 0) > 0) {
       partData.exportable = true
     }
 

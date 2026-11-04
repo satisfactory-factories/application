@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { setGhost } from '@/utils/factory-management/ghost'
 import { factoryTabSchema, parseFactory, parseFactoryTab, truncateFactoryTab } from 'common'
 import type { FactoryTab } from 'common'
 // Reached by path rather than through the `common` barrel: both are test-only, and neither
@@ -112,6 +113,8 @@ const buildPlan = (): { factories: Factory[], tab: FactoryTab, mine: Factory, co
   mine.tasks.push({ title: 'Route the belts', completed: true })
   mine.notes = 'Feeds the assembly line'
   mine.icon = 'iron'
+  // A ghost factory, planned but left out of the plan's totals.
+  setGhost(consumer, true, new Date('2026-10-01T00:00:00.000Z'))
 
   setChecklistEnabled(mine, true)
   toggleChecklistProduct(mine, ingots)

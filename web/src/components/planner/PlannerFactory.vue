@@ -26,6 +26,24 @@
             <factory-icon-dialog v-model="iconDialogOpen" :factory="factory" />
             <!-- chips bar -->
             <div class="d-flex align-center flex-wrap mt-1 ga-2">
+              <!-- ghost chip: first, because it changes how every number on this card relates to
+                   the plan's totals. The button on the right brings the factory back. -->
+              <div v-if="ghost">
+                <v-chip :id="`${factory.id}-ghost-chip`" class="sf-chip sf-chip-info small ghost-chip no-margin sync-chip">
+                  <i class="fas fa-ghost" />
+                  <span class="ml-2">Ghost factory &middot; {{ ghostAge }}</span>
+                  <tooltip-info :text="ghostHelpText" />
+                  <v-btn
+                    class="ml-2"
+                    icon
+                    size="x-small"
+                    title="Count this factory in the plan's totals again"
+                    @click.stop="toggleGhost(false)"
+                  >
+                    <i class="fas fa-times" />
+                  </v-btn>
+                </v-chip>
+              </div>
               <!-- status chips: what is wrong, ahead of everything descriptive. outOfSync is
                    excluded because the sync chip further down this same bar already says it,
                    with help text and a reset button the status chip cannot offer. -->
@@ -151,7 +169,6 @@
             </div>
           </v-col>
           <v-col class="text-right pt-0 pt-md-3" cols="auto" md="4">
-            <factory-debug :is-compact="smAndDown" :subject="factory" subject-type="Factory" />
             <v-btn
               class="mr-2 rounded"
               :color="atGroupStart ? 'grey-darken-3' : 'primary'"
@@ -180,6 +197,18 @@
               title="Copy Factory"
               variant="outlined"
               @click="copyFactory(factory)"
+            />
+            <!-- Beside delete because it is the gentler answer to the same question: "this factory
+                 should not count right now". Filled while on, so the state is plain from here too. -->
+            <v-btn
+              :id="`${factory.id}-ghost-toggle`"
+              class="mr-2 rounded"
+              color="blue-grey-lighten-2"
+              icon="fas fa-ghost"
+              size="small"
+              :title="ghost ? 'Ghost factory: click to count it in the plan\'s totals again' : 'Make this a ghost factory: planned, not built, and left out of the plan\'s totals'"
+              :variant="ghost ? 'flat' : 'outlined'"
+              @click="toggleGhost(!ghost)"
             />
             <v-btn
               color="red rounded"
@@ -284,7 +313,6 @@
   import { useAppStore } from '@/stores/app-store'
   import { getFactoryPowerShards, getFactorySomersloops } from '@/utils/statistics'
   import { formatMw, formatNumber } from '@/utils/numberFormatter'
-  import { useDisplay } from 'vuetify'
   import { setSyncState } from '@/utils/factory-management/syncState'
   import { markFactoryEdited } from '@/utils/sync-intent'
   import {
@@ -298,9 +326,11 @@
   import PlannerFactoryChecklist from '@/components/planner/PlannerFactoryChecklist.vue'
   import { groupColorVars } from '@/utils/colors'
   import eventBus from '@/utils/eventBus'
+  import { GHOST_HELP_TEXT, ghostAgeLabel, isGhost, setGhost } from '@/utils/factory-management/ghost'
   import { textFieldRule } from 'common'
 
   const copyFactory = inject('copyFactory') as (factory: Factory) => void
+  const updateFactory = inject('updateFactory') as (factory: Factory) => void
   const deleteFactory = inject('deleteFactory') as (factory: Factory) => void
   const moveFactory = inject('moveFactory') as (factory: Factory, direction: string) => void
   const navigateToFactory = inject('navigateToFactory') as (
@@ -348,8 +378,6 @@
   })
 
   const { getFactories } = useAppStore()
-
-  const { smAndDown } = useDisplay()
 
   const iconDialogOpen = ref(false)
 
@@ -434,9 +462,24 @@
 
   const cardStatuses = computed(() => statuses.value.filter(status => status.type !== 'outOfSync'))
 
+  const ghost = computed(() => isGhost(props.factory))
+  const ghostAge = computed(() => {
+    const age = ghostAgeLabel(props.factory)
+    return age === 'today' ? 'since today' : `for ${age}`
+  })
+  const ghostHelpText = `${GHOST_HELP_TEXT}<br>Use the ghost button beside Delete, or the cross on this chip, to count it again.`
+
+  // A user edit like any other, and it moves the plan's grid boost, so it goes through
+  // updateFactory: the recalculation reworks every factory's boost against the grid that is left.
+  const toggleGhost = (value: boolean) => {
+    setGhost(props.factory, value)
+    updateFactory(props.factory)
+  }
+
   const cardClass = computed(() => ({
     'factory-card': true,
     grouped: !!props.factory.group,
+    ghost: ghost.value,
     ...factoryStatusClass(statuses.value),
   }))
 

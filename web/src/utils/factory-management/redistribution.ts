@@ -2,6 +2,7 @@
 // exportable from it as if it had produced it, so a logistics hub can collect a part from a producer
 // and hand it on to consumers without making anything itself. What it can spare is what is left after
 // its own use, so an over-import shows up as stock to pass on rather than a Trim warning.
+import { isGhost } from '@/utils/factory-management/ghost'
 //
 // There used to be a per-row "redistribute" switch. Players were already doing this without one,
 // and the import dialog filters well enough that the switch was only in the way.
@@ -109,7 +110,8 @@ export const getImportSources = (
       const partData = provider.parts[part]
       // amountRemaining has this factory's own request taken off already; add it back so a row
       // being re-pointed does not count against itself.
-      const ownRequest = (provider.dependencies?.requests?.[factory.id] ?? [])
+      // A ghost's own request never came off (ghost demand is kept apart), so nothing to add back.
+      const ownRequest = isGhost(factory) ? 0 : (provider.dependencies?.requests?.[factory.id] ?? [])
         .filter(request => request.part === part)
         .reduce((acc, request) => acc + request.amount, 0)
 

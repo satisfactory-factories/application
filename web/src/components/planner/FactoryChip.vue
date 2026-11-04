@@ -15,11 +15,11 @@
 <template>
   <v-chip
     class="sf-chip small factory factory-chip"
-    :class="{ selected, 'sf-chip-clickable': clickable }"
+    :class="{ selected, ghost: isGhost(factory), 'sf-chip-clickable': clickable }"
     :color="selected ? 'primary' : ''"
     :ripple="clickable"
     :style="{ '--group-color': factory.group?.color ?? UNGROUPED_COLOR }"
-    :title="factory.group ? `Group: ${factory.group.name}` : 'Ungrouped'"
+    :title="chipTitle"
     @click="clickable && emit('open')"
   >
     <input
@@ -37,6 +37,9 @@
     <span class="factory-chip-name ml-2">
       <slot>{{ factory.name }}</slot>
     </span>
+    <!-- A ghost wears a dashed border and this glyph wherever it is named, so an export to one
+         reads as planned demand rather than as something the plan counts. -->
+    <span v-if="isGhost(factory)" class="ghost-glyph ml-2"><i class="fas fa-ghost" /></span>
     <v-btn
       v-if="jumpable"
       class="chip-jump-btn ml-2"
@@ -51,15 +54,17 @@
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue'
   import { FactoryGroup } from '@/interfaces/planner/FactoryInterface'
+  import { isGhost } from '@/utils/factory-management/ghost'
 
   // Ungrouped factories still get an edge, in a neutral grey, so every chip has the same shape and
   // a grouped one stands out by its colour rather than by having an edge at all.
   const UNGROUPED_COLOR = '#6c6c6c'
 
-  withDefaults(defineProps<{
+  const props = withDefaults(defineProps<{
     // Only what the chip draws, so a search result's summary fits as well as a whole factory.
-    factory: { name: string, icon?: string, group?: FactoryGroup }
+    factory: { name: string, icon?: string, group?: FactoryGroup, ghostSince?: string }
     // Undefined draws no tick at all, for when checklist mode is off.
     checked?: boolean
     desynced?: boolean
@@ -76,6 +81,13 @@
     jumpable: true,
     clickable: true,
     selected: false,
+  })
+
+  const chipTitle = computed(() => {
+    const group = props.factory.group ? `Group: ${props.factory.group.name}` : 'Ungrouped'
+    return isGhost(props.factory)
+      ? `${group}. Ghost factory: planned, not built, and left out of the plan's totals.`
+      : group
   })
 
   const emit = defineEmits<{
@@ -102,6 +114,13 @@
     border-left-color: var(--group-color) !important;
   }
 
+  // Dashed all round, the group edge included, so it still reads as that group's factory.
+  &.ghost {
+    border-style: dashed !important;
+    border-color: var(--sf-ghost-border) !important;
+    border-left-color: var(--group-color) !important;
+  }
+
   // The tonal fill takes the chip's own corner radius rather than the smaller one the border's
   // inner edge has, so its corners curve away and leave a wedge showing beside the wide left edge.
   :deep(.v-chip__underlay) {
@@ -112,6 +131,11 @@
     min-width: 0;
     width: 100%;
   }
+}
+
+.ghost-glyph {
+  flex-shrink: 0;
+  color: var(--sf-ghost);
 }
 
 // Gives up width before anything else in the chip when its container is narrower than the name.

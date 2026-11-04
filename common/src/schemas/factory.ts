@@ -38,6 +38,8 @@ export const partMetricsSchema = z.object({
   amountRequired: num,
   amountRequiredProduction: num,
   amountRequiredExports: num,
+  // Ghost factories' demand, kept out of amountRequired. Optional: older plans have none.
+  amountRequiredGhostExports: num.optional(),
   amountRequiredPower: num,
   amountSupplied: num,
   amountSuppliedViaInput: num,
@@ -174,6 +176,7 @@ export const factoryDependencyRequestSchema = z.object({
 export const factoryDependencyMetricsSchema = z.object({
   part: str,
   request: num,
+  ghostRequest: num.optional(),
   supply: num,
   isRequestSatisfied: z.boolean(),
   difference: num,
@@ -340,6 +343,8 @@ export const factorySchema = z.object({
   checklistExportSyncedAmounts: boundedRecord(num, CAPS.checklistKeys).default(() => ({})),
   icon: str.optional(),
   group: factoryGroupSchema.optional(),
+  // ISO date the factory was made a ghost. Optional, only ever written while on.
+  ghostSince: z.string().max(40).optional(),
   dataVersion: str,
 })
 

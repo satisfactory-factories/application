@@ -185,6 +185,7 @@
   import eventBus from '@/utils/eventBus'
   import { dismissBootLoader } from '@/utils/bootLoader'
   import { useEventBusListener } from '@/composables/useEventBusListener'
+  import { useGhostReminder } from '@/composables/useGhostReminder'
   import { captureOrder, markFactoryRemoved, markReorderedFactories } from '@/utils/sync-intent'
   import BuildingGroupTutorial from '@/components/planner/products/BuildingGroupTutorial.vue'
   import AwesomeSinkTutorial from '@/components/planner/AwesomeSinkTutorial.vue'
@@ -508,6 +509,9 @@
   })
 
   // When everything is loaded and ready to go, then we are ready to start loading things.
+  // Ghost factories left out of the totals for a while get one reminder when the plan loads.
+  useGhostReminder()
+
   useEventBusListener('loadingCompleted', () => {
     console.log('Planner: Received loadingCompleted event, booting planner')
     showPlan()

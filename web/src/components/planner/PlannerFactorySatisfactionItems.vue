@@ -316,6 +316,20 @@
                   -{{ formatNumber(part.amountRequiredExports ) }}/min
                 </span>
               </div>
+              <!-- Ghost factories' asks: planned, not built, so not in the figure below. Shown in the
+                   ghost colour so the breakdown still adds up to what the chip says. -->
+              <div
+                v-if="ghostDemand(part) > 0"
+                class="d-flex justify-space-between align-center ghost-line"
+              >
+                <span><i class="fas fa-ghost mr-1" />Exports to ghosts</span>
+                <span
+                  :id="`${ factory.id }-satisfaction-${partId.toString()}-required-ghost-exports`"
+                  class="align-self-end text-right"
+                >
+                  -{{ formatNumber(ghostDemand(part)) }}/min
+                </span>
+              </div>
               <div v-if="part.amountRequiredSink" class="d-flex justify-space-between align-center text-awesome-sink">
                 <span>To AWESOME Sink</span>
                 <span
@@ -336,6 +350,19 @@
                   <span :id="`${factory.id}-satisfaction-${partId.toString()}-remaining`">{{ formatNumber(part.amountRemaining) }}</span>/min {{ getSatisfactionLabel(part.amountRemaining) }}
                 </b>
               </v-chip>
+              <!-- The same figure with the ghost factories built: dashed like every other ghost, and
+                   red text when the ghosts would tip the part into a shortage. -->
+              <tooltip v-if="ghostDemand(part) > 0" :text="ghostChipTooltip(part, partId.toString())">
+                <v-chip
+                  :id="`${factory.id}-satisfaction-${partId.toString()}-with-ghosts`"
+                  class="sf-chip small ghost-chip"
+                  :class="{ 'ghost-short': isGhostShortage(factory, partId.toString()) }"
+                >
+                  <i class="fas fa-ghost mr-2" />
+                  <b>{{ formatNumber(ghostRemaining(part)) }}/min {{ getSatisfactionLabel(ghostRemaining(part)) }} with ghosts</b>
+                  <i class="fas fa-info-circle ml-2" />
+                </v-chip>
+              </tooltip>
               <!-- What the factory really does with this part once the building groups are counted
                    instead of the quantities. Every figure above comes from the quantities, which
                    Sync off leaves free to disagree with the groups, so without this a product
@@ -634,6 +661,7 @@
 </template>
 
 <script setup lang="ts">
+  import { ghostDemand, ghostRemaining, isGhost } from '@/utils/factory-management/ghost'
   import { recordEvent } from '@/utils/record-event'
   import { computed, inject } from 'vue'
   import { getPartDisplayName } from '@/utils/helpers'
@@ -650,6 +678,7 @@
     hasBacklogAdvisory,
     hasNoDemandAdvisory,
     isEndProduct,
+    isGhostShortage,
     isPotentialBlockage,
     isUnhandledByproduct,
     showBacklogIgnored,
@@ -946,6 +975,21 @@
 
   const getSatisfactionLabel = (total: number) => {
     return total >= 0 ? 'surplus' : 'shortage'
+  }
+
+  // Which ghosts ask for the part, by name, so the tooltip says who the figure is waiting on.
+  const ghostChipTooltip = (part: PartMetrics, partId: string): string => {
+    const names = Object.entries(props.factory.dependencies.requests ?? {})
+      .filter(([requester, requests]) =>
+        isGhost(findFactory(requester)) && requests.some(request => request.part === partId))
+      .map(([requester]) => findFactory(requester)?.name)
+      .filter(Boolean)
+    const who = names.length ? names.join(', ') : 'ghost factories'
+    const verdict = isGhostShortage(props.factory, partId)
+      ? 'Building them would leave this factory short, so scale it up before you do.'
+      : 'This factory can cover them once they are built.'
+    return `With the ghost factories built (${who} asking for ${formatNumber(ghostDemand(part))}/min).<br>` +
+      `They are not counted in the figure beside this one. ${verdict}`
   }
 
   const asBuiltRemaining = (part: PartMetrics, partId: string): number =>
@@ -1293,5 +1337,16 @@ table {
       content: none;
     }
   }
+}
+
+// Ghost factories' demand: the breakdown line and the "with ghosts" chip. Dashed and in the ghost
+// colour, red text only when the ghosts would tip the part into a shortage.
+.ghost-line {
+  color: var(--sf-ghost);
+}
+
+.sf-chip.ghost-chip.ghost-short {
+  color: var(--sf-error) !important;
+  border-color: var(--sf-error-border) !important;
 }
 </style>

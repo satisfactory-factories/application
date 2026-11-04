@@ -17,6 +17,10 @@ export interface PartMetrics {
   amountRequired: number; // Total amount required by all products on the line
   amountRequiredProduction: number; // Total amount required by production
   amountRequiredExports: number; // Total amount required by all exports
+  // What ghost factories (planned, not built) ask for on top. Kept out of amountRequired, so the
+  // part's satisfaction says how it stands today, and shown beside it as the "with ghosts" figure.
+  // Optional: absent on plans saved before ghosts existed, and 0 reads the same.
+  amountRequiredGhostExports?: number;
   amountRequiredPower: number;
   // Demanded by custom buildings (a Portal's Singularity Cells). Absent on plans saved before
   // custom buildings existed; initFactories backfills it.
@@ -144,7 +148,9 @@ export interface FactoryDependencyRequest {
 
 export interface FactoryDependencyMetrics {
   part: string;
-  request: number;
+  request: number; // Live requests only: ghost factories' asks are in ghostRequest instead.
+  // What ghost factories ask for on top of `request`. Optional, absent when there are none.
+  ghostRequest?: number;
   supply: number;
   isRequestSatisfied: boolean;
   difference: number;
@@ -410,6 +416,11 @@ export interface Factory {
   // The group this factory belongs to. Absent means Ungrouped. Source of truth — see
   // FactoryGroup above for why the whole record lives here rather than an id.
   group?: FactoryGroup
+  // A ghost factory: planned, not built yet. Calculated in full on its own card and left out of
+  // every plan-wide total (power, grid boost, raw resources, buildings). Holds the ISO date it was
+  // made a ghost, so the planner can remind a returning player it is there. Absent means a normal
+  // factory, and it is only ever written while on. See utils/factory-management/ghost.ts.
+  ghostSince?: string
   dataVersion: string
 }
 

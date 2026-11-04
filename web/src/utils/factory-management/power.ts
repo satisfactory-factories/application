@@ -1,4 +1,5 @@
 import { Factory, FactoryPowerChangeType, FactoryPowerProducer, ItemType } from '@/interfaces/planner/FactoryInterface'
+import { countedFactories } from '@/utils/factory-management/ghost'
 import { DataInterface } from '@/interfaces/DataInterface'
 import { generateFactoryItemId, getPowerRecipe, hasFractionalClock } from '@/utils/factory-management/common'
 import { PowerRecipe } from '@/interfaces/Recipes'
@@ -242,9 +243,12 @@ export const calculatePowerAmount = (
 // The Alien Power Augmenter's circuit boost applies to the entire power grid (the plan is
 // assumed to be one grid): each augmenter adds 10% (30% when fed matrixes) of the TOTAL
 // base generation across all factories. Must run after factory.power totals are written.
+//
+// Ghost factories (ghost.ts) are not on the grid yet: their generation is left out of the base, and
+// the boost a ghost's own augmenters show is what they would add to the grid as it stands.
 export const calculateGridBoost = (factories: Factory[], gameData: DataInterface) => {
   let totalBaseGeneration = 0
-  factories.forEach(factory => {
+  countedFactories(factories).forEach(factory => {
     totalBaseGeneration += factory.power?.produced ?? 0
   })
 

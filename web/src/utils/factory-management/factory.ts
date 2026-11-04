@@ -24,6 +24,7 @@ import { DataInterface } from '@/interfaces/DataInterface'
 import eventBus from '@/utils/eventBus'
 import { calculateSyncState } from '@/utils/factory-management/syncState'
 import { calculateGridBoost, calculatePowerProducers } from '@/utils/factory-management/power'
+import { ghostIdSet } from '@/utils/factory-management/ghost'
 import { calculateCustomBuildings } from '@/utils/factory-management/custom-buildings'
 import { calculateBuildingMaterialCosts } from '@/utils/factory-management/building-costs'
 import { calculateRemainingBuildingCount, checkForItemUpdate, syncBuildingGroups } from '@/utils/factory-management/building-groups/common'
@@ -216,10 +217,12 @@ const calculateFactoryEngine = (
   calculateFactoryDependencies(factory, allFactories, gameData, modes.loadMode)
 
   // Calculate the dependency metrics for the factory.
-  calculateDependencyMetrics(factory)
+  // Ghost factories' requests are planned demand, kept apart from live demand by both passes.
+  const ghostIds = ghostIdSet(allFactories)
+  calculateDependencyMetrics(factory, ghostIds)
 
   // Then we calculate the satisfaction of the factory. This requires Dependencies to be calculated first.
-  calculateParts(factory, gameData)
+  calculateParts(factory, gameData, ghostIds)
 
   // After now knowing what our supply is, we need to recalculate the dependency metrics.
   calculateDependencyMetricsSupply(factory)

@@ -92,6 +92,19 @@
         >
           <i class="d-inline fas fa-sticky-note" />
         </v-col>
+        <!-- With the dashed border, what says a ghost from across the room: the plan's totals
+             leave this factory out, and a player back after a break has to see that here. In the
+             icon strip beside the notes glyph, so it lines up with the row's other hints. -->
+        <v-col
+          v-if="ghost"
+          class="context-icon ghost-glyph align-content-center text-center py-0 px-1"
+          cols="auto"
+          data-testid="sidebar-ghost-glyph"
+          @mouseenter="showHint($event, ghostHint)"
+          @mouseleave="hideHint"
+        >
+          <i class="d-inline fas fa-ghost" />
+        </v-col>
         <v-col
           class="pa-0 ml-2 align-content-center text-center sync-state"
           :class="syncStateClass"
@@ -128,6 +141,7 @@
 <script setup lang="ts">
   import { computed, inject, nextTick, ref, type Ref } from 'vue'
   import { Factory } from '@/interfaces/planner/FactoryInterface'
+  import { ghostAgeLabel, isGhost } from '@/utils/factory-management/ghost'
   import {
     FactoryStatus,
     factoryStatusClass,
@@ -204,8 +218,15 @@
       ? 'Out of sync with game'
       : 'Game sync unknown')
 
+  const ghost = computed(() => isGhost(props.factory))
+  const ghostHint = computed(() => {
+    const age = ghostAgeLabel(props.factory)
+    return `Ghost factory ${age === 'today' ? 'since today' : `for ${age}`}: left out of the plan's totals`
+  })
+
   const rowClass = computed(() => ({
     'factory-card': true,
+    ghost: ghost.value,
     'active-view': props.factory.id === activeFactoryId.value,
     ...factoryStatusClass(props.statuses),
   }))
@@ -301,5 +322,10 @@
       color: var(--sf-status-warning);
     }
   }
+}
+
+// After .context-icon, so the ghost keeps its own colour rather than the strip's grey.
+.context-icon.ghost-glyph {
+  color: var(--sf-ghost);
 }
 </style>
