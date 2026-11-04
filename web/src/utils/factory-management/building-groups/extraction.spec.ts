@@ -19,7 +19,7 @@ import {
   PURITY_MULTIPLIERS,
   sanitizeGroupExtraction,
 } from '@/utils/factory-management/building-groups/extraction'
-import { calculateProductBuildingGroupPower, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
+import { calculateProductBuildingGroupPower, resyncGroupSetting, updateBuildingGroupViaPart } from '@/utils/factory-management/building-groups/common'
 import { fetchGameData } from '@/utils/gameDataService'
 
 describe('extraction', async () => {
@@ -102,21 +102,23 @@ describe('extraction', async () => {
   })
 
   // Nobody builds Mk.1 miners, so the first thing done to a new mine is swapping the default
-  // mark — which must not silently rewrite the quantity the user typed.
-  describe('mines default to unsynced building groups', () => {
+  // mark — which must not silently rewrite the quantity the user typed. Mines used to start
+  // unsynced to avoid that, which left every later change to the quantity behind the miners
+  // (#821). They now keep sync, and the mark swap re-solves the count to hold the quantity.
+  describe('mines keep building group sync', () => {
     let mockFactory: Factory
 
     beforeEach(() => {
       mockFactory = newFactory('Iron Mine')
     })
 
-    it('starts an extraction product with building group sync off', () => {
+    it('starts an extraction product with building group sync on', () => {
       addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
 
-      expect(mockFactory.products[0].buildingGroupItemSync).toBe(false)
+      expect(mockFactory.products[0].buildingGroupItemSync).toBe(true)
     })
 
-    it('still solves the initial group before turning sync off', () => {
+    it('solves the initial group into whole miners', () => {
       addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
       const [firstGroup] = mockFactory.products[0].buildingGroups
 
@@ -125,16 +127,56 @@ describe('extraction', async () => {
       expect(firstGroup.overclockPercent).toBe(100)
     })
 
-    it('leaves the quantity alone when the miner mark is swapped', () => {
+    it('holds the quantity and re-solves the miners when the mark is swapped', () => {
       addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
       calculateFactories([mockFactory], gameData)
+      const product = mockFactory.products[0]
 
-      mockFactory.products[0].buildingGroups[0].extractorBuilding = 'minermk3'
+      product.buildingGroups[0].extractorBuilding = 'minermk3'
+      expect(resyncGroupSetting(product, ItemType.Product, mockFactory)).toBe(true)
+      calculateFactories([mockFactory], gameData)
+
+      expect(product.amount).toBe(480)
+      // A Mk.3 on a normal node makes 240/min, so two of them make the 480.
+      expect(product.buildingGroups[0].buildingCount).toBe(2)
+      expect(product.buildingGroups[0].overclockPercent).toBe(100)
+      expect(product.buildingGroupsHaveProblem).toBe(false)
+    })
+
+    it('holds the quantity when the purity is changed', () => {
+      addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
+      calculateFactories([mockFactory], gameData)
+      const product = mockFactory.products[0]
+
+      product.buildingGroups[0].purity = 'pure'
+      resyncGroupSetting(product, ItemType.Product, mockFactory)
+      calculateFactories([mockFactory], gameData)
+
+      expect(product.amount).toBe(480)
+      expect(product.buildingGroups[0].buildingCount).toBe(4)
+      expect(product.buildingGroupsHaveProblem).toBe(false)
+    })
+
+    it('leaves an unsynced mine\'s groups alone when the mark is swapped', () => {
+      addProductToFactory(mockFactory, { id: 'OreIron', recipe: 'Extract_OreIron', amount: 480 })
+      calculateFactories([mockFactory], gameData)
+      const product = mockFactory.products[0]
+      product.buildingGroupItemSync = false
+
+      product.buildingGroups[0].extractorBuilding = 'minermk3'
+      expect(resyncGroupSetting(product, ItemType.Product, mockFactory)).toBe(false)
       calculateFactories([mockFactory], gameData, { origin: 'buildingGroup' })
 
-      expect(mockFactory.products[0].amount).toBe(480)
+      expect(product.amount).toBe(480)
+      expect(product.buildingGroups[0].buildingCount).toBe(8)
       // The groups now out-produce the target, which is surfaced rather than silently applied.
-      expect(mockFactory.products[0].buildingGroupsHaveProblem).toBe(true)
+      expect(product.buildingGroupsHaveProblem).toBe(true)
+    })
+
+    it('starts a resource well unsynced, as its output comes from satellites', () => {
+      addProductToFactory(mockFactory, { id: 'Water', recipe: 'Extract_Water_Well', amount: 120 })
+
+      expect(mockFactory.products[0].buildingGroupItemSync).toBe(false)
     })
 
     it('keeps sync on for ordinary products', () => {
@@ -143,8 +185,6 @@ describe('extraction', async () => {
       expect(mockFactory.products[0].buildingGroupItemSync).toBe(true)
     })
 
-    // A Water Extractor has one mark and no purity, so its groups never need to differ — the
-    // reason mines start unsynced does not apply to it.
     it('keeps sync on for water, which is plain extraction', () => {
       addProductToFactory(mockFactory, { id: 'Water', recipe: 'Extract_Water', amount: 480 })
 

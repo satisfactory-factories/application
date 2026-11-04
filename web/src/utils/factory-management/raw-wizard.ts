@@ -20,7 +20,6 @@ import { addShortageToFactory } from '@/utils/factory-management/satisfaction'
 import {
   getExtractionRecipeForPart,
   isExtractionRecipe,
-  isPlainExtraction,
   isWellRecipe,
 } from '@/utils/factory-management/building-groups/extraction'
 import { getPartDisplayName } from '@/utils/helpers'
@@ -250,13 +249,28 @@ const validateRows = (rows: WizardRow[], factories: Factory[]) => {
   }
 }
 
+// Whole buildings underclocked to hit the figure exactly, which is what syncBuildingGroups does
+// for a synced product.
+const sizeGroupFor = (product: FactoryItem, partId: string, amount: number, group: BuildingGroup) => {
+  group.overclockPercent = 100
+  group.buildingCount = 1
+  // Unrounded, then the clock to the four decimal places the game allows, which is what
+  // bestEffortUpdateBuildingCount does. Taking the buildings at the stored 3dp and rounding the
+  // clock to 3dp as well compounds: 100/min from a 120/min extractor became 0.833 buildings at
+  // 83.3%, producing 99.96 and leaving the factory the wizard just fixed still short.
+  const needed = buildingsNeededForPartsProducts(partId, amount, product, group, 10)
+  const whole = Math.max(1, Math.ceil(needed))
+  group.buildingCount = whole
+  group.overclockPercent = formatNumberFully((needed / whole) * 100, 4)
+}
+
 // Adds the extraction as a product and sizes its building group for the chosen mark and purity.
 //
-// The sync dance is load-bearing. addProductToFactory creates the group immediately on the
-// recipe's REFERENCE extractor (Mk.1), so swapping in a Mk.2 afterwards doubles the group's output
-// against an unchanged product amount — a brand new mine that is already reporting a building
-// group mismatch. Turning sync on lets the amount drive the count instead; mines are then put back
-// to the unsynced default so a later mark change doesn't rewrite the quantity.
+// addProductToFactory creates the group on the recipe's REFERENCE extractor (Mk.1), so swapping in
+// a Mk.2 afterwards doubles the group's output against an unchanged product amount — a brand new
+// mine that is already reporting a building group mismatch. So the group is re-sized here for the
+// mark it now carries, rather than left for a later sync to correct: a later row can grow the mine
+// with a second group, which turns sync off before that correction would run.
 const addSizedExtraction = (
   factory: Factory,
   partId: string,
@@ -271,34 +285,20 @@ const addSizedExtraction = (
   if (group) {
     group.extractorBuilding = extractor.building
     group.purity = extractor.purity
+    sizeGroupFor(product, partId, amount, group)
   }
-  product.buildingGroupItemSync = true
 
   return product
 }
 
-// Whole buildings underclocked to hit the figure exactly, which is what syncBuildingGroups does
-// for a synced product and therefore what addSizedExtraction inherits.
-const sizeGroupFor = (product: FactoryItem, partId: string, amount: number, group: BuildingGroup) => {
-  group.overclockPercent = 100
-  group.buildingCount = 1
-  // Unrounded, then the clock to the four decimal places the game allows, which is what
-  // bestEffortUpdateBuildingCount does. Taking the buildings at the stored 3dp and rounding the
-  // clock to 3dp as well compounds: 100/min from a 120/min extractor became 0.833 buildings at
-  // 83.3%, producing 99.96 and leaving the factory the wizard just fixed still short.
-  const needed = buildingsNeededForPartsProducts(partId, amount, product, group, 10)
-  const whole = Math.max(1, Math.ceil(needed))
-  group.buildingCount = whole
-  group.overclockPercent = formatNumberFully((needed / whole) * 100, 4)
-}
-
-// Raising an extraction product's quantity does not, on its own, build the miners — mines are
-// deliberately left unsynced, because a real one is split across nodes of differing purity and
-// sync would flatten that mix. So the added output becomes a group of its own, copying the mark
-// and purity the mine already uses, and the groups the user set are left untouched.
+// The added output becomes a group of its own, copying the mark and purity the mine already uses,
+// and the groups the user set are left untouched. A real mine is split across nodes of differing
+// purity and sync would flatten that mix, so a second group turns sync off — the same rule adding
+// a group by hand follows.
 const growExtraction = (factory: Factory, product: FactoryItem, partId: string, extra: number) => {
   const reference = product.buildingGroups[product.buildingGroups.length - 1]
   addProductBuildingGroup(product, factory)
+  product.buildingGroupItemSync = false
   const group = product.buildingGroups[product.buildingGroups.length - 1]
   if (!group) {
     return
@@ -405,7 +405,6 @@ export const applyRawWizard = (
 
   const byId = new Map(working.map(factory => [factory.id, factory]))
   const summary: WizardSummary = { minesCreated: [], productsAdded: 0, importsWired: 0, factories: [] }
-  const sizedProducts: FactoryItem[] = []
   const touched = new Set<number>()
   // What the review says about each line it shows. Recorded as the change is made, because
   // afterwards a raised amount is indistinguishable from one that was always that size.
@@ -461,7 +460,6 @@ export const applyRawWizard = (
         noteProduct(existing, 'increased')
       } else {
         const added = addSizedExtraction(factory, row.partId, recipe, row.shortfall, extractor)
-        sizedProducts.push(added)
         noteProduct(added, 'new')
       }
       summary.productsAdded++
@@ -479,7 +477,6 @@ export const applyRawWizard = (
         throw new WizardValidationError(`There is no extractor for ${row.partName}.`)
       }
       const added = addSizedExtraction(target, row.partId, recipe, row.shortfall, extractor)
-      sizedProducts.push(added)
       noteProduct(added, 'new')
       summary.productsAdded++
       addInputToFactory(factory, { factoryId: target.id, outputPart: row.partId, amount: row.shortfall })
@@ -514,12 +511,6 @@ export const applyRawWizard = (
   working = placeNewFactories(working, new Set([...mines.values()].map(mine => mine.id)), placement)
 
   calculateFactories(working, gameData)
-
-  // Back to the unsynced default every mine is created with, now that the groups are sized.
-  // Water extractors are not mines — one mark, no purity — so they keep sync like anything else.
-  sizedProducts
-    .filter(product => !isPlainExtraction(product.recipe))
-    .forEach(product => { product.buildingGroupItemSync = false })
 
   summary.factories = describeTouchedFactories(
     working,

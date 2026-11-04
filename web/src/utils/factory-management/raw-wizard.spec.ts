@@ -196,7 +196,7 @@ describe('raw wizard', async () => {
       // 200/min from Mk.2s on normal nodes (120/min each) — and the groups must actually add up.
       expect(mine.products[0].buildingGroupsHaveProblem).toBe(false)
       expect(mine.parts.OreIron.amountSuppliedViaProduction).toBe(200)
-      // Back to the unsynced default every mine is created with.
+      // Two rows grew this mine into two groups, which turns sync off like adding one by hand.
       expect(mine.products[0].buildingGroupItemSync).toBe(false)
     })
 

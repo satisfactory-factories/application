@@ -22,6 +22,8 @@ import {
   calculateRemainingBuildingCount,
   checkForItemUpdate,
   deleteBuildingGroup,
+  getGroupPowerShards,
+  getShardsPerBuilding,
   getTotalPowerShards,
   planSpread,
   previewSpread,
@@ -1430,6 +1432,50 @@ describe('powerProducer simplified cases', async () => {
 
       expect(stone.buildingGroups[1].buildingCount).toBeGreaterThan(1)
       expect(stone.buildingGroups[1].overclockPercent).toBeLessThanOrEqual(250)
+      expect(calculateRemainingBuildingCount(stone, ItemType.Product)).toBeCloseTo(0, 4)
+    })
+
+    // #821: seven Mk.1 miners left over from 420/min, Satisfied up to 480/min. Keeping the count
+    // meant 114.29% on all seven, seven power shards, where an eighth miner at 100% needs none.
+    it('adds buildings rather than overclocking a group that has no shards', () => {
+      const oreFactory = newFactory('Iron Mine')
+      addProductToFactory(oreFactory, { id: 'OreIron', amount: 480, recipe: 'Extract_OreIron' })
+      const ore = oreFactory.products[0]
+      ore.buildingGroupItemSync = false
+      ore.buildingGroups[0].buildingCount = 7
+      ore.buildingGroups[0].overclockPercent = 92.8571
+      calculateFactories([oreFactory], gameData, { origin: 'buildingGroup' })
+
+      applyRemainderToGroup(ore, ore.buildingGroups[0], ItemType.Product, oreFactory)
+
+      expect(ore.buildingGroups[0].buildingCount).toBe(8)
+      expect(ore.buildingGroups[0].overclockPercent).toBe(100)
+      expect(getTotalPowerShards(ore.buildingGroups)).toBe(0)
+      expect(calculateRemainingBuildingCount(ore, ItemType.Product)).toBeCloseTo(0, 4)
+    })
+
+    it('keeps the count of an overclocked group while its shards still cover the clock', () => {
+      // The first group already carries a shard per building (133.3333%), so 8.8/min more takes
+      // it to 139.2% on the same five miners and the same five shards.
+      applyRemainderToGroup(stone, stone.buildingGroups[0], ItemType.Product, stoneFactory)
+
+      expect(stone.buildingGroups[0].buildingCount).toBe(5)
+      expect(stone.buildingGroups[0].overclockPercent).toBe(139.2)
+      expect(getGroupPowerShards(stone.buildingGroups[0])).toBe(5)
+    })
+
+    it('adds buildings once an overclocked group would need more shards than it has', () => {
+      // 5 impure Mk.1s need 200/min more on top of their 200: 400/min would be 266.67% each, past
+      // both the 150% their one shard allows and the game's cap. At 150% each one makes 45/min,
+      // so nine of them cover it without a second shard apiece.
+      stone.amount = 551.2
+      calculateFactories([stoneFactory], gameData, { origin: 'buildingGroup' })
+
+      applyRemainderToGroup(stone, stone.buildingGroups[0], ItemType.Product, stoneFactory)
+
+      expect(stone.buildingGroups[0].buildingCount).toBe(9)
+      expect(stone.buildingGroups[0].overclockPercent).toBeLessThanOrEqual(150)
+      expect(getShardsPerBuilding(stone.buildingGroups[0])).toBe(1)
       expect(calculateRemainingBuildingCount(stone, ItemType.Product)).toBeCloseTo(0, 4)
     })
 
