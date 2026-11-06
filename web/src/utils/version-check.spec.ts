@@ -110,6 +110,20 @@ describe('startVersionCheck', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('should ask nothing while offline mode is on, and pick up again once it is off', async () => {
+    respondWith(config.appVersion)
+    let silent = true
+    stop = startVersionCheck({ isSilent: () => silent })
+    await vi.advanceTimersByTimeAsync(VERSION_POLL_INTERVAL_MS * 3)
+
+    expect(fetch).not.toHaveBeenCalled()
+
+    silent = false
+    await vi.advanceTimersByTimeAsync(VERSION_POLL_INTERVAL_MS)
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
   it('should check as soon as the tab is looked at again', async () => {
     respondWith(config.appVersion)
     hide(true)

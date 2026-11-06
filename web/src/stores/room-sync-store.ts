@@ -13,6 +13,7 @@ import type {
   TextIssue,
 } from 'common'
 import { SyncSocket } from '@/sync/ws-client'
+import { readOfflineMode, writeOfflineMode } from '@/sync/offline-mode'
 import type { SyncSocketStatus } from '@/sync/ws-client'
 import {
   ackedFromContent,
@@ -266,7 +267,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const gameDataStore = useGameDataStore()
 
   const rooms = ref<Record<string, RoomState>>({})
-  const mode = ref<OfflineMode>('online')
+  /** True when this page opened with offline mode still on from an earlier visit. */
+  const restoredOffline = readOfflineMode()
+  const mode = ref<OfflineMode>(restoredOffline ? 'offline' : 'online')
   const connection = ref<SyncSocketStatus>('idle')
   const failedReconnects = ref(0)
   const userId = ref<string | null>(null)
@@ -2040,6 +2043,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // client walked away from.
     releaseAllFields()
     mode.value = 'offline'
+    writeOfflineMode(true)
     failedReconnects.value = 0
     clearTimeout(debounceTimer)
     debounceTimer = undefined
@@ -2065,6 +2069,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
   const exitOffline = () => {
     if (mode.value !== 'offline') return
     mode.value = 'reconnecting'
+    writeOfflineMode(false)
     failedReconnects.value = 0
     start()
   }
@@ -2189,6 +2194,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     // State
     rooms,
     mode,
+    restoredOffline,
     connection,
     failedReconnects,
     userId,

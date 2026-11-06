@@ -1663,11 +1663,32 @@ describe('rooms-store', () => {
 
       expect(track).not.toHaveBeenCalledWith(tab.id, expect.anything())
     })
+
+    it('leaves synced tabs to the room list while online', () => {
+      const tab = localTab('Synced')
+      appStore.setTabState(tab.id, { kind: 'synced', shared: false, role: 'owner', revision: 1 })
+      const track = vi.spyOn(roomSync, 'trackRoom')
+
+      store.trackSyncedTabsWhileOffline()
+
+      expect(track).not.toHaveBeenCalled()
+    })
   })
 
   describe('offline mode', () => {
     beforeEach(() => {
       roomSync.enterOffline()
+    })
+
+    it('tracks the synced tabs it already knows about without asking the server', () => {
+      const synced = localTab('Synced')
+      appStore.setTabState(synced.id, { kind: 'synced', shared: false, role: 'owner', revision: 1 })
+      const track = vi.spyOn(roomSync, 'trackRoom')
+
+      store.trackSyncedTabsWhileOffline()
+
+      expect(track).toHaveBeenCalledExactlyOnceWith(synced.id)
+      expect(api.listRooms).not.toHaveBeenCalled()
     })
 
     it('refuses every room mutation without issuing a request', async () => {

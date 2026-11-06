@@ -97,6 +97,92 @@ describe('backend-health-store', () => {
     expect(store.unhealthy).toBe(false)
   })
 
+  /**
+   * The flapping-connection case: the reader has network, the API keeps dropping out, and they
+   * have switched to offline mode precisely so it stops bothering them. Nothing in offline mode
+   * may put the banner up, however long the server stays away.
+   */
+  describe('in offline mode while the server is down and the browser is online', () => {
+    beforeEach(() => {
+      vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+      vi.mocked(api.getHealth).mockRejectedValue(new ApiNetworkError('no route to host'))
+    })
+
+    it('never raises the banner, however long the server stays away', async () => {
+      vi.useFakeTimers()
+      try {
+        roomSync.enterOffline()
+        await nextTick()
+        store.start()
+
+        // Well past every quick retry and into the backoff.
+        await vi.advanceTimersByTimeAsync(HEALTH_BACKOFF_MAX_MS * 3)
+
+        expect(api.getHealth).not.toHaveBeenCalled()
+        expect(store.unhealthy).toBe(false)
+        expect(store.retrying).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('drops a banner that was already up the moment offline mode goes on', async () => {
+      vi.useFakeTimers()
+      try {
+        store.start()
+        await vi.advanceTimersByTimeAsync(0)
+        expect(store.unhealthy).toBe(true)
+
+        roomSync.enterOffline()
+        await nextTick()
+        expect(store.unhealthy).toBe(false)
+
+        vi.mocked(api.getHealth).mockClear()
+        await vi.advanceTimersByTimeAsync(HEALTH_RETRY_MS * HEALTH_RETRY_ATTEMPTS * 2)
+
+        expect(api.getHealth).not.toHaveBeenCalled()
+        expect(store.unhealthy).toBe(false)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('ignores a check that was already in flight when offline mode went on', async () => {
+      let fail!: (error: Error) => void
+      vi.mocked(api.getHealth).mockImplementationOnce(() => new Promise((_resolve, reject) => {
+        fail = reject
+      }))
+
+      const inFlight = store.check()
+      roomSync.enterOffline()
+      await nextTick()
+      fail(new ApiNetworkError('no route to host'))
+      await inFlight
+
+      expect(store.unhealthy).toBe(false)
+      expect(store.failures).toBe(0)
+    })
+
+    it('does not check when the socket reports reconnecting', async () => {
+      roomSync.enterOffline()
+      await nextTick()
+
+      roomSync.connection = 'reconnecting'
+      await nextTick()
+
+      expect(api.getHealth).not.toHaveBeenCalled()
+      expect(store.unhealthy).toBe(false)
+    })
+
+    it('raises the banner again once offline mode goes off and the server is still down', async () => {
+      roomSync.enterOffline()
+      await nextTick()
+
+      roomSync.exitOffline()
+      await vi.waitFor(() => expect(store.unhealthy).toBe(true))
+    })
+  })
+
   it('polls on a timer once started, and stops when told to', async () => {
     vi.useFakeTimers()
     try {

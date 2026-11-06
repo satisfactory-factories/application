@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, useTemplateRef } from 'vue'
+  import { ref, useTemplateRef, watch } from 'vue'
   import { storeToRefs } from 'pinia'
   import { useAuthStore } from '@/stores/auth-store'
   import AccountPanel from '@/components/sync/AccountPanel.vue'
@@ -53,6 +53,7 @@
   import eventBus from '@/utils/eventBus'
   import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'
+  import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { BackendOutageError } from '@/errors/BackendOutageError'
   import { InvalidTokenError } from '@/errors/InvalidTokenError'
 
@@ -62,6 +63,7 @@
 
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
+  const roomSync = useRoomSyncStore()
   const preferencesStore = usePreferencesStore()
 
   const trayOpen = ref(false)
@@ -87,6 +89,21 @@
       return
     }
 
+    // A page opened in offline mode says nothing to the server, the token check included.
+    // The session is picked up the moment the reader goes back online.
+    if (roomSync.isSuppressed) {
+      const stopWaiting = watch(() => roomSync.isSuppressed, suppressed => {
+        if (suppressed) return
+        stopWaiting()
+        void resumeSession()
+      })
+      return
+    }
+
+    await resumeSession()
+  })
+
+  const resumeSession = async () => {
     try {
       await authStore.validateToken()
       // The session is known good: connect the socket and pull the tab list, which
@@ -104,7 +121,7 @@
       }
       errorMessage.value = 'An unexpected error occurred validating your token. Please report this on Discord!'
     }
-  })
+  }
 
   const closeSessionExpiredAlert = () => {
     showSessionExpiredDialog.value = false
