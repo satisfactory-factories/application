@@ -74,6 +74,7 @@ declare module 'vue' {
     NewTabDialog: typeof import('./components/sync/NewTabDialog.vue')['default']
     OfflineConflictDialog: typeof import('./components/sync/OfflineConflictDialog.vue')['default']
     OfflinePrompt: typeof import('./components/sync/OfflinePrompt.vue')['default']
+    OfflineReturnPrompt: typeof import('./components/sync/OfflineReturnPrompt.vue')['default']
     OptionsDialog: typeof import('./components/OptionsDialog.vue')['default']
     PartPanel: typeof import('./components/parts/PartPanel.vue')['default']
     PartsBrowser: typeof import('./components/parts/PartsBrowser.vue')['default']

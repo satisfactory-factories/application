@@ -238,8 +238,10 @@ test('an edit made with the network gone survives closing the browser, and reach
     timeout: 30_000,
   }).toBe(1234)
 
-  // Offline mode is a stance rather than stored state, so the reopened browser connects on
-  // its own and the edit made while it was isolated goes out.
+  // Offline mode is remembered, so the reopened browser opens silent and offers the way back.
+  // Taking it is what sends the edit made while it was isolated.
+  await expect(back.getByTestId('tab-bar-offline')).toContainText('Offline mode')
+  await back.getByTestId('offline-return-accept').click()
   await expect.poll(() => factoryNames(witness), {
     message: 'the offline edit never reached the room after the browser was reopened',
     timeout: 40_000,

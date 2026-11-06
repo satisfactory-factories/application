@@ -27,6 +27,7 @@ import { mergeFactories, stableStringify } from '@/sync/room-state'
 import { fingerprint } from '@/sync/offline-conflict'
 import { readTabMirrorMeta, setTabMirrorMeta } from '@/sync/tab-mirror-meta'
 import { forgetInstanceId, INSTANCE_ID_KEY, recoverJournalRoom } from '@/sync/plan-journal'
+import { OFFLINE_MODE_KEY } from '@/sync/offline-mode'
 import { resetStorageWarning } from '@/utils/safe-storage'
 import eventBus from '@/utils/eventBus'
 import { MAX_FACTORIES_PER_PLAN } from '@/utils/plan-size'
@@ -1331,6 +1332,27 @@ describe('room-sync-store', () => {
       tab.factories[0].name = 'Offline edit'
       expect(store.flushRoom(ROOM)).toBe(false)
       expect(store.join(ROOM)).toBe(false)
+    })
+
+    it('is remembered across a reload, and forgotten once switched off', () => {
+      syncAt(fixture, 4)
+      store.enterOffline()
+      expect(localStorage.getItem(OFFLINE_MODE_KEY)).toBe('true')
+
+      setActivePinia(createPinia())
+      const reloaded = useRoomSyncStore()
+      expect(reloaded.isOffline).toBe(true)
+      expect(reloaded.restoredOffline).toBe(true)
+      reloaded.dispose()
+
+      store.exitOffline()
+      expect(localStorage.getItem(OFFLINE_MODE_KEY)).toBeNull()
+
+      setActivePinia(createPinia())
+      const again = useRoomSyncStore()
+      expect(again.isOffline).toBe(false)
+      expect(again.restoredOffline).toBe(false)
+      again.dispose()
     })
 
     it('raises the prompt after repeated reconnect failures', () => {
@@ -3590,6 +3612,9 @@ describe('room-sync-store', () => {
 
         restart()
         store.trackRoom(ROOM)
+        // Offline mode survives the restart, so the way back is the reader's choice.
+        expect(store.isOffline).toBe(true)
+        store.exitOffline()
         connect()
         receive({ type: 'snapshot', roomId: ROOM, room: snapshotOf(producing, 4), revision: 4 })
 

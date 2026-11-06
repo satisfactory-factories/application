@@ -57,7 +57,12 @@ const fetchServerVersion = async (): Promise<string | null> => {
 
 // Returns a stop function. Nothing is left running once it is called, which matters in tests and
 // on any page that unmounts the layout.
-export const startVersionCheck = (): (() => void) => {
+export interface VersionCheckOptions {
+  /** Offline mode promises total silence, so while this says so nothing is asked. */
+  isSilent?: () => boolean
+}
+
+export const startVersionCheck = ({ isSilent = () => false }: VersionCheckOptions = {}): (() => void) => {
   let timer: ReturnType<typeof setInterval> | undefined
   let stopped = false
 
@@ -72,7 +77,7 @@ export const startVersionCheck = (): (() => void) => {
   const check = async () => {
     // A hidden tab cannot act on the news, and a pinned one left open for a week should not be
     // asking every minute regardless.
-    if (stopped || document.hidden) return
+    if (stopped || document.hidden || isSilent()) return
 
     const serverVersion = await fetchServerVersion()
     if (stopped || !serverVersion) return

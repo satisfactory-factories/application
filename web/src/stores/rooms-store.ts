@@ -940,6 +940,20 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (restored && !useAuthStore().isLoggedIn) roomSync.start()
   }
 
+  /**
+   * A page opened in offline mode never fetches the room list, which is what normally tracks a
+   * synced tab. Tracked from the tab state this browser already holds instead, so an edit made
+   * before going back online is recorded as this device's intent exactly as one made after
+   * switching offline mid-session would be, and the way back is a rebase rather than a loss.
+   * Tracking asks nothing of the server: a room only joins once a socket is connected.
+   */
+  const trackSyncedTabsWhileOffline = () => {
+    if (!roomSync.isSuppressed) return
+    for (const tab of appStore.getTabs()) {
+      if (appStore.getTabState(tab.id).kind === 'synced') roomSync.trackRoom(tab.id)
+    }
+  }
+
   // ===== Session =====
 
   /**
@@ -1131,6 +1145,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     joinSharedRoom,
     trackJoinedRoom,
     restoreJoinedTabs,
+    trackSyncedTabsWhileOffline,
     upgradeJoinedTabs,
 
     // Driven by the engine, and directly by tests

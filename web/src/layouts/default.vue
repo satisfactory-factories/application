@@ -28,6 +28,7 @@
       <div class="bottom-notices">
         <backend-health-banner />
         <offline-prompt />
+        <offline-return-prompt />
         <!-- SurveyBanner is off between surveys; put it back here to run the next one. -->
       </div>
       <version-prompt />
@@ -47,8 +48,10 @@
   import PlanChooserDialog from '@/components/sync/PlanChooserDialog.vue'
   import OfflineConflictDialog from '@/components/sync/OfflineConflictDialog.vue'
   import OfflinePrompt from '@/components/sync/OfflinePrompt.vue'
+  import OfflineReturnPrompt from '@/components/sync/OfflineReturnPrompt.vue'
   import VersionPrompt from '@/components/sync/VersionPrompt.vue'
   import { useBackendHealthStore } from '@/stores/backend-health-store'
+  import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { usePreferencesStore } from '@/stores/preferences-store'
   import { useRoomsStore } from '@/stores/rooms-store'
   import { useEventsStore } from '@/stores/events-store'
@@ -78,7 +81,10 @@
     // An anonymous joined tab has no membership on the server, so nothing in the
     // room list ever brings it back; this is the only thing that reconnects it.
     useRoomsStore().restoreJoinedTabs()
-    stopVersionCheck = startVersionCheck()
+    // Opened in offline mode: the room list that normally tracks synced tabs is not fetched.
+    useRoomsStore().trackSyncedTabsWhileOffline()
+    const roomSync = useRoomSyncStore()
+    stopVersionCheck = startVersionCheck({ isSilent: () => roomSync.isSuppressed })
     backendHealth.start()
     telemetry.start()
     events.start()
