@@ -100,11 +100,14 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
     checking.value = true
     try {
       const health = await getHealth()
-      record(health?.status === 'ok')
+      // Offline mode may have gone on while the request was out, often because the reader
+      // accepted the offer the very failure this check is about prompted. It claims nothing.
+      if (roomSync.isSuppressed) recordNoEvidence()
+      else record(health?.status === 'ok')
     } catch {
       // A 503 arrives as a thrown ApiError, an unreachable server as a network one,
       // and both mean the same thing to a reader.
-      if (browserIsOffline()) recordNoEvidence()
+      if (roomSync.isSuppressed || browserIsOffline()) recordNoEvidence()
       else record(false)
     } finally {
       checking.value = false
