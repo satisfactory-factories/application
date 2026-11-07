@@ -39,8 +39,9 @@ test('a dropped connection offers offline mode, and nothing edited in it is lost
 
   const prompt = first.getByTestId('offline-prompt')
   await expect(prompt).toBeVisible({ timeout: 30_000 })
-  await expect(prompt).toContainText('You appear to be offline')
-  await expect(prompt).toContainText('Your data will sync when you\'re back online')
+  // The browser still has its network: only the sync socket died, so the server is blamed.
+  await expect(prompt).toContainText('Can\'t reach SF\'s servers right now')
+  await expect(prompt).toContainText('will sync when they\'re back')
   await expect(prompt).toContainText('Go into offline mode?')
 
   // The notice times out; the tab bar's chip is what says offline mode is still on.

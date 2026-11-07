@@ -8,6 +8,7 @@ import vuetify from '@/plugins/vuetify'
 import { HEALTH_RETRY_ATTEMPTS, useBackendHealthStore } from '@/stores/backend-health-store'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 import type { ServiceNotice } from '@/config/service-notice'
+import { BACKEND_WARNING_DISMISSED_KEY, resetWarningDismissals } from '@/sync/warning-dismissals'
 
 describe('BackendHealthBanner', () => {
   let health: ReturnType<typeof useBackendHealthStore>
@@ -29,6 +30,8 @@ describe('BackendHealthBanner', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionStorage.clear()
+    resetWarningDismissals()
   })
 
   it('stays out of the way while the backend is well', () => {
@@ -113,5 +116,22 @@ describe('BackendHealthBanner', () => {
 
     await wrapper.find('[data-testid="backend-health-go-offline"]').trigger('click')
     expect(roomSync.enterOffline).toHaveBeenCalled()
+  })
+
+  it('closes from its X and stays closed for the tab session, however the server flaps', async () => {
+    const wrapper = render()
+    health.unhealthy = true
+    await nextTick()
+
+    await wrapper.find('.v-alert__close button').trigger('click')
+    await nextTick()
+    expect(banner(wrapper).exists()).toBe(false)
+    expect(sessionStorage.getItem(BACKEND_WARNING_DISMISSED_KEY)).toBe('true')
+
+    health.unhealthy = false
+    await nextTick()
+    health.unhealthy = true
+    await nextTick()
+    expect(banner(wrapper).exists()).toBe(false)
   })
 })

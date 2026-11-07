@@ -13,6 +13,8 @@
       density="compact"
       type="warning"
       variant="flat"
+      v-bind="closeProps"
+      @click:close="dismissBackendWarning"
     >
       <div class="align-center d-flex flex-wrap ga-3 justify-space-between">
         <div class="backend-health__known-text">
@@ -40,6 +42,8 @@
       density="compact"
       type="warning"
       variant="flat"
+      v-bind="closeProps"
+      @click:close="dismissBackendWarning"
     >
       <div>
         <v-progress-circular class="mr-2" indeterminate size="14" width="2" />
@@ -51,7 +55,14 @@
         in this browser and will sync once the server answers again.
       </div>
     </v-alert>
-    <v-alert v-else density="compact" type="error" variant="flat">
+    <v-alert
+      v-else
+      density="compact"
+      type="error"
+      variant="flat"
+      v-bind="closeProps"
+      @click:close="dismissBackendWarning"
+    >
       <div>
         SF's backend is experiencing issues. Please report this immediately on
         <a
@@ -78,6 +89,7 @@
   import type { ServiceNotice } from '@/config/service-notice'
   import { HEALTH_RETRY_ATTEMPTS, useBackendHealthStore } from '@/stores/backend-health-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
+  import { backendWarningDismissed, dismissBackendWarning } from '@/sync/warning-dismissals'
 
   // A prop only so a spec can hand it a notice; the app mounts it bare and reads the config.
   const props = defineProps<{ notice?: ServiceNotice | null }>()
@@ -89,7 +101,13 @@
   const health = useBackendHealthStore()
   const roomSync = useRoomSyncStore()
 
-  const showing = computed(() => health.unhealthy && roomSync.hasUnsyncedEdits)
+  // Closable, and closed for the rest of the tab session: a flapping server would otherwise put
+  // it straight back. The edits it was warning about are still kept, and still sync later.
+  const closeProps = { closable: true, closeLabel: 'Hide this warning' }
+
+  const showing = computed(() =>
+    health.unhealthy && roomSync.hasUnsyncedEdits && !backendWarningDismissed.value,
+  )
   const knownOutage = computed(() => notice.value?.kind === 'outage')
 </script>
 
