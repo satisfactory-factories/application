@@ -375,6 +375,26 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     return engine.pending !== null || engine.touchedFactories.size > 0 || engine.touchedFields.size > 0
   }
 
+  /**
+   * The engines are plain objects, so nothing reactive sees their intent sets change. Every
+   * place that adds or clears intent bumps this, which is what lets `hasUnsyncedEdits` be a
+   * computed the warning banners can lean on.
+   */
+  const intentTick = ref(0)
+  const intentChanged = () => {
+    intentTick.value += 1
+  }
+
+  /**
+   * Is anything this browser changed in a synced plan still waiting to reach the server? When
+   * nothing is, a server that has stopped answering costs the reader nothing yet, so the
+   * backend warnings stay down rather than coming back on every blip of a flapping connection.
+   */
+  const hasUnsyncedEdits = computed(() => {
+    void intentTick.value
+    return Object.keys(rooms.value).some(hasLocalEdits)
+  })
+
   // A local `undefined` never counts as a difference: the diff has no way to clear a tab
   // field, so claiming one differs would leave intent nothing could ever satisfy.
   const fieldDiffers = (acked: AckedState, local: RoomContent, field: TabField): boolean => {
@@ -426,6 +446,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     for (const id of [...engine.declaredRemovals]) {
       if (!baseline.factories.has(id)) engine.declaredRemovals.delete(id)
     }
+    intentChanged()
   }
 
   /**
@@ -438,6 +459,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       engine.touchedFactories.delete(id)
       engine.declaredRemovals.delete(id)
     }
+    intentChanged()
   }
 
   // ===== Persistence =====
@@ -496,6 +518,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       conflict: outstandingConflict(roomId),
     })
     scheduleJournal(roomId)
+    intentChanged()
   }
 
   // ===== The durable journal =====
@@ -1615,6 +1638,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     room.status = status
     room.hasPendingOp = false
     engines.delete(roomId)
+    intentChanged()
     dropRoomLocks(roomId)
     delete conflicts.value[roomId]
     parkedResolutions.delete(roomId)
@@ -1688,6 +1712,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       room.hasPendingOp = false
       if (room.status === 'synced' || room.status === 'joining') room.status = 'idle'
     }
+    intentChanged()
   }
 
   const browserIsOffline = (): boolean =>
@@ -1769,6 +1794,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
       const fresh = newEngine(options)
       engines.set(roomId, fresh)
       restoreIntent(roomId, fresh)
+      intentChanged()
     } else if (options.visitorToken) {
       engine.visitorToken = options.visitorToken
     }
@@ -2226,6 +2252,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     markUserTouched,
     markTabTouched,
     hasLocalEdits,
+    hasUnsyncedEdits,
     recordIntent,
     flushRoom,
     flushAll,

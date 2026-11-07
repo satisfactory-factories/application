@@ -35,7 +35,10 @@
   // is said by the tab bar's chip and the account panel, so this is only the offer.
   const roomSync = useRoomSyncStore()
 
-  const prompting = computed(() => roomSync.mode === 'offlinePrompt')
+  // Only while something is waiting to sync, like the backend-health banner: with nothing
+  // pending, a dropped connection costs nothing yet, and a flapping one would otherwise bring
+  // this back on every blip.
+  const prompting = computed(() => roomSync.mode === 'offlinePrompt' && roomSync.hasUnsyncedEdits)
 </script>
 
 <style lang="scss" scoped>

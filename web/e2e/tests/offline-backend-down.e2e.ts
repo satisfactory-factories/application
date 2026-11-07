@@ -5,7 +5,7 @@ import { expect, test } from '../helpers/fixtures'
 import { registerUser } from '../helpers/accounts'
 import { installWsGate } from '../helpers/network'
 import type { WsGate } from '../helpers/network'
-import { createSyncedTab, openPlanner } from '../helpers/planner'
+import { addFactory, createSyncedTab, openPlanner } from '../helpers/planner'
 import { closeAccountPanel, openAccountPanel, setOfflineMode } from '../helpers/session'
 
 /**
@@ -61,6 +61,9 @@ test('offline mode never warns that the backend is down while the browser has ne
   expect(await page.evaluate(() => navigator.onLine)).toBe(true)
   await expect(page.getByTestId('tab-bar-offline')).toContainText('Offline mode')
 
+  // Something waiting to sync, which is what the warning is there for once offline mode is off.
+  await addFactory(page, { name: 'Made offline', note: 'still owed to the server' })
+
   // The control: the same outage with offline mode off does raise it, so the silence above
   // was offline mode's doing rather than a banner that could not have appeared anyway.
   await openAccountPanel(page, user)
@@ -107,4 +110,29 @@ test('a health check still out when offline mode goes on does not raise the warn
   await held.abort('connectionrefused')
 
   await expectNeverVisible(page, page.getByTestId('backend-health-banner'))
+})
+
+/**
+ * The flapping reports again, from the other side: a reader with nothing waiting to sync loses
+ * nothing while the server is away, so a blip is not worth telling them about. The warning waits
+ * until there is something to warn about.
+ */
+test('the backend warning waits until there is something unsynced', async ({ client, request }) => {
+  const user = await registerUser(request)
+
+  let gate!: WsGate
+  const page = await openPlanner(await client({ user }), '/', async p => { gate = await installWsGate(p) })
+  await createSyncedTab(page)
+
+  const banner = page.getByTestId('backend-health-banner')
+  const restore = await cutBackend(page, gate)
+
+  await expectNeverVisible(page, banner)
+  await expect(page.getByTestId('offline-prompt')).toBeHidden()
+
+  await addFactory(page, { name: 'Unsynced', note: 'made while the server is away' })
+  await expect(banner).toBeVisible({ timeout: 30_000 })
+
+  await restore()
+  await expect(banner).toBeHidden({ timeout: 60_000 })
 })

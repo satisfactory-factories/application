@@ -711,6 +711,20 @@ describe('room-sync-store', () => {
 
       expect(store.hasLocalEdits(ROOM)).toBe(true)
     })
+
+    it('says reactively whether anything is waiting to sync, for the warning banners', () => {
+      const tab = syncAt(fixture, 4)
+      expect(store.hasUnsyncedEdits).toBe(false)
+
+      eventBus.emit('factoryEdited', tab.factories[0])
+      expect(store.hasUnsyncedEdits).toBe(true)
+
+      tab.factories[0].name = 'Alpha renamed'
+      store.flushRoom(ROOM)
+      receive({ type: 'op_ack', roomId: ROOM, opId: lastOp().opId, revision: 5 })
+
+      expect(store.hasUnsyncedEdits).toBe(false)
+    })
   })
 
   describe('typing into a free-text field', () => {

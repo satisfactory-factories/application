@@ -24,6 +24,8 @@
       <legacy-recovery-dialog />
       <!-- Only ever up after a reconnect finds the room moved under this device's edits. -->
       <offline-conflict-dialog />
+      <!-- News about SF's own servers, switched on and off in config/service-notice.ts. -->
+      <service-notice-dialog />
       <!-- One stack, because more than one of these can be up at once. -->
       <div class="bottom-notices">
         <backend-health-banner />
@@ -49,6 +51,7 @@
   import OfflineConflictDialog from '@/components/sync/OfflineConflictDialog.vue'
   import OfflinePrompt from '@/components/sync/OfflinePrompt.vue'
   import OfflineReturnPrompt from '@/components/sync/OfflineReturnPrompt.vue'
+  import ServiceNoticeDialog from '@/components/sync/ServiceNoticeDialog.vue'
   import VersionPrompt from '@/components/sync/VersionPrompt.vue'
   import { useBackendHealthStore } from '@/stores/backend-health-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
