@@ -7,6 +7,8 @@
          is going out", just what is waiting and the way to stop hearing about it. -->
     <v-alert
       v-if="knownOutage"
+      class="backend-health__warning"
+      :color="sfColors.powerConsumption.color"
       data-testid="backend-health-known-outage"
       density="compact"
       type="warning"
@@ -32,6 +34,8 @@
          sending everyone to Discord over an outage that will be gone in twenty seconds. -->
     <v-alert
       v-else-if="health.retrying"
+      class="backend-health__warning"
+      :color="sfColors.powerConsumption.color"
       data-testid="backend-health-retrying"
       density="compact"
       type="warning"
@@ -69,6 +73,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue'
+  import { sfColors } from '@/utils/colors'
   import { SERVICE_NOTICE } from '@/config/service-notice'
   import type { ServiceNotice } from '@/config/service-notice'
   import { HEALTH_RETRY_ATTEMPTS, useBackendHealthStore } from '@/stores/backend-health-store'
@@ -91,6 +96,12 @@
 <style lang="scss" scoped>
 // Placement is the bottom-notices stack in the default layout: this and the offline
 // prompt can both be up at once, and two fixed banners on the same 8px would overlap.
+// The sidebar toggle's orange with its dark text, rather than Vuetify's much brighter warning
+// orange, which readers found glaring for something that can sit there a while.
+.backend-health__warning {
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
 .backend-health__known-text {
   // Takes the row, so the button sits beside the text and only drops below it on a phone.
   flex: 1 1 280px;

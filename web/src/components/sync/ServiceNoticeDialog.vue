@@ -19,7 +19,9 @@
       <ul class="mb-3 ml-5">
         <li>You can keep planning as normal, without the "SF backend offline" warnings.</li>
         <li>Links you have already shared keep working for the people you sent them to.</li>
-        <li>Collaborating on shared plans may not work properly until you go back online.</li>
+        <li class="font-weight-bold text-red" data-testid="service-notice-collab-warning">
+          Syncing and collaborating on shared plans will not work until you go back online.
+        </li>
         <li>
           All of your data stays safe in this browser, so nothing is lost. Your changes sync
           once you turn offline mode off again.
@@ -29,6 +31,10 @@
         We expect this to last a few more days, over the weekend, and sadly it's out of our hands.
         If it goes on for more than a week, we'll look at moving SF to a different host: it's all
         self-hosted at the moment.
+      </p>
+      <p class="mt-3">
+        For further updates, join us on
+        <a :href="DISCORD_INVITE" rel="noopener" target="_blank">Discord</a>.
       </p>
     </template>
     <template v-else>
@@ -43,6 +49,18 @@
     </template>
 
     <template #actions>
+      <!-- Pushed to the left: an aside, not one of the answers to the notice. -->
+      <v-btn
+        v-if="isOutage"
+        color="amber"
+        data-testid="service-notice-discord"
+        :href="DISCORD_INVITE"
+        prepend-icon="fab fa-discord"
+        rel="noopener"
+        target="_blank"
+        variant="text"
+      >Join our Discord for updates</v-btn>
+      <v-spacer v-if="isOutage" />
       <template v-if="isOutage">
         <v-btn color="red" data-testid="service-notice-dismiss" variant="text" @click="dismiss">Stay online</v-btn>
         <v-btn color="primary" data-testid="service-notice-offline" variant="flat" @click="goOffline">Go offline</v-btn>
@@ -75,6 +93,9 @@
   // A prop only so a spec can hand it a notice; the app mounts it bare and reads the config.
   const props = defineProps<{ notice?: ServiceNotice | null }>()
   const notice = computed(() => (props.notice === undefined ? SERVICE_NOTICE : props.notice))
+
+  /** The same invite the account tray and the introduction hand out. */
+  const DISCORD_INVITE = 'https://discord.gg/vcFsjcWAFv'
 
   /** How long after a plan finishes loading before the notice goes up, so the page has settled. */
   const SHOW_DELAY_MS = 1_000

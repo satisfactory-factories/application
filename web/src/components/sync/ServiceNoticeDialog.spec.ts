@@ -81,9 +81,14 @@ describe('ServiceNoticeDialog', () => {
     expect(text).toContain('we recommend switching to offline mode')
     expect(text).toContain('without the "SF backend offline" warnings')
     expect(text).toContain('Links you have already shared keep working')
-    expect(text).toContain('Collaborating on shared plans may not work properly')
+    expect(text).toContain('Syncing and collaborating on shared plans will not work')
+    expect(document.querySelector('[data-testid="service-notice-collab-warning"]')?.classList)
+      .toContain('text-red')
     expect(text).toContain('nothing is lost')
     expect(text).toContain('more than a week')
+    expect(text).toContain('join us on Discord')
+    expect(document.querySelector('[data-testid="service-notice-discord"]')?.getAttribute('href'))
+      .toBe('https://discord.gg/vcFsjcWAFv')
   })
 
   it('goes offline from its button and is not shown again', async () => {
