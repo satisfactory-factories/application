@@ -5,9 +5,10 @@ import type { TextIssue } from '../text-rules'
  * Bumped whenever a client and a server stop being able to understand each other, or
  * whenever every open tab must reload onto a new build. Named after the release that
  * raised it; compared only as an exact string. 0.7.3 made tabs from before the text
- * rules (#756) refresh onto a build that checks them before sending.
+ * rules (#756) refresh onto a build that checks them before sending. 0.7.4 puts every open
+ * tab onto the build with the connectivity notice and the quieter backend warnings (#825).
  */
-export const PROTOCOL_VERSION = '0.7.3'
+export const PROTOCOL_VERSION = '0.7.4'
 
 /**
  * Header every REST call must carry, matched against `PROTOCOL_VERSION`. Only
