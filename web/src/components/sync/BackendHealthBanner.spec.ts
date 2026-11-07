@@ -6,15 +6,22 @@ import { setActivePinia } from 'pinia'
 import BackendHealthBanner from './BackendHealthBanner.vue'
 import vuetify from '@/plugins/vuetify'
 import { HEALTH_RETRY_ATTEMPTS, useBackendHealthStore } from '@/stores/backend-health-store'
+import { useRoomSyncStore } from '@/stores/room-sync-store'
+import type { ServiceNotice } from '@/config/service-notice'
 
 describe('BackendHealthBanner', () => {
   let health: ReturnType<typeof useBackendHealthStore>
+  let roomSync: ReturnType<typeof useRoomSyncStore>
 
-  const render = () => {
+  /** No service notice by default: the ordinary, unexplained outage. */
+  const render = (notice: ServiceNotice | null = null, unsynced = true) => {
     const pinia = createTestingPinia({ createSpy: vi.fn })
     setActivePinia(pinia)
     health = useBackendHealthStore()
-    return mount(BackendHealthBanner, { global: { plugins: [vuetify, pinia] } })
+    roomSync = useRoomSyncStore()
+    // @ts-expect-error a getter, writable under @pinia/testing
+    roomSync.hasUnsyncedEdits = unsynced
+    return mount(BackendHealthBanner, { props: { notice }, global: { plugins: [vuetify, pinia] } })
   }
 
   const banner = (wrapper: ReturnType<typeof render>) =>
@@ -75,5 +82,36 @@ describe('BackendHealthBanner', () => {
     await nextTick()
 
     expect(banner(wrapper).exists()).toBe(false)
+  })
+
+  it('stays down while nothing is waiting to sync, however the server is doing', async () => {
+    const wrapper = render(null, false)
+    health.unhealthy = true
+    health.failures = HEALTH_RETRY_ATTEMPTS + 1
+    await nextTick()
+
+    expect(banner(wrapper).exists()).toBe(false)
+
+    // @ts-expect-error a getter, writable under @pinia/testing
+    roomSync.hasUnsyncedEdits = true
+    await nextTick()
+
+    expect(banner(wrapper).exists()).toBe(true)
+  })
+
+  it('during a known outage, says so calmly and offers offline mode instead of Discord', async () => {
+    const wrapper = render({ id: 'test-outage', kind: 'outage' })
+    health.unhealthy = true
+    health.failures = 2
+    await nextTick()
+
+    const text = banner(wrapper).text()
+    expect(text).toContain('due to the ongoing connection issues')
+    expect(text).toContain('kept in this browser')
+    expect(text).not.toContain('Discord')
+    expect(text).not.toContain('an update is going out')
+
+    await wrapper.find('[data-testid="backend-health-go-offline"]').trigger('click')
+    expect(roomSync.enterOffline).toHaveBeenCalled()
   })
 })
