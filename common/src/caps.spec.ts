@@ -29,8 +29,8 @@ describe('CAPS', () => {
 })
 
 describe('protocol constants', () => {
-  it('is 0.7.3, raised so pre-text-rules tabs reload', () => {
-    expect(PROTOCOL_VERSION).toBe('0.7.3')
+  it('is 0.7.4, raised so every tab reloads onto the connectivity notice', () => {
+    expect(PROTOCOL_VERSION).toBe('0.7.4')
   })
 
   it('carries the three close codes the client branches on', () => {
