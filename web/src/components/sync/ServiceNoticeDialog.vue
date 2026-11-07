@@ -18,14 +18,16 @@
       <p class="mb-1">In offline mode:</p>
       <ul class="mb-3 ml-5">
         <li>You can keep planning as normal, without the "SF backend offline" warnings.</li>
-        <li>Links you have already shared keep working for the people you sent them to.</li>
-        <li class="font-weight-bold text-red" data-testid="service-notice-collab-warning">
-          Syncing and collaborating on shared plans will not work until you go back online.
-        </li>
         <li>
-          All of your data stays safe in this browser, so nothing is lost. Your changes sync
-          once you turn offline mode off again.
+          <b>Please note, however,</b> that your plans will not be backed up to SF while you're
+          offline. All of your data is stored locally in this browser, so nothing is lost, and your
+          changes sync once you turn offline mode off again.
         </li>
+        <li class="font-weight-bold text-red" data-testid="service-notice-collab-warning">
+          Syncing across your devices and collaborating on shared plans will not work until you go
+          back online.
+        </li>
+        <li>Links you have already shared keep working for the people you sent them to.</li>
       </ul>
       <p>
         We expect this to last a few more days, over the weekend, and sadly it's out of our hands.
@@ -52,21 +54,21 @@
       <!-- Pushed to the left: an aside, not one of the answers to the notice. -->
       <v-btn
         v-if="isOutage"
-        color="amber"
+        color="#5865F2"
         data-testid="service-notice-discord"
         :href="DISCORD_INVITE"
         prepend-icon="fab fa-discord"
         rel="noopener"
         target="_blank"
-        variant="text"
+        variant="outlined"
       >Join our Discord for updates</v-btn>
       <v-spacer v-if="isOutage" />
       <template v-if="isOutage">
-        <v-btn color="red" data-testid="service-notice-dismiss" variant="text" @click="dismiss">Stay online</v-btn>
+        <v-btn color="white" data-testid="service-notice-dismiss" variant="text" @click="dismiss">Stay online</v-btn>
         <v-btn color="primary" data-testid="service-notice-offline" variant="flat" @click="goOffline">Go offline</v-btn>
       </template>
       <template v-else-if="roomSync.isOffline">
-        <v-btn color="red" data-testid="service-notice-dismiss" variant="text" @click="dismiss">Stay offline</v-btn>
+        <v-btn color="white" data-testid="service-notice-dismiss" variant="text" @click="dismiss">Stay offline</v-btn>
         <v-btn color="primary" data-testid="service-notice-online" variant="flat" @click="goOnline">Go online</v-btn>
       </template>
       <v-btn
