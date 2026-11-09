@@ -27,6 +27,7 @@
 
 <script setup lang="ts">
   import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+  import { resolvedNoticeAwaits } from '@/config/service-notice'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import {
     OFFLINE_RETURN_PROMPT_MS,
@@ -55,6 +56,10 @@
 
   onMounted(() => {
     if (!shouldOfferReturn(roomSync.restoredOffline, roomSync.isOffline)) return
+    // The "backend issues fixed" notice asks the same question, as a dialog, once the plan loads.
+    // Not marked as offered: if that notice is answered by staying offline, the next sitting
+    // gets this ordinary reminder again.
+    if (resolvedNoticeAwaits(roomSync.isOffline)) return
     rememberOfferedReturn()
     showing.value = true
     timer = setTimeout(close, OFFLINE_RETURN_PROMPT_MS)

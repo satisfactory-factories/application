@@ -114,6 +114,7 @@ export const newClient = async (
     // The service notice is a modal too. Each notice has its own id in config/service-notice.ts,
     // so a new one needs its key here.
     { name: 'dismissed-service-notice-isp-packet-loss-2026-11', value: 'true' },
+    { name: 'dismissed-service-notice-isp-packet-loss-2026-11-resolved', value: 'true' },
   ]
   if (user) {
     storage.push({ name: 'token', value: user.token }, { name: 'loggedInUser', value: user.username })

@@ -149,10 +149,32 @@ describe('ServiceNoticeDialog', () => {
   it('offers the way back online once resolved, to someone still offline', async () => {
     await open(RESOLVED, { offline: true })
 
-    expect(dialog()?.textContent).toContain('back to normal')
+    const text = dialog()?.textContent ?? ''
+    expect(text).toContain('SF\'s backend issues have been fixed')
+    expect(text).toContain('please consider going back online')
     click('service-notice-online')
 
     expect(roomSync.exitOffline).toHaveBeenCalled()
+    expect(localStorage.getItem(serviceNoticeDismissedKey(RESOLVED.id))).toBe('true')
+  })
+
+  it('says nothing about the fix to someone already online', async () => {
+    await open(RESOLVED, { offline: false })
+
+    expect(dialog()).toBeNull()
+  })
+
+  it('reaches anyone in offline mode with the fix, signed in or not', async () => {
+    await open(RESOLVED, { offline: true, loggedIn: false, tabKinds: ['local'] })
+
+    expect(dialog()).not.toBeNull()
+  })
+
+  it('lets someone stay offline, and remembers the answer', async () => {
+    await open(RESOLVED, { offline: true })
+    click('service-notice-dismiss')
+
+    expect(roomSync.exitOffline).not.toHaveBeenCalled()
     expect(localStorage.getItem(serviceNoticeDismissedKey(RESOLVED.id))).toBe('true')
   })
 })
