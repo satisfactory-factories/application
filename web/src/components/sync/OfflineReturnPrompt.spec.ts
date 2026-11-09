@@ -5,6 +5,7 @@ import { nextTick } from 'vue'
 import OfflineReturnPrompt from './OfflineReturnPrompt.vue'
 import vuetify from '@/plugins/vuetify'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
+import { SERVICE_NOTICE, serviceNoticeDismissedKey } from '@/config/service-notice'
 import {
   OFFLINE_MODE_KEY,
   OFFLINE_RETURN_OFFERED_KEY,
@@ -30,9 +31,15 @@ describe('OfflineReturnPrompt', () => {
   const prompt = (wrapper: Awaited<ReturnType<typeof open>>) =>
     wrapper.find('[data-testid="offline-return-prompt"]')
 
+  /** Whatever service notice is configured has been answered, unless a case says otherwise. */
+  const answerServiceNotice = () => {
+    if (SERVICE_NOTICE) localStorage.setItem(serviceNoticeDismissedKey(SERVICE_NOTICE.id), 'true')
+  }
+
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
+    answerServiceNotice()
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
   })
 
@@ -51,6 +58,18 @@ describe('OfflineReturnPrompt', () => {
     expect(prompt(wrapper).exists()).toBe(true)
     expect(prompt(wrapper).text()).toContain('You\'re still in offline mode')
     expect(prompt(wrapper).text()).toContain('Go back online?')
+  })
+
+  it('stands down for an unanswered "backend issues fixed" notice, which asks the same thing', async () => {
+    localStorage.setItem(OFFLINE_MODE_KEY, 'true')
+    if (SERVICE_NOTICE?.kind !== 'resolved') return
+    localStorage.removeItem(serviceNoticeDismissedKey(SERVICE_NOTICE.id))
+
+    const wrapper = await open()
+
+    expect(prompt(wrapper).exists()).toBe(false)
+    // Not spent: a reader who answers the notice by staying offline is reminded next sitting.
+    expect(sessionStorage.getItem(OFFLINE_RETURN_OFFERED_KEY)).toBeNull()
   })
 
   it('goes back online from its button', async () => {

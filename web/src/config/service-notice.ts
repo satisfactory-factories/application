@@ -17,9 +17,27 @@ export interface ServiceNotice {
   kind: ServiceNoticeKind
 }
 
+// The ISP packet loss of November 2026 is fixed: this asks anyone still in offline mode to come
+// back. The outage notice before it was `{ id: 'isp-packet-loss-2026-11', kind: 'outage' }`.
 export const SERVICE_NOTICE: ServiceNotice | null = {
-  id: 'isp-packet-loss-2026-11',
-  kind: 'outage',
+  id: 'isp-packet-loss-2026-11-resolved',
+  kind: 'resolved',
 }
 
 export const serviceNoticeDismissedKey = (id: string): string => `dismissed-service-notice-${id}`
+
+export const serviceNoticeAnswered = (notice: ServiceNotice): boolean => {
+  try {
+    return localStorage.getItem(serviceNoticeDismissedKey(notice.id)) === 'true'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * A resolved notice is only for readers still in offline mode, and it is the way back online for
+ * them. While one is waiting to be answered, the smaller "you're still in offline mode" prompt
+ * stands down, so nobody is asked the same question twice on one page load.
+ */
+export const resolvedNoticeAwaits = (offline: boolean, notice: ServiceNotice | null = SERVICE_NOTICE): boolean =>
+  offline && notice?.kind === 'resolved' && !serviceNoticeAnswered(notice)

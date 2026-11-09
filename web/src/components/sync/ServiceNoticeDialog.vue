@@ -5,7 +5,7 @@
     :icon="isOutage ? 'fas fa-exclamation-triangle' : 'fas fa-check-circle'"
     max-width="640"
     scrollable
-    :title="isOutage ? 'SF\'s servers are having connection trouble' : 'SF\'s servers are back to normal'"
+    :title="isOutage ? 'SF\'s servers are having connection trouble' : 'SF\'s backend issues have been fixed'"
     @update:model-value="value => { if (!value) remember() }"
   >
     <template v-if="isOutage">
@@ -41,12 +41,12 @@
     </template>
     <template v-else>
       <p class="mb-3">
-        The connectivity issues with SF's backend servers have been resolved, so signing in,
-        sharing and syncing all work as normal again.
+        The connectivity issues with SF's backend servers have been fixed, so syncing, sharing and
+        collaborating on shared plans all work as normal again.
       </p>
       <p v-if="roomSync.isOffline">
-        You're still in offline mode. Go back online to sync everything you changed while you
-        were away. Nothing you did offline is lost.
+        You're still in <b>offline mode</b>, so please consider going back online. Everything you
+        changed while offline is kept in this browser and syncs as soon as you do.
       </p>
     </template>
 
@@ -86,7 +86,7 @@
   import { computed, onBeforeUnmount, ref } from 'vue'
   import AppDialog from '@/components/common/AppDialog.vue'
   import { useEventBusListener } from '@/composables/useEventBusListener'
-  import { SERVICE_NOTICE, serviceNoticeDismissedKey } from '@/config/service-notice'
+  import { SERVICE_NOTICE, serviceNoticeAnswered, serviceNoticeDismissedKey } from '@/config/service-notice'
   import type { ServiceNotice } from '@/config/service-notice'
   import { useAppStore } from '@/stores/app-store'
   import { useAuthStore } from '@/stores/auth-store'
@@ -117,7 +117,7 @@
     }
   }
 
-  const answered = (notice: ServiceNotice) => read(serviceNoticeDismissedKey(notice.id)) === 'true'
+  const answered = serviceNoticeAnswered
 
   const remember = () => {
     if (!notice.value) return
@@ -136,7 +136,11 @@
 
   const shouldShow = (): boolean => {
     const current = notice.value
-    if (!current || answered(current) || !affected()) return false
+    if (!current || answered(current)) return false
+    // The all clear is only news to someone still in offline mode: everyone else is already
+    // online and syncing, and needs no dialog to say so.
+    if (current.kind === 'resolved' && !roomSync.isOffline) return false
+    if (current.kind === 'outage' && !affected()) return false
     // Already offline is already following the advice; the outage notice has nothing to add.
     if (current.kind === 'outage' && roomSync.isOffline) return false
     // The release deck is a dialog of its own; this waits for a load after it is closed.
