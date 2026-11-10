@@ -12,9 +12,9 @@ catalog:
   '@eslint/js': 10.0.1
   eslint: 10.11.0
   eslint-import-resolver-typescript: 4.4.5
-  eslint-plugin-import-x: 4.17.1
+  eslint-plugin-import-x: 4.18.1
   typescript-eslint: 8.71.0
-  zod: 4.6.5
+  zod: 4.6.7
   '@playwright/test': 1.63.0
   # Both the backend suite and web's Playwright harness boot one; a version skew
   # between them would mean two mongod downloads for no reason.
@@ -58,3 +58,16 @@ allowBuilds:
 # that governs what Renovate proposes, not what an override pins.
 overrides:
   js-yaml@^3.13.1: 5.4.2
+  # Security overrides (Dependabot, 2026-11-10). Each pulls a transitive dependency
+  # onto its first patched release where the parent's own range cannot reach it.
+  #
+  # multer: @nestjs/platform-express 12.1.x pins multer 2.4.0 exactly; 2.5.0 is the
+  # fix and the same major. Drop this once Nest is at 12.4+, which ships 2.5.0 itself.
+  multer@<2.5.0: 2.5.0
+  # glob and minimatch have no patched release on the 9/10/13 lines, only 14.0.2 and
+  # 11.0.1. Their library APIs are unchanged across those majors for what our tools
+  # call (globSync/glob, minimatch(), new Minimatch) with one exception: minimatch 11
+  # drops the makeRe export, and the only consumer of it here is eslint-plugin-import-x,
+  # which is why the catalog moved to 4.18.1 (it declares ^11.0.1 support).
+  glob@>=9.0.0 <14.0.2: ^14.0.4
+  minimatch@>=7.0.0 <11.0.1: ^11.0.5
