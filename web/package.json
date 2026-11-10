@@ -43,7 +43,7 @@
     "@testing-library/vue": "^8.1.0",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
-    "@vitest/coverage-v8": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.5",
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/test-utils": "^2.4.11",
     "eslint": "catalog:",
@@ -51,7 +51,7 @@
     "jsdom": "^30.0.0",
     "mongodb-memory-server": "catalog:",
     "neostandard": "^0.13.0",
-    "puppeteer-core": "^25.3.0",
+    "puppeteer-core": "^25.16.0",
     "sass": "1.105.0",
     "ts-node": "catalog:",
     "typescript": "catalog:",
@@ -62,7 +62,7 @@
     "vite-plugin-vue-devtools": "^8.1.5",
     "vite-plugin-vue-layouts-next": "^3.0.0",
     "vite-plugin-vuetify": "^2.1.3",
-    "vitest": "^5.0.0",
+    "vitest": "^5.0.5",
     "vue-router": "^5.2.0",
     "vue-tsc": "^3.3.7"
   }
