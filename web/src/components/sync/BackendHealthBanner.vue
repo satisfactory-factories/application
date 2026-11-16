@@ -32,6 +32,34 @@
         >Go offline</v-btn>
       </div>
     </v-alert>
+    <!-- The API answered and named its database as what is down. That is no deploy going out, and
+         every edit made meanwhile is sitting in this browser, so it says exactly that. -->
+    <v-alert
+      v-else-if="health.databaseDown"
+      class="backend-health__warning"
+      :color="sfColors.powerConsumption.color"
+      data-testid="backend-health-database"
+      density="compact"
+      type="warning"
+      variant="flat"
+      v-bind="closeProps"
+      @click:close="dismissBackendWarning"
+    >
+      <div class="font-weight-bold">
+        Unable to connect to SF's database. Your changes are not being saved to the cloud.
+      </div>
+      <div class="text-caption">
+        They are kept in this browser and will sync once the database is back, so keep this tab
+        open. If this lasts more than a few minutes, please report it on
+        <a
+          class="backend-health__link"
+          data-testid="backend-health-database-discord"
+          :href="DISCORD_INVITE"
+          rel="noopener"
+          target="_blank"
+        >Discord</a>.
+      </div>
+    </v-alert>
     <!-- The quick retries are still running, so the server may only be mid-deploy. Saying so beats
          sending everyone to Discord over an outage that will be gone in twenty seconds. -->
     <v-alert

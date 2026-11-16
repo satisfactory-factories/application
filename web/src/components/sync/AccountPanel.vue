@@ -235,6 +235,7 @@
   import CloudPlanRow from '@/components/sync/CloudPlanRow.vue'
   import { useAppStore } from '@/stores/app-store'
   import { useAuthStore } from '@/stores/auth-store'
+  import { useBackendHealthStore } from '@/stores/backend-health-store'
   import { useRoomSyncStore } from '@/stores/room-sync-store'
   import { OFFLINE_MESSAGE, useRoomsStore } from '@/stores/rooms-store'
   import { usePlanActivityStore } from '@/stores/plan-activity-store'
@@ -249,6 +250,7 @@
   const authStore = useAuthStore()
   const roomsStore = useRoomsStore()
   const roomSync = useRoomSyncStore()
+  const backendHealth = useBackendHealthStore()
   const planActivity = usePlanActivityStore()
 
   const username = computed(() => authStore.loggedInUser)
@@ -322,9 +324,18 @@
       case 'offline': return { label: 'Offline mode', color: 'orange', icon: 'fa-plane' }
       case 'offlinePrompt': return { label: 'You appear to be offline', color: 'amber', icon: 'fa-exclamation-triangle' }
       case 'reconnecting': return { label: 'Reconnecting', color: 'amber', icon: 'fa-sync' }
-      default: return roomSync.isConnected
-        ? { label: 'Connected', color: 'green', icon: 'fa-wifi' }
-        : { label: 'Not connected', color: 'grey', icon: 'fa-ban' }
+      default:
+        // A socket can stay up in front of a database that is down, so the health check's word
+        // beats the socket's: nothing is being saved either way.
+        if (backendHealth.databaseDown) {
+          return { label: 'Database unavailable', color: 'red', icon: 'fa-exclamation-triangle' }
+        }
+        if (backendHealth.unhealthy) {
+          return { label: 'Server unavailable', color: 'red', icon: 'fa-exclamation-triangle' }
+        }
+        return roomSync.isConnected
+          ? { label: 'Connected', color: 'green', icon: 'fa-wifi' }
+          : { label: 'Not connected', color: 'grey', icon: 'fa-ban' }
     }
   })
 

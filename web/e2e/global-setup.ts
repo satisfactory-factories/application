@@ -59,6 +59,9 @@ export default async function globalSetup (): Promise<() => Promise<void>> {
   await build()
 
   const mongo = await MongoMemoryServer.create()
+  // For helpers/database.ts, which freezes it to stand in for a database that has stopped
+  // answering behind an API that has not. Workers start after this and inherit it.
+  process.env.E2E_MONGOD_PID = String(mongo.instanceInfo?.instance.mongodProcess?.pid ?? '')
   const started: LongRunning[] = []
 
   const stopAll = async () => {

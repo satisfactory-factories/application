@@ -941,14 +941,19 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   /**
-   * A page opened in offline mode never fetches the room list, which is what normally tracks a
-   * synced tab. Tracked from the tab state this browser already holds instead, so an edit made
-   * before going back online is recorded as this device's intent exactly as one made after
-   * switching offline mid-session would be, and the way back is a rebase rather than a loss.
-   * Tracking asks nothing of the server: a room only joins once a socket is connected.
+   * The room list is what normally tracks a synced tab, and it can be a long time coming: a page
+   * opened in offline mode never fetches it, and one opened while the API is up but its database
+   * is not waits on a request that hangs. Until a tab is tracked, nothing records an edit as this
+   * device's intent, so an edit made in that window is invisible to the unsynced-edits warning and,
+   * once the server answers, folded into the baseline as if it had been sent. It never reaches the
+   * room.
+   *
+   * So every synced tab this browser already holds is tracked from its own tab state as the page
+   * opens, and the way back is a rebase rather than a loss. Tracking asks nothing of the server:
+   * a room only joins once a socket is connected, and the room list still has the last word on
+   * which tabs are synced when it arrives.
    */
-  const trackSyncedTabsWhileOffline = () => {
-    if (!roomSync.isSuppressed) return
+  const trackSyncedTabs = () => {
     for (const tab of appStore.getTabs()) {
       if (appStore.getTabState(tab.id).kind === 'synced') roomSync.trackRoom(tab.id)
     }
@@ -1145,7 +1150,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     joinSharedRoom,
     trackJoinedRoom,
     restoreJoinedTabs,
-    trackSyncedTabsWhileOffline,
+    trackSyncedTabs,
     upgradeJoinedTabs,
 
     // Driven by the engine, and directly by tests

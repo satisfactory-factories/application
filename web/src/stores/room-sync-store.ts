@@ -395,6 +395,9 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     return Object.keys(rooms.value).some(hasLocalEdits)
   })
 
+  /** An op is out and the server has not answered it yet. */
+  const awaitingAck = computed(() => Object.values(rooms.value).some(room => room.hasPendingOp))
+
   // A local `undefined` never counts as a difference: the diff has no way to clear a tab
   // field, so claiming one differs would leave intent nothing could ever satisfy.
   const fieldDiffers = (acked: AckedState, local: RoomContent, field: TabField): boolean => {
@@ -2253,6 +2256,7 @@ export const useRoomSyncStore = defineStore('roomSync', () => {
     markTabTouched,
     hasLocalEdits,
     hasUnsyncedEdits,
+    awaitingAck,
     recordIntent,
     flushRoom,
     flushAll,
