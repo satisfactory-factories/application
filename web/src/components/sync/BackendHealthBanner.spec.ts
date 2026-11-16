@@ -50,6 +50,21 @@ describe('BackendHealthBanner', () => {
       .toBe('https://discord.gg/vcFsjcWAFv')
   })
 
+  it('names the database when that is what is down, mid-retry or not', async () => {
+    const wrapper = render()
+    health.unhealthy = true
+    health.databaseDown = true
+    health.failures = 2
+    await nextTick()
+
+    const text = banner(wrapper).text()
+    expect(wrapper.find('[data-testid="backend-health-database"]').exists()).toBe(true)
+    expect(text).toContain('Unable to connect to SF\'s database')
+    expect(text).toContain('Your changes are not being saved to the cloud')
+    expect(text).not.toContain('Reconnecting')
+    expect(text).not.toContain('an update is going out')
+  })
+
   it('says it is reconnecting, and does not send anyone to Discord yet', async () => {
     const wrapper = render()
     health.unhealthy = true

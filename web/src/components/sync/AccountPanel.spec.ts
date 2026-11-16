@@ -173,6 +173,21 @@ describe('AccountPanel', () => {
     })
   })
 
+  describe('connection state while the backend is unwell', () => {
+    // The socket can sit connected in front of a database that is down, and the health check
+    // is the one that knows nothing is being saved.
+    it.each([
+      [{ unhealthy: true, databaseDown: true }, 'Database unavailable'],
+      [{ unhealthy: true, databaseDown: false }, 'Server unavailable'],
+    ])('reads health %o as "%s" even with the socket connected', (backendHealth, label) => {
+      const wrapper = render({ roomSync: { mode: 'online', connection: 'connected' }, backendHealth })
+      const chip = at(wrapper, 'connection-chip')
+
+      expect(chip.text()).toContain(label)
+      expect(chip.find('i.fa-exclamation-triangle').exists()).toBe(true)
+    })
+  })
+
   describe('offline switch', () => {
     // The chip above it already draws the offline state as a plane; the switch that
     // causes that state says so with the same icon rather than with words alone.

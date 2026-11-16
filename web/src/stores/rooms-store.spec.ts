@@ -1664,14 +1664,18 @@ describe('rooms-store', () => {
       expect(track).not.toHaveBeenCalledWith(tab.id, expect.anything())
     })
 
-    it('leaves synced tabs to the room list while online', () => {
-      const tab = localTab('Synced')
-      appStore.setTabState(tab.id, { kind: 'synced', shared: false, role: 'owner', revision: 1 })
+    // The room list can hang behind a database that is down, and an edit made before it arrives
+    // has to count as unsent, so synced tabs are tracked from this browser's own state online too.
+    it('tracks the synced tabs it already knows about while online, without asking the server', () => {
+      const synced = localTab('Synced')
+      appStore.setTabState(synced.id, { kind: 'synced', shared: false, role: 'owner', revision: 1 })
+      localTab('Local')
       const track = vi.spyOn(roomSync, 'trackRoom')
 
-      store.trackSyncedTabsWhileOffline()
+      store.trackSyncedTabs()
 
-      expect(track).not.toHaveBeenCalled()
+      expect(track).toHaveBeenCalledExactlyOnceWith(synced.id)
+      expect(api.listRooms).not.toHaveBeenCalled()
     })
   })
 
@@ -1685,7 +1689,7 @@ describe('rooms-store', () => {
       appStore.setTabState(synced.id, { kind: 'synced', shared: false, role: 'owner', revision: 1 })
       const track = vi.spyOn(roomSync, 'trackRoom')
 
-      store.trackSyncedTabsWhileOffline()
+      store.trackSyncedTabs()
 
       expect(track).toHaveBeenCalledExactlyOnceWith(synced.id)
       expect(api.listRooms).not.toHaveBeenCalled()

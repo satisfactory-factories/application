@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { getHealth } from '@/api/client'
+import { ApiError, getHealth } from '@/api/client'
+import type { HealthResponse } from '@/api/client'
 import { useRoomSyncStore } from '@/stores/room-sync-store'
 
 /** Modest on purpose while the server is answering: this is a liveness question, not a metric. */
@@ -24,6 +25,23 @@ export const HEALTH_RETRY_ATTEMPTS = 10
 export const HEALTH_BACKOFF_MAX_MS = 300_000
 
 /**
+ * A health check that never answers is as good as a failed one, and without a deadline it would
+ * also hold `checking` up for good, standing every later check down behind it.
+ */
+export const HEALTH_TIMEOUT_MS = 10_000
+
+/**
+ * How long a sent edit may wait for its ack before the server is asked whether it is well. An ack
+ * normally lands in well under a second; an API whose database has stopped answering takes the op
+ * and simply never replies, and the ordinary poll could be most of a minute from looking.
+ */
+export const ACK_STALL_MS = 5_000
+
+/** The API answered, and said its database is the part that is down. */
+const databaseFailed = (body: unknown): boolean =>
+  (body as Partial<HealthResponse> | null)?.database?.status === 'fail'
+
+/**
  * Is the API answering `/health` honestly? A 503, a `fail` body or a request that
  * never lands says it is not, and the banner goes up.
  *
@@ -37,6 +55,12 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
 
   const unhealthy = ref(false)
   const checking = ref(false)
+
+  /**
+   * The API itself answered, and named its database as what is down. Nothing here is a deploy
+   * going out, so the banner says what it is straight away rather than "reconnecting".
+   */
+  const databaseDown = ref(false)
 
   /** Consecutive checks that blamed the server. Zero the moment one succeeds. */
   const failures = ref(0)
@@ -77,14 +101,16 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
     timer = setTimeout(() => void check(), nextDelay())
   }
 
-  const record = (serverIsUp: boolean) => {
+  const record = (serverIsUp: boolean, dbDown = false) => {
     unhealthy.value = !serverIsUp
+    databaseDown.value = !serverIsUp && dbDown
     failures.value = serverIsUp ? 0 : failures.value + 1
   }
 
   /** Nothing was learned, so the cadence goes back to the unhurried one rather than retrying. */
   const recordNoEvidence = () => {
     unhealthy.value = false
+    databaseDown.value = false
     failures.value = 0
   }
 
@@ -99,16 +125,16 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
 
     checking.value = true
     try {
-      const health = await getHealth()
+      const health = await getHealth(AbortSignal.timeout(HEALTH_TIMEOUT_MS))
       // Offline mode may have gone on while the request was out, often because the reader
       // accepted the offer the very failure this check is about prompted. It claims nothing.
       if (roomSync.isSuppressed) recordNoEvidence()
-      else record(health?.status === 'ok')
-    } catch {
-      // A 503 arrives as a thrown ApiError, an unreachable server as a network one,
-      // and both mean the same thing to a reader.
+      else record(health?.status === 'ok', databaseFailed(health))
+    } catch (cause) {
+      // A 503 arrives as a thrown ApiError, an unreachable server as a network one, and both
+      // mean the same thing to a reader. The 503's body still says whether it was the database.
       if (roomSync.isSuppressed || browserIsOffline()) recordNoEvidence()
-      else record(false)
+      else record(false, cause instanceof ApiError && databaseFailed(cause.body))
     } finally {
       checking.value = false
       schedule()
@@ -133,6 +159,18 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
     if (status === 'reconnecting') void check()
   })
 
+  // A sent edit with no ack is the other early hint, and the only one when the socket stays up
+  // while the database behind it does not: the op is taken and never answered.
+  let stallTimer: ReturnType<typeof setTimeout> | undefined
+  const stopStallWatch = watch(() => roomSync.awaitingAck, awaiting => {
+    clearTimeout(stallTimer)
+    stallTimer = undefined
+    if (!awaiting) return
+    stallTimer = setTimeout(() => {
+      if (roomSync.awaitingAck) void check()
+    }, ACK_STALL_MS)
+  })
+
   // Offline mode is silence in both directions: nothing is asked, and nothing is claimed.
   const stopOfflineWatch = watch(() => roomSync.isSuppressed, suppressed => {
     if (suppressed) recordNoEvidence()
@@ -142,11 +180,14 @@ export const useBackendHealthStore = defineStore('backendHealth', () => {
   const dispose = () => {
     stop()
     stopWatch()
+    stopStallWatch()
+    clearTimeout(stallTimer)
     stopOfflineWatch()
   }
 
   return {
     unhealthy,
+    databaseDown,
     checking,
     failures,
     retrying,

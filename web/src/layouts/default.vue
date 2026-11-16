@@ -84,8 +84,9 @@
     // An anonymous joined tab has no membership on the server, so nothing in the
     // room list ever brings it back; this is the only thing that reconnects it.
     useRoomsStore().restoreJoinedTabs()
-    // Opened in offline mode: the room list that normally tracks synced tabs is not fetched.
-    useRoomsStore().trackSyncedTabsWhileOffline()
+    // Before the room list, which may never come (offline mode) or may hang (database down), so an
+    // edit made in the meantime is still counted as unsent.
+    useRoomsStore().trackSyncedTabs()
     const roomSync = useRoomSyncStore()
     stopVersionCheck = startVersionCheck({ isSilent: () => roomSync.isSuppressed })
     backendHealth.start()

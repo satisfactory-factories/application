@@ -4,6 +4,7 @@ import { nextTick } from 'vue'
 import * as api from '@/api/client'
 import { ApiError, ApiNetworkError } from '@/api/client'
 import {
+  ACK_STALL_MS,
   HEALTH_BACKOFF_MAX_MS,
   HEALTH_POLL_MS,
   HEALTH_RETRY_ATTEMPTS,
@@ -55,6 +56,32 @@ describe('backend-health-store', () => {
     vi.mocked(api.getHealth).mockResolvedValue(healthy)
     await store.check()
     expect(store.unhealthy).toBe(false)
+  })
+
+  it('says the database is down when a 503 names it, and forgets it on recovery', async () => {
+    vi.mocked(api.getHealth).mockRejectedValueOnce(new ApiError(503, 'Service Unavailable', failing))
+    await store.check()
+    expect(store.databaseDown).toBe(true)
+
+    vi.mocked(api.getHealth).mockResolvedValue(healthy)
+    await store.check()
+    expect(store.databaseDown).toBe(false)
+  })
+
+  it('does not blame the database when the server cannot be reached at all', async () => {
+    vi.mocked(api.getHealth).mockRejectedValue(new ApiNetworkError('no route to host'))
+
+    await store.check()
+
+    expect(store.unhealthy).toBe(true)
+    expect(store.databaseDown).toBe(false)
+  })
+
+  it('gives up on a health check that never answers rather than waiting forever', async () => {
+    await store.check()
+
+    const signal = vi.mocked(api.getHealth).mock.calls[0][0]
+    expect(signal).toBeInstanceOf(AbortSignal)
   })
 
   it('raises on a body that says it failed even with a 200', async () => {
@@ -313,5 +340,36 @@ describe('backend-health-store', () => {
     await nextTick()
 
     expect(api.getHealth).toHaveBeenCalled()
+  })
+
+  it('asks when a sent edit goes unanswered, which is all a down database shows the socket', async () => {
+    vi.useFakeTimers()
+    try {
+      roomSync.rooms = { r1: { hasPendingOp: true } } as unknown as typeof roomSync.rooms
+      await nextTick()
+      expect(api.getHealth).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(ACK_STALL_MS)
+
+      expect(api.getHealth).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stays quiet when the ack lands in time', async () => {
+    vi.useFakeTimers()
+    try {
+      roomSync.rooms = { r1: { hasPendingOp: true } } as unknown as typeof roomSync.rooms
+      await nextTick()
+      roomSync.rooms = { r1: { hasPendingOp: false } } as unknown as typeof roomSync.rooms
+      await nextTick()
+
+      await vi.advanceTimersByTimeAsync(ACK_STALL_MS)
+
+      expect(api.getHealth).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
