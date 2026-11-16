@@ -57,3 +57,4 @@
 - [Plan deletion moves DB metrics](plan-deletion-moves-db-metrics.md) — a cliff in synced factories with edits falling too is deletion; deleted plans leave no trace but Prometheus
 - [Game save format](game-save-format.md) — reading a 1.2 .sav; a save is a diff not a snapshot, and the ways a wrong parse stays silent
 - [Recipe unlocks from a save](recipe-unlocks.md) — which alternates a loaded save locks; id mapping traps, one tab field so forgetting syncs, the leaf the chip reads
+- [Guest kernel I/O hang](guest-kernel-io-hang.md) — 2026-11-16 API outage was the VM kernel 6.1.0-55; VMs pinned to 6.1.0-54 with apt holds that need lifting later
